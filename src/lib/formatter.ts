@@ -167,6 +167,13 @@ export function enhanceContentWithAI(input: string): string {
       titleInjected = true
     }
 
+    // Keep existing markdown titles unchanged to avoid duplicate "### ###".
+    if (isMarkdownTitle) {
+      output.push(line)
+      pendingNumber = 1
+      continue
+    }
+
     if (/^[-*_]{3,}$/.test(line)) {
       output.push('---')
       continue
@@ -202,6 +209,12 @@ export function enhanceContentWithAI(input: string): string {
       continue
     }
 
+    // Keep existing markdown list items unchanged.
+    if (/^\d+\.\s+/.test(line) || /^[-*]\s+/.test(line)) {
+      output.push(line)
+      continue
+    }
+
     if (line.length <= 18 && !/[，。！？；：]/.test(line)) {
       output.push(`### ${line}`)
       pendingNumber = 1
@@ -217,6 +230,16 @@ export function enhanceContentWithAI(input: string): string {
 
 function enhanceInline(line: string): string {
   let text = line
+
+  // Avoid reprocessing lines that already contain markdown markers.
+  if (
+    /\*\*[^*]+\*\*/.test(text) ||
+    /__[^_]+__/.test(text) ||
+    /==[^=]+==/.test(text) ||
+    /\{(green|blue|orange|red|purple)\|[^}]+\}/.test(text)
+  ) {
+    return text
+  }
 
   text = text.replace(/【([^】]{2,20})】/g, '**$1**')
   text = text.replace(/「([^」]{2,20})」/g, '__$1__')
