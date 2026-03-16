@@ -5,21 +5,39 @@ interface TopBarProps {
 }
 
 export default function TopBar({ content, sidebarOpen, onToggleSidebar }: TopBarProps) {
+  const getBodyOnlyHTML = (html: string) => {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const article = doc.body.querySelector('article')
+    if (!article) {
+      return html
+    }
+
+    const firstHeading = article.querySelector('h1')
+    if (firstHeading) {
+      firstHeading.remove()
+    }
+
+    return article.outerHTML
+  }
+
   const handleCopy = async () => {
     if (!content.trim()) {
       alert('请先输入内容')
       return
     }
 
+    const bodyOnlyHTML = getBodyOnlyHTML(content)
+
     try {
-      const blob = new Blob([content], { type: 'text/html' })
+      const blob = new Blob([bodyOnlyHTML], { type: 'text/html' })
       const item = new ClipboardItem({ 'text/html': blob })
       await navigator.clipboard.write([item])
-      alert('已复制富文本，可直接粘贴到微信公众号编辑器')
+      alert('已复制正文富文本（不含标题）')
     } catch {
       try {
-        await navigator.clipboard.writeText(content)
-        alert('浏览器不支持富文本复制，已复制 HTML 文本')
+        await navigator.clipboard.writeText(bodyOnlyHTML)
+        alert('浏览器不支持富文本复制，已复制正文 HTML 文本')
       } catch {
         alert('复制失败，请手动复制')
       }
