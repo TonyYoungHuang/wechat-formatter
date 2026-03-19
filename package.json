@@ -4,11 +4,23 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm:server\" \"npm:client\"",
+    "client": "vite",
+    "server": "node --watch server/index.mjs",
+    "server:check": "node --check server/index.mjs && node --check server/db.mjs && node --check server/payment-gateways.mjs && node --check server/ai-covers.mjs",
+    "ready": "node server/launch-readiness.mjs --scope=full",
+    "ready:pre-icp": "node server/launch-readiness.mjs --scope=pre-icp",
+    "ready:full": "node server/launch-readiness.mjs --scope=full",
     "build": "tsc && vite build",
+    "check": "npm run server:check && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
