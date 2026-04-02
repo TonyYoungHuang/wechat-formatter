@@ -156,6 +156,12 @@ const storage = {
   themeTab: 'formatter-theme-tab',
 }
 
+const siteCompliance = {
+  icpLabel: '辽ICP备2026005406号',
+  icpUrl: 'https://beian.miit.gov.cn/',
+  policeDataCode: 'a70c09c79a10836277266f2363e503cb',
+}
+
 export default function App() {
   const [content, setContent] = useState(draft)
   const [html, setHtml] = useState('')
@@ -1636,6 +1642,18 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        <footer className="site-compliance">
+          <p>排版猫已完成正式域名备案接入，当前站点与 API 已切到生产环境。</p>
+          <div className="site-compliance-links">
+            <a href={siteCompliance.icpUrl} target="_blank" rel="noreferrer">
+              {siteCompliance.icpLabel}
+            </a>
+            <span title={`公安联网备案数据码：${siteCompliance.policeDataCode}`}>
+              公安联网备案已完成，待补正式备案号
+            </span>
+          </div>
+        </footer>
       </main>
 
       {showAuth && (

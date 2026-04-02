@@ -227,6 +227,34 @@ textarea {
   padding: 28px;
 }
 
+.site-compliance {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 4px 0;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.site-compliance-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 18px;
+}
+
+.site-compliance-links a,
+.site-compliance-links span {
+  color: #475569;
+}
+
+.site-compliance-links a:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
 .shadow-soft {
   box-shadow: var(--shadow-soft);
 }
@@ -294,5 +322,10 @@ textarea {
 
   .modal-card {
     padding: 20px;
+  }
+
+  .site-compliance {
+    padding-top: 22px;
+    font-size: 12px;
   }
 }
