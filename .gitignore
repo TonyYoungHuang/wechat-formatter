@@ -5,3 +5,7 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
+server/data/db.json
