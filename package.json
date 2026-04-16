@@ -1,0 +1,44 @@
+{
+  "name": "wechat-formatter",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm:server\" \"npm:client\"",
+    "client": "vite",
+    "server": "node --watch server/index.mjs",
+    "start": "node server/index.mjs",
+    "server:check": "node --check server/index.mjs && node --check server/db.mjs && node --check server/payment-gateways.mjs && node --check server/ai-covers.mjs",
+    "ready": "node server/launch-readiness.mjs --scope=full",
+    "ready:pre-icp": "node server/launch-readiness.mjs --scope=pre-icp",
+    "ready:full": "node server/launch-readiness.mjs --scope=full",
+    "build": "node scripts/build-production.mjs",
+    "check": "npm run server:check && npm run build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "alipay-sdk": "^4.14.0",
+    "better-sqlite3": "^12.8.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "mammoth": "^1.12.0",
+    "pdfjs-dist": "^5.6.205",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
