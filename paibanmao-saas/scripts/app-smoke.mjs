@@ -172,6 +172,24 @@ async function checkFreeAccountProfileLimit() {
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
 }
 
+async function checkQueuedGenerationScopeRejection() {
+  const jobsBefore = await request("/api/generation-jobs");
+  assert(jobsBefore.response.ok, `/api/generation-jobs before invalid queue returned ${jobsBefore.response.status}: ${jobsBefore.text}`);
+  const beforeCount = jobsBefore.payload?.jobs?.length ?? 0;
+
+  const invalid = await jsonRequest("/api/generate/five-entry/queue", {
+    accountProfileId: "missing-account-profile-id",
+    topic: `${topic}\uff1a\u5f02\u6b65\u751f\u6210\u574f\u6863\u6848\u56de\u5f52`,
+    goal: "growth",
+  });
+  assert(invalid.response.status === 404, `/api/generate/five-entry/queue invalid account profile returned ${invalid.response.status}, expected 404`);
+
+  const jobsAfter = await request("/api/generation-jobs");
+  assert(jobsAfter.response.ok, `/api/generation-jobs after invalid queue returned ${jobsAfter.response.status}: ${jobsAfter.text}`);
+  const afterCount = jobsAfter.payload?.jobs?.length ?? 0;
+  assert(afterCount === beforeCount, "invalid queued generation created a pending job");
+}
+
 async function checkManualTopicCreation(profile) {
   const created = await jsonRequest("/api/topics", {
     accountProfileId: profile.id,
@@ -791,6 +809,7 @@ async function main() {
   const current = await registerAndCheckSession();
   await checkAuthRejections();
   const profile = await checkAccountProfiles();
+  await checkQueuedGenerationScopeRejection();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);
   const generated = await checkFiveEntryGeneration(profile, savedTopic);

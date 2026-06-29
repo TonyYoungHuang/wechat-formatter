@@ -10,18 +10,7 @@ import { assertCanUseGeneration } from "@/lib/usage/service";
 
 export type FiveEntryGenerationInput = z.infer<typeof generateFiveEntrySchema>;
 
-export async function runFiveEntryGeneration(input: {
-  workspaceId: string;
-  planCode: string;
-  payload: FiveEntryGenerationInput;
-  existingJobId?: string;
-}) {
-  const { workspaceId, planCode, payload, existingJobId } = input;
-
-  await assertCanUseGeneration(workspaceId, planCode, {
-    excludeGenerationJobId: existingJobId,
-  });
-
+export async function resolveFiveEntryGenerationScope(workspaceId: string, payload: FiveEntryGenerationInput) {
   const accountProfile = payload.accountProfileId
     ? await prisma.accountProfile.findFirstOrThrow({
         where: { id: payload.accountProfileId, workspaceId },
@@ -45,6 +34,31 @@ export async function runFiveEntryGeneration(input: {
     });
   }
 
+  return {
+    accountProfile,
+    payload: {
+      ...payload,
+      accountProfileId: accountProfile.id,
+    },
+  };
+}
+
+export async function runFiveEntryGeneration(input: {
+  workspaceId: string;
+  planCode: string;
+  payload: FiveEntryGenerationInput;
+  existingJobId?: string;
+}) {
+  const { workspaceId, planCode, payload, existingJobId } = input;
+
+  await assertCanUseGeneration(workspaceId, planCode, {
+    excludeGenerationJobId: existingJobId,
+  });
+
+  const scoped = await resolveFiveEntryGenerationScope(workspaceId, payload);
+  const accountProfile = scoped.accountProfile;
+  const scopedPayload = scoped.payload;
+
   if (existingJobId) {
     await prisma.generationJob.updateMany({
       where: { id: existingJobId, workspaceId },
@@ -53,8 +67,8 @@ export async function runFiveEntryGeneration(input: {
   }
 
   const promptTemplate = await getActivePromptTemplate("five_entry_generation", {
-    topic: payload.topic,
-    goal: payload.goal,
+    topic: scopedPayload.topic,
+    goal: scopedPayload.goal,
     accountName: accountProfile.name,
     niche: accountProfile.niche,
     persona: accountProfile.persona,
@@ -73,16 +87,16 @@ export async function runFiveEntryGeneration(input: {
   let tokenInput = 0;
   let tokenOutput = 0;
   let variants = buildFallbackFiveEntry({
-    topic: payload.topic,
-    goal: payload.goal,
+    topic: scopedPayload.topic,
+    goal: scopedPayload.goal,
     accountProfile,
   });
 
   if (await isAiProviderConfigured()) {
     try {
       const aiResult = await generateFiveEntryWithAi({
-        topic: payload.topic,
-        goal: payload.goal,
+        topic: scopedPayload.topic,
+        goal: scopedPayload.goal,
         accountProfile,
         prompt: promptTemplate.rendered,
       });
@@ -100,8 +114,8 @@ export async function runFiveEntryGeneration(input: {
       data: {
         workspaceId,
         accountProfileId: accountProfile.id,
-        topicId: payload.topicId,
-        title: payload.topic,
+        topicId: scopedPayload.topicId,
+        title: scopedPayload.topic,
         variants: {
           create: variants.map((variant) => ({
             entry: variant.entry,
@@ -115,7 +129,7 @@ export async function runFiveEntryGeneration(input: {
     });
 
     const jobInput = {
-      ...payload,
+      ...scopedPayload,
       source: generationSource,
       promptTemplate: {
         key: promptTemplate.key,
@@ -167,9 +181,9 @@ export async function runFiveEntryGeneration(input: {
       },
     });
 
-    if (payload.topicId) {
+    if (scopedPayload.topicId) {
       await tx.topic.update({
-        where: { id: payload.topicId },
+        where: { id: scopedPayload.topicId },
         data: { status: "generated" },
       });
     }

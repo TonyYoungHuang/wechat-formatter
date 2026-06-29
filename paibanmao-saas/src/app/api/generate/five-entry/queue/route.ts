@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { runFiveEntryGeneration } from "@/lib/generation/five-entry-service";
+import { resolveFiveEntryGenerationScope, runFiveEntryGeneration } from "@/lib/generation/five-entry-service";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 import { enqueueFiveEntryGeneration, ensureGenerationWorker, getGenerationQueue } from "@/lib/queues/generation";
@@ -29,17 +29,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ...result, queued: false, fallback: "sync" });
     }
 
+    const scoped = await resolveFiveEntryGenerationScope(current.workspace.id, parsed.data);
+
     await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
 
     const job = await prisma.generationJob.create({
       data: {
         workspaceId: current.workspace.id,
-        accountProfileId: parsed.data.accountProfileId,
+        accountProfileId: scoped.accountProfile.id,
         type: "five_entry_generation",
         status: "pending",
         input: {
           mode: "queued",
-          payload: parsed.data,
+          payload: scoped.payload,
         },
       },
     });
