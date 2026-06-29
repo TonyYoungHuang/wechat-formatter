@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 import { CalendarDays, CreditCard, FileText, Home, Layers3, MessageSquareText, SearchCheck, Settings, Sparkles, UserRoundCog } from "lucide-react";
 
 import { LogoutButton } from "@/components/app/logout-button";
-import { getCurrentUser, isSiteAdminEmail } from "@/lib/auth/session";
+import { isSiteAdminEmail, type getCurrentUser } from "@/lib/auth/session";
 import { getGenerationUsageSummary } from "@/lib/usage/service";
+
+type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
 const navItems = [
   { href: "/dashboard", label: "工作台", icon: Home },
@@ -27,10 +29,9 @@ function formatRemaining(remaining: number | null) {
   return remaining === null ? "不限" : `${remaining} 次`;
 }
 
-export async function AppShell({ children }: { children: ReactNode }) {
-  const current = await getCurrentUser();
-  const usage = current ? await getGenerationUsageSummary(current.workspace.id, current.workspace.planCode) : null;
-  const isSiteAdmin = current ? isSiteAdminEmail(current.user.email) : false;
+export async function AppShell({ children, current }: { children: ReactNode; current: CurrentUser }) {
+  const usage = await getGenerationUsageSummary(current.workspace.id, current.workspace.planCode);
+  const isSiteAdmin = isSiteAdminEmail(current.user.email);
   const visibleNavItems = navItems.filter((item) => !("adminOnly" in item) || !item.adminOnly || isSiteAdmin);
 
   return (
@@ -62,10 +63,9 @@ export async function AppShell({ children }: { children: ReactNode }) {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-emerald-100 bg-white/85 px-4 backdrop-blur sm:px-6">
           <div>
-            <div className="text-sm font-medium text-slate-950">{current?.workspace.name || "排版猫工作台"}</div>
+            <div className="text-sm font-medium text-slate-950">{current.workspace.name}</div>
             <div className="text-xs text-slate-500">
-              {usage?.plan.name || "免费版"} | 今日剩余 {formatRemaining(usage?.daily.remaining ?? null)} | 本月剩余{" "}
-              {formatRemaining(usage?.monthly.remaining ?? null)}
+              {usage.plan.name} | 今日剩余 {formatRemaining(usage.daily.remaining)} | 本月剩余 {formatRemaining(usage.monthly.remaining)}
             </div>
           </div>
           <div className="flex items-center gap-2">
