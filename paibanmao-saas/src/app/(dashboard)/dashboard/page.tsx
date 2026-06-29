@@ -63,7 +63,11 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {suggestions.map((item) => (
-              <Link key={item} href={`/dashboard/generate?topic=${encodeURIComponent(item)}`} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50">
+              <Link
+                key={item}
+                href={`/dashboard/generate?topic=${encodeURIComponent(item)}`}
+                className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
+              >
                 <span>{item}</span>
                 <ArrowRight className="size-4 text-emerald-600" />
               </Link>

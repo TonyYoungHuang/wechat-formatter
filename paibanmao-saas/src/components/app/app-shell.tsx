@@ -58,7 +58,8 @@ export async function AppShell({ children }: { children: ReactNode }) {
           <div>
             <div className="text-sm font-medium text-slate-950">{current?.workspace.name || "排版猫工作台"}</div>
             <div className="text-xs text-slate-500">
-              {usage?.plan.name || "免费版"} · 今日剩余 {formatRemaining(usage?.daily.remaining ?? null)} · 本月剩余 {formatRemaining(usage?.monthly.remaining ?? null)}
+              {usage?.plan.name || "免费版"} | 今日剩余 {formatRemaining(usage?.daily.remaining ?? null)} | 本月剩余{" "}
+              {formatRemaining(usage?.monthly.remaining ?? null)}
             </div>
           </div>
           <div className="flex items-center gap-2">
