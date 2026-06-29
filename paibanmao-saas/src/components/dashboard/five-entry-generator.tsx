@@ -37,6 +37,8 @@ type QueuedGenerationResult = {
     error?: string | null;
   };
   project?: GenerationResult["project"] | null;
+  queued?: boolean;
+  fallback?: "sync";
 };
 
 const goals = [
@@ -169,6 +171,13 @@ export function FiveEntryGenerator() {
           }),
         }),
       );
+      if (data.queued === false && data.project) {
+        setResult({ project: data.project });
+        setQueuedJobId("");
+        setMessage("后台队列不可用，已改为同步生成并保存为内容项目。");
+        return;
+      }
+
       setQueuedJobId(data.job.id);
       setMessage("已加入后台队列，稍后自动刷新结果。");
     } catch (error) {
