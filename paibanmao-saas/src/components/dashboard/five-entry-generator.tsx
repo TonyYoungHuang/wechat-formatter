@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock3, Copy, FolderOpen, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock3, Copy, FolderOpen, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
 
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,21 @@ type QueuedGenerationResult = {
   fallback?: "sync";
 };
 
+type GenerationJob = {
+  id: string;
+  type: string;
+  status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
+  output?: Record<string, unknown> | null;
+  error?: string | null;
+  tokenInput: number;
+  tokenOutput: number;
+  createdAt: string;
+  promptTemplate?: {
+    key: string;
+    version: number;
+  } | null;
+};
+
 const goals = [
   { value: "growth", label: "涨粉" },
   { value: "search", label: "搜索" },
@@ -68,6 +83,36 @@ function getStringList(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
+function getJobSource(job: GenerationJob) {
+  const source = job.output?.source;
+  if (typeof source === "string") {
+    return source;
+  }
+
+  const provider = job.output?.provider;
+  const model = job.output?.model;
+  if (typeof provider === "string" && typeof model === "string") {
+    return `${provider}:${model}`;
+  }
+
+  return "-";
+}
+
+function getJobProjectId(job: GenerationJob) {
+  const projectId = job.output?.projectId;
+  return typeof projectId === "string" ? projectId : "";
+}
+
+function formatJobType(type: string) {
+  const labels: Record<string, string> = {
+    five_entry_generation: "五入口生成",
+    topic_generation: "选题生成",
+    image_prompt_generation: "图片提示词",
+    ai_tone_rewrite: "自然改写",
+  };
+  return labels[type] || type;
+}
+
 export function FiveEntryGenerator() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
   const [accountProfileId, setAccountProfileId] = useState(() => getInitialSearchParam("accountProfileId"));
@@ -80,6 +125,7 @@ export function FiveEntryGenerator() {
   const [loading, setLoading] = useState(false);
   const [queueing, setQueueing] = useState(false);
   const [queuedJobId, setQueuedJobId] = useState("");
+  const [jobs, setJobs] = useState<GenerationJob[]>([]);
 
   useEffect(() => {
     fetch("/api/account-profiles")
@@ -89,7 +135,17 @@ export function FiveEntryGenerator() {
         setAccountProfileId((current) => current || data.profiles[0]?.id || "");
       })
       .catch((error: Error) => setMessage(error.message));
+    void loadJobs();
   }, []);
+
+  async function loadJobs() {
+    try {
+      const data = await readJson<{ jobs: GenerationJob[] }>(await fetch("/api/generation-jobs"));
+      setJobs(data.jobs);
+    } catch {
+      // The generator remains usable even if history fails to load.
+    }
+  }
 
   const activeVariant = useMemo(
     () => result?.project.variants.find((variant) => variant.entry === activeEntry),
@@ -116,9 +172,11 @@ export function FiveEntryGenerator() {
           setResult({ project: data.project });
           setQueuedJobId("");
           setMessage("后台生成已完成，并保存为内容项目。");
+          void loadJobs();
         } else if (data.job.status === "failed") {
           setQueuedJobId("");
           setMessage(data.job.error || "后台生成失败。");
+          void loadJobs();
         } else {
           setMessage(data.job.status === "running" ? "后台正在生成中..." : "已加入后台队列，等待生成...");
         }
@@ -154,6 +212,7 @@ export function FiveEntryGenerator() {
       );
       setResult(data);
       setMessage("已生成并保存为内容项目。");
+      void loadJobs();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "生成失败。");
     } finally {
@@ -181,10 +240,12 @@ export function FiveEntryGenerator() {
         setResult({ project: data.project });
         setQueuedJobId("");
         setMessage("后台队列不可用，已改为同步生成并保存为内容项目。");
+        void loadJobs();
         return;
       }
 
       setQueuedJobId(data.job.id);
+      void loadJobs();
       setMessage("已加入后台队列，稍后自动刷新结果。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "后台生成提交失败。");
@@ -381,6 +442,52 @@ export function FiveEntryGenerator() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2">
+            <History className="size-5 text-emerald-600" />
+            最近生成记录
+          </CardTitle>
+          <Button size="sm" variant="secondary" onClick={loadJobs}>
+            刷新
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {jobs.slice(0, 8).map((job) => {
+            const projectId = getJobProjectId(job);
+            return (
+              <div key={job.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm lg:grid-cols-[150px_120px_1fr_160px] lg:items-center">
+                <div>
+                  <div className="font-medium text-slate-950">{formatJobType(job.type)}</div>
+                  <div className="mt-1 text-xs text-slate-500">{new Date(job.createdAt).toLocaleString()}</div>
+                </div>
+                <span className={`w-fit rounded-full px-2 py-1 text-xs ${job.status === "succeeded" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                  {job.status}
+                </span>
+                <div className="min-w-0 text-slate-600">
+                  <div className="truncate">来源：{getJobSource(job)}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Prompt：{job.promptTemplate ? `${job.promptTemplate.key} v${job.promptTemplate.version}` : "-"} · Token：{job.tokenInput}/{job.tokenOutput}
+                  </div>
+                  {job.error ? <div className="mt-1 truncate text-xs text-red-600">{job.error}</div> : null}
+                </div>
+                <div className="flex gap-2 lg:justify-end">
+                  {projectId ? (
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={`/dashboard/projects`}>查看项目</Link>
+                    </Button>
+                  ) : null}
+                  <Button asChild size="sm" variant="ghost">
+                    <Link href={`/api/generation-jobs/${job.id}`}>详情</Link>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          {!jobs.length ? <p className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">还没有生成记录。完成一次选题、五入口、图片提示词或改写后会出现在这里。</p> : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }
