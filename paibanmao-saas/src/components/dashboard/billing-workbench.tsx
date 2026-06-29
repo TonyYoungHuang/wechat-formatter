@@ -20,6 +20,15 @@ type Plan = {
   advancedChecks: boolean;
 };
 
+type PricingVersion = {
+  id: string;
+  planCode: PlanCode;
+  version: number;
+  snapshot: Plan;
+  note?: string | null;
+  createdAt: string;
+};
+
 type UsageSummary = {
   generation: {
     plan: Plan;
@@ -62,6 +71,7 @@ function formatLimit(value: number | null) {
 
 export function BillingWorkbench() {
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [versions, setVersions] = useState<PricingVersion[]>([]);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [message, setMessage] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>("starter");
@@ -73,10 +83,11 @@ export function BillingWorkbench() {
     setLoading(true);
     try {
       const [planData, usageData] = await Promise.all([
-        fetch("/api/billing/plans").then((response) => readJson<{ plans: Plan[] }>(response)),
+        fetch("/api/admin/pricing").then((response) => readJson<{ plans: Plan[]; versions: PricingVersion[] }>(response)),
         fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response)),
       ]);
       setPlans(planData.plans);
+      setVersions(planData.versions || []);
       setUsage(usageData);
       setMessage("");
     } catch (error) {
@@ -224,6 +235,33 @@ export function BillingWorkbench() {
           </Card>
         ))}
       </div>
+
+      {versions.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>价格与额度版本记录</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {versions.slice(0, 6).map((version) => (
+              <div key={version.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[140px_1fr_180px] md:items-center">
+                <div>
+                  <div className="font-medium text-slate-950">
+                    {version.snapshot?.name || version.planCode} v{version.version}
+                  </div>
+                  <div className="text-xs text-slate-500">{version.note || "配置更新"}</div>
+                </div>
+                <div className="grid gap-2 text-slate-600 sm:grid-cols-4">
+                  <span>价格：{version.snapshot?.priceCents === null ? "待定" : `¥${((version.snapshot?.priceCents ?? 0) / 100).toFixed(2)}`}</span>
+                  <span>档案：{version.snapshot?.accountProfileLimit ?? "-"}</span>
+                  <span>每日：{formatLimit(version.snapshot?.dailyGenerationLimit ?? null)}</span>
+                  <span>每月：{formatLimit(version.snapshot?.monthlyGenerationLimit ?? null)}</span>
+                </div>
+                <div className="text-xs text-slate-500 md:text-right">{new Date(version.createdAt).toLocaleString()}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import type { PlanCode, PlanConfig } from "@/lib/entitlements/plans";
 import { defaultPlans } from "@/lib/entitlements/plans";
 import { prisma } from "@/lib/db/prisma";
@@ -57,7 +59,31 @@ export async function getPlanConfig(code: PlanCode) {
   return plans.find((plan) => plan.code === code) ?? plans[0];
 }
 
-export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig>) {
+export async function getPricingVersions(limit = 20) {
+  return prisma.pricingVersion.findMany({
+    orderBy: [{ createdAt: "desc" }, { version: "desc" }],
+    take: limit,
+  });
+}
+
+async function recordPricingVersion(code: PlanCode, snapshot: PlanConfig, note?: string) {
+  const latest = await prisma.pricingVersion.aggregate({
+    where: { planCode: code },
+    _max: { version: true },
+  });
+  const version = (latest._max.version ?? 0) + 1;
+
+  return prisma.pricingVersion.create({
+    data: {
+      planCode: code,
+      version,
+      snapshot: snapshot as unknown as Prisma.InputJsonValue,
+      note,
+    },
+  });
+}
+
+export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig>, options: { recordVersion?: boolean; note?: string } = {}) {
   const fallback = defaultPlans.find((plan) => plan.code === code) ?? defaultPlans[0];
   const data = {
     code,
@@ -97,5 +123,11 @@ export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig
     ),
   );
 
-  return getPlanConfig(code);
+  const plan = await getPlanConfig(code);
+
+  if (options.recordVersion) {
+    await recordPricingVersion(code, plan, options.note);
+  }
+
+  return plan;
 }

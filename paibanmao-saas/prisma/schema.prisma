@@ -129,6 +129,21 @@ model PricingPlan {
   updatedAt   DateTime @updatedAt
 
   entitlements PlanEntitlement[]
+  versions     PricingVersion[]
+}
+
+model PricingVersion {
+  id        String   @id @default(cuid())
+  planCode  PlanCode
+  version   Int
+  snapshot  Json
+  note      String?
+  createdAt DateTime @default(now())
+
+  plan PricingPlan @relation(fields: [planCode], references: [code], onDelete: Cascade)
+
+  @@unique([planCode, version])
+  @@index([createdAt])
 }
 
 model PlanEntitlement {
