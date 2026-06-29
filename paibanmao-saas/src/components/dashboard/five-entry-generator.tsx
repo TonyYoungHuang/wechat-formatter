@@ -64,6 +64,10 @@ async function readJson<T>(response: Response): Promise<T> {
   return payload;
 }
 
+function getStringList(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+}
+
 export function FiveEntryGenerator() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
   const [accountProfileId, setAccountProfileId] = useState(() => getInitialSearchParam("accountProfileId"));
@@ -91,6 +95,8 @@ export function FiveEntryGenerator() {
     () => result?.project.variants.find((variant) => variant.entry === activeEntry),
     [activeEntry, result],
   );
+  const activeImagePrompts = useMemo(() => getStringList(activeVariant?.metadata?.imagePrompts), [activeVariant]);
+  const activeKeywords = useMemo(() => getStringList(activeVariant?.metadata?.keywords), [activeVariant]);
 
   useEffect(() => {
     if (!queuedJobId) {
@@ -317,7 +323,54 @@ export function FiveEntryGenerator() {
           </CardHeader>
           <CardContent>
             {activeVariant ? (
-              <pre className="min-h-80 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">{activeVariant.body}</pre>
+              <div className="space-y-4">
+                <pre className="min-h-80 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">{activeVariant.body}</pre>
+                {activeImagePrompts.length ? (
+                  <div className="space-y-3 rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="font-medium text-slate-950">小绿书图片提示词</h3>
+                        <p className="mt-1 text-xs text-slate-600">生成结果里的逐页图片建议，可直接复制给后续图片模型或设计工具。</p>
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={() => copyText(activeImagePrompts.join("\n\n"))}>
+                        <Copy className="size-4" />
+                        复制全部
+                      </Button>
+                    </div>
+                    <div className="grid gap-2">
+                      {activeImagePrompts.map((prompt, index) => (
+                        <div key={`${prompt}-${index}`} className="flex flex-col gap-2 rounded-lg bg-white p-3 text-sm leading-6 text-slate-700 sm:flex-row sm:items-start sm:justify-between">
+                          <p>
+                            <span className="font-medium text-slate-950">第 {index + 1} 页：</span>
+                            {prompt}
+                          </p>
+                          <button className="shrink-0 text-sm font-medium text-emerald-700" onClick={() => copyText(prompt)} type="button">
+                            复制
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {activeKeywords.length ? (
+                  <div className="rounded-lg border border-slate-100 bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="font-medium text-slate-950">搜一搜关键词</h3>
+                      <Button size="sm" variant="secondary" onClick={() => copyText(activeKeywords.join("、"))}>
+                        <Copy className="size-4" />
+                        复制关键词
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {activeKeywords.map((keyword) => (
+                        <button key={keyword} className="rounded-full bg-slate-50 px-3 py-1 text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700" onClick={() => copyText(keyword)} type="button">
+                          {keyword}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : (
               <div className="flex min-h-80 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-center">
                 <Save className="mb-3 size-8 text-emerald-500" />
