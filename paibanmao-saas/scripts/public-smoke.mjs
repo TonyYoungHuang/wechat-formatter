@@ -157,6 +157,8 @@ const toolPreviewChecks = [
   { kind: "compliance", expectedTitle: "\u53d1\u5e03\u524d\u68c0\u67e5\u9884\u89c8" },
 ];
 
+const mojibakePattern = /[�]|鎺|鐢|閫|鈥|俙|歿|绂|鍥|绠/;
+
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, options);
   const text = await response.text();
@@ -178,11 +180,50 @@ function assert(condition, message) {
   }
 }
 
+function assertNoMojibake(value, label) {
+  const text = String(value ?? "");
+  assert(!mojibakePattern.test(text), `${label} contains mojibake: ${text.slice(0, 120)}`);
+}
+
+function attrValue(tag, name) {
+  const match = tag.match(new RegExp(`${name}=["']([^"']+)["']`, "i"));
+  return match?.[1] || "";
+}
+
+function findTag(html, pattern) {
+  return html.match(pattern)?.[0] || "";
+}
+
 async function checkPublicPages() {
   for (const path of [...publicPages, ...tutorialPaths]) {
     const { response, text } = await request(path);
     assert(response.ok, `${path} returned ${response.status}`);
     assert(text.includes(brandText), `${path} does not include brand text`);
+    assertNoMojibake(text, `${path} html`);
+  }
+}
+
+async function checkPublicMetadata() {
+  for (const path of [...publicPages, ...tutorialPaths]) {
+    const { response, text } = await request(path);
+    assert(response.ok, `${path} returned ${response.status}`);
+
+    const title = text.match(/<title>([^<]+)<\/title>/i)?.[1] || "";
+    const descriptionTag = findTag(text, /<meta[^>]+name=["']description["'][^>]*>/i);
+    const canonicalTag = findTag(text, /<link[^>]+rel=["']canonical["'][^>]*>/i);
+    const ogTitleTag = findTag(text, /<meta[^>]+property=["']og:title["'][^>]*>/i);
+    const ogDescriptionTag = findTag(text, /<meta[^>]+property=["']og:description["'][^>]*>/i);
+    const description = attrValue(descriptionTag, "content");
+
+    assert(title.includes(brandText) || text.includes("<h1"), `${path} metadata title missing useful title`);
+    assert(description.length >= 20, `${path} metadata description missing or too short`);
+    assert(canonicalTag, `${path} canonical link missing`);
+    assert(ogTitleTag, `${path} og:title missing`);
+    assert(ogDescriptionTag, `${path} og:description missing`);
+    assertNoMojibake(title, `${path} metadata title`);
+    assertNoMojibake(description, `${path} metadata description`);
+    assertNoMojibake(attrValue(ogTitleTag, "content"), `${path} og title`);
+    assertNoMojibake(attrValue(ogDescriptionTag, "content"), `${path} og description`);
   }
 }
 
@@ -273,6 +314,13 @@ async function checkToolPreview() {
     assert(payload.preview?.summary, `preview summary missing for ${check.kind}`);
     assert(Array.isArray(payload.preview?.blocks) && payload.preview.blocks.length > 0, `preview blocks missing for ${check.kind}`);
     assert(payload.preview?.loginHint, `preview login hint missing for ${check.kind}`);
+    assertNoMojibake(payload.preview.title, `${check.kind} preview title`);
+    assertNoMojibake(payload.preview.summary, `${check.kind} preview summary`);
+    assertNoMojibake(payload.preview.loginHint, `${check.kind} preview login hint`);
+    for (const [index, block] of payload.preview.blocks.entries()) {
+      assertNoMojibake(block.label, `${check.kind} preview block ${index + 1} label`);
+      assertNoMojibake(block.content, `${check.kind} preview block ${index + 1} content`);
+    }
   }
 }
 
@@ -313,6 +361,7 @@ async function main() {
   console.log(`Running public smoke checks against ${baseUrl}`);
   await checkHealth();
   await checkPublicPages();
+  await checkPublicMetadata();
   await checkSitemapAndRobots();
   await checkToolSeoSections();
   await checkTutorialSeoSections();

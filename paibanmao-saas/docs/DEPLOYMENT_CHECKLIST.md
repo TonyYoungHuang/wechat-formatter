@@ -98,6 +98,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Anonymous tool previews are limited by both cookie and Redis-backed visitor fingerprint when Redis is available.
 - `/tools/compliance-checker` carries preview content into signup.
 - Public tool pages include usage steps, FAQ content, and FAQPage structured data.
+- Public smoke confirms public pages expose title, description, canonical, and Open Graph metadata without mojibake.
+- Public smoke confirms anonymous preview outputs for all free tools do not contain mojibake.
 - `/tutorials` and tutorial detail pages are indexed in `/sitemap.xml`.
 - `/robots.txt` allows public pages and disallows `/dashboard`.
 
