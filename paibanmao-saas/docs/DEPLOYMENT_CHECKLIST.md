@@ -21,13 +21,15 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 
 - `AI_OPENAI_COMPATIBLE_BASE_URL` points to the selected model router.
 - `AI_OPENAI_COMPATIBLE_API_KEY` is configured in the hosting provider.
-- Admin Settings has at least three active model purposes:
+- Admin Settings has at least four active model purposes:
   - `content`
   - `topic`
+  - `rewrite`
   - `image`
 - Test these flows after login:
   - Generate topic suggestions.
   - Generate a five-entry content project.
+  - Use the editor to lower AI tone.
   - Generate green-note image prompts.
 
 ## 4. Pricing And Quotas

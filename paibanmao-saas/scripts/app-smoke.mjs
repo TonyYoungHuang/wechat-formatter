@@ -115,6 +115,22 @@ async function checkFiveEntryGeneration(profile) {
   return generation.payload;
 }
 
+async function checkRewrite(profile, generated) {
+  const source =
+    generated.project.variants.find((variant) => variant.entry === "wechat_article")?.content ||
+    "\u8fd9\u662f\u4e00\u6bb5\u7528\u4e8e\u9a8c\u8bc1\u964d\u4f4e AI \u5473\u7684\u516c\u4f17\u53f7\u6b63\u6587\uff0c\u9700\u8981\u4fdd\u7559\u6838\u5fc3\u89c2\u70b9\uff0c\u4f46\u8ba9\u8868\u8fbe\u66f4\u50cf\u771f\u5b9e\u521b\u4f5c\u8005\u5199\u7ed9\u8bfb\u8005\u7684\u5185\u5bb9\u3002";
+  const rewrite = await jsonRequest("/api/generate/rewrite", {
+    accountProfileId: profile.id,
+    title: topic,
+    content: source.slice(0, 2000),
+    goal: "lower_ai_tone",
+  });
+
+  assert(rewrite.response.ok, `/api/generate/rewrite returned ${rewrite.response.status}: ${rewrite.text}`);
+  assert(rewrite.payload?.job?.type === "ai_tone_rewrite", "rewrite generation job type mismatch");
+  assert(rewrite.payload?.output?.content, "rewrite output content missing");
+}
+
 async function configurePricingIfAdmin(currentUser) {
   if (!currentUser?.user?.isSiteAdmin) {
     const message = `Smoke user ${email} is not a site admin. Set SITE_ADMIN_EMAIL to this email before starting the server to test pricing and payment.`;
@@ -181,11 +197,12 @@ async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   const current = await registerAndCheckSession();
   const profile = await checkAccountProfiles();
-  await checkFiveEntryGeneration(profile);
+  const generated = await checkFiveEntryGeneration(profile);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
     await checkPaymentFlow();
+    await checkRewrite(profile, generated);
   }
 
   console.log("App smoke checks passed.");

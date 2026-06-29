@@ -65,6 +65,7 @@ type PaymentConfigStatus = {
 const defaultProviderModels: ProviderModelConfig[] = [
   { name: "内容生成模型", modelId: "gpt-4.1-mini", purpose: "content", active: true },
   { name: "选题生成模型", modelId: "gpt-4.1-mini", purpose: "topic", active: true },
+  { name: "降低 AI 味模型", modelId: "gpt-4.1-mini", purpose: "rewrite", active: true },
   { name: "图片提示词模型", modelId: "gpt-4.1-mini", purpose: "image", active: true },
 ];
 
@@ -221,7 +222,7 @@ export function SettingsWorkbench() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-sm font-medium text-slate-800">模型用途</h2>
-                  <p className="mt-1 text-xs text-slate-500">同一个中转站可以给内容生成、选题生成和图片提示词配置不同模型。</p>
+                  <p className="mt-1 text-xs text-slate-500">同一个中转站可以给内容生成、选题生成、降低 AI 味和图片提示词配置不同模型。</p>
                 </div>
                 <Button type="button" size="sm" variant="secondary" onClick={addModel}>
                   <Plus className="size-4" />
