@@ -17,6 +17,23 @@ const relatedTools = [
   { href: "/tools/compliance-checker", label: "公众号发布前检查" },
 ];
 
+const toolPaths: Record<PublicToolKind, string> = {
+  topic: "/tools/topic-generator",
+  green_note: "/tools/green-note-generator",
+  search: "/tools/search-keyword-helper",
+  question: "/tools/question-answer-generator",
+  moments: "/tools/moments-copy-generator",
+  compliance: "/tools/compliance-checker",
+};
+
+function appUrl() {
+  return (process.env.APP_URL || "https://paibanmao.cn").replace(/\/$/, "");
+}
+
+function jsonLdScript(value: unknown) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 export function ToolPage({
   title,
   description,
@@ -30,8 +47,51 @@ export function ToolPage({
   unlocks: string[];
   toolKind: PublicToolKind;
 }) {
+  const canonicalUrl = `${appUrl()}${toolPaths[toolKind]}`;
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: title,
+      description,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: canonicalUrl,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "CNY",
+      },
+      provider: {
+        "@type": "Organization",
+        name: "排版猫",
+        url: appUrl(),
+      },
+      featureList: unlocks,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "首页",
+          item: appUrl(),
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: title,
+          item: canonicalUrl,
+        },
+      ],
+    },
+  ];
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-12 sm:px-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData) }} />
       <Link className="text-sm text-emerald-700" href="/">
         返回首页
       </Link>
