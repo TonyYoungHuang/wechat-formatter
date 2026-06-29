@@ -4,7 +4,7 @@ import { z } from "zod";
 import { checkContentCompliance } from "@/lib/compliance/check";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { errorResponse } from "@/lib/http/errors";
+import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 const schema = z.object({
   projectId: z.string().min(1).optional(),
@@ -14,35 +14,39 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const parsed = schema.safeParse(await request.json().catch(() => null));
+  try {
+    const parsed = schema.safeParse(await request.json().catch(() => null));
 
-  if (!parsed.success) {
-    return errorResponse("Content is required for compliance checking.");
-  }
+    if (!parsed.success) {
+      return errorResponse("Content is required for compliance checking.");
+    }
 
-  const result = checkContentCompliance(parsed.data);
+    const result = checkContentCompliance(parsed.data);
 
-  if (!parsed.data.projectId) {
-    return NextResponse.json(result);
-  }
+    if (!parsed.data.projectId) {
+      return NextResponse.json(result);
+    }
 
-  const current = await requireCurrentUser();
-  await prisma.contentProject.findFirstOrThrow({
-    where: { id: parsed.data.projectId, workspaceId: current.workspace.id },
-  });
+    const current = await requireCurrentUser();
+    await prisma.contentProject.findFirstOrThrow({
+      where: { id: parsed.data.projectId, workspaceId: current.workspace.id },
+    });
 
-  const report = await prisma.complianceReport.create({
-    data: {
-      projectId: parsed.data.projectId,
-      score: result.score,
-      level: result.level,
-      summary: result.summary,
-      issues: {
-        create: result.issues,
+    const report = await prisma.complianceReport.create({
+      data: {
+        projectId: parsed.data.projectId,
+        score: result.score,
+        level: result.level,
+        summary: result.summary,
+        issues: {
+          create: result.issues,
+        },
       },
-    },
-    include: { issues: true },
-  });
+      include: { issues: true },
+    });
 
-  return NextResponse.json({ ...result, report });
+    return NextResponse.json({ ...result, report });
+  } catch (error) {
+    return mapApiError(error);
+  }
 }
