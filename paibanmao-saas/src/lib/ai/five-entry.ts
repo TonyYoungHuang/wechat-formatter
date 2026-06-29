@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-import { getActiveAiProvider } from "@/lib/ai/provider";
+import { getAiProviderCandidates } from "@/lib/ai/provider";
 import { contentEntries } from "@/lib/content/entries";
 import type { GeneratedVariant } from "@/lib/generation/fallback";
 
@@ -40,8 +40,8 @@ export type AiFiveEntryResult = {
 };
 
 export async function isAiProviderConfigured() {
-  const config = await getActiveAiProvider();
-  return Boolean(config.baseUrl && config.apiKey && config.model);
+  const candidates = await getAiProviderCandidates();
+  return candidates.some((config) => config.baseUrl && config.apiKey && config.model);
 }
 
 export async function generateFiveEntryWithAi(input: {
@@ -50,17 +50,6 @@ export async function generateFiveEntryWithAi(input: {
   accountProfile: AccountProfileLike;
   prompt?: string;
 }): Promise<AiFiveEntryResult> {
-  const config = await getActiveAiProvider();
-
-  if (!config.baseUrl || !config.apiKey || !config.model) {
-    throw new Error("AI provider is not configured.");
-  }
-
-  const openai = createOpenAI({
-    baseURL: config.baseUrl,
-    apiKey: config.apiKey,
-  });
-
   const profile = input.accountProfile;
   const prompt = input.prompt ?? [
     `Topic: ${input.topic}`,
@@ -86,32 +75,54 @@ export async function generateFiveEntryWithAi(input: {
     "For moments, make the copy natural and personal.",
   ].join("\n");
 
-  const result = await generateObject({
-    model: openai(config.model),
-    schema: fiveEntrySchema,
-    system: [
-      "You are Paibanmao, a Chinese WeChat content SaaS assistant.",
-      "Return structured Chinese content for exactly five WeChat ecosystem entries.",
-      "Do not promise guaranteed traffic, income, ranking, audit approval, or medical/financial results.",
-      "Respect forbidden words and keep the content practical for small individual creators.",
-    ].join("\n"),
-    prompt,
-    temperature: 0.7,
-  });
+  const candidates = (await getAiProviderCandidates()).filter((config) => config.baseUrl && config.apiKey && config.model);
 
-  const normalized = contentEntries.map((entry) => {
-    const variant = result.object.variants.find((item) => item.entry === entry.id);
-    if (!variant) {
-      throw new Error(`AI result missing ${entry.id}.`);
+  if (!candidates.length) {
+    throw new Error("AI provider is not configured.");
+  }
+
+  const errors: string[] = [];
+
+  for (const config of candidates) {
+    try {
+      const openai = createOpenAI({
+        baseURL: config.baseUrl,
+        apiKey: config.apiKey,
+      });
+
+      const result = await generateObject({
+        model: openai(config.model),
+        schema: fiveEntrySchema,
+        system: [
+          "You are Paibanmao, a Chinese WeChat content SaaS assistant.",
+          "Return structured Chinese content for exactly five WeChat ecosystem entries.",
+          "Do not promise guaranteed traffic, income, ranking, audit approval, or medical/financial results.",
+          "Respect forbidden words and keep the content practical for small individual creators.",
+        ].join("\n"),
+        prompt,
+        temperature: 0.7,
+      });
+
+      const normalized = contentEntries.map((entry) => {
+        const variant = result.object.variants.find((item) => item.entry === entry.id);
+        if (!variant) {
+          throw new Error(`AI result missing ${entry.id}.`);
+        }
+        return variant;
+      });
+
+      return {
+        variants: normalized,
+        provider: config.name,
+        model: config.model,
+        tokenInput: result.usage.inputTokens ?? 0,
+        tokenOutput: result.usage.outputTokens ?? 0,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      errors.push(`${config.name}/${config.model}: ${message}`);
     }
-    return variant;
-  });
+  }
 
-  return {
-    variants: normalized,
-    provider: config.name,
-    model: config.model,
-    tokenInput: result.usage.inputTokens ?? 0,
-    tokenOutput: result.usage.outputTokens ?? 0,
-  };
+  throw new Error(`AI generation failed for all providers: ${errors.join("; ")}`);
 }

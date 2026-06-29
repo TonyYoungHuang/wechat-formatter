@@ -33,8 +33,15 @@ export function assertAiProviderReady(config = getDefaultAiProvider()) {
 }
 
 export async function getActiveAiProvider(purpose = "content"): Promise<AiProviderConfig> {
+  const [candidate] = await getAiProviderCandidates(purpose);
+  return candidate ?? getDefaultAiProvider();
+}
+
+export async function getAiProviderCandidates(purpose = "content"): Promise<AiProviderConfig[]> {
+  const candidates: AiProviderConfig[] = [];
+
   try {
-    const provider = await prisma.aiProvider.findFirst({
+    const providers = await prisma.aiProvider.findMany({
       where: {
         active: true,
         type: "openai-compatible",
@@ -48,25 +55,41 @@ export async function getActiveAiProvider(purpose = "content"): Promise<AiProvid
       orderBy: { updatedAt: "desc" },
     });
 
-    const model = provider?.models.find((item) => item.purpose === purpose) ?? provider?.models[0];
+    for (const provider of providers) {
+      const preferredModels = provider.models.filter((model) => model.purpose === purpose);
+      const fallbackModels = provider.models.filter((model) => model.purpose !== purpose);
 
-    if (provider && model) {
-      return {
-        type: "openai-compatible",
-        name: provider.name,
-        baseUrl: provider.baseUrl,
-        apiKey: process.env[provider.apiKeyRef] || "",
-        model: model.modelId,
-        modelName: model.name,
-        apiKeyRef: provider.apiKeyRef,
-        source: "database",
-      };
+      for (const model of [...preferredModels, ...fallbackModels]) {
+        candidates.push({
+          type: "openai-compatible",
+          name: provider.name,
+          baseUrl: provider.baseUrl,
+          apiKey: process.env[provider.apiKeyRef] || "",
+          model: model.modelId,
+          modelName: model.name,
+          apiKeyRef: provider.apiKeyRef,
+          source: "database",
+        });
+      }
     }
   } catch {
-    return getDefaultAiProvider();
+    return [getDefaultAiProvider()];
   }
 
-  return getDefaultAiProvider();
+  const environmentFallback = getDefaultAiProvider();
+  const hasSameEnvironmentProvider = candidates.some(
+    (candidate) =>
+      candidate.source === "environment" ||
+      (candidate.baseUrl === environmentFallback.baseUrl &&
+        candidate.apiKeyRef === environmentFallback.apiKeyRef &&
+        candidate.model === environmentFallback.model),
+  );
+
+  if (!hasSameEnvironmentProvider) {
+    candidates.push(environmentFallback);
+  }
+
+  return candidates;
 }
 
 export async function getAiProviderStatus(purpose = "content") {
