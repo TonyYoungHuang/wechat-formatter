@@ -17,6 +17,7 @@ type Issue = {
 type CheckResult = {
   score: number;
   level: string;
+  mode: "basic" | "advanced";
   summary: string;
   issues: Issue[];
   report?: { id: string };
@@ -190,7 +191,7 @@ export function ComplianceWorkbench() {
                   >
                     {project.variants.map((variant) => (
                       <option key={variant.id} value={variant.id}>
-                        {entryLabels[variant.entry] || variant.entry} · {variant.title}
+                        {entryLabels[variant.entry] || variant.entry} - {variant.title}
                       </option>
                     ))}
                   </select>
@@ -223,7 +224,7 @@ export function ComplianceWorkbench() {
             <div className="flex flex-col gap-3 rounded-lg bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-3xl font-semibold text-slate-950">{result.score}</div>
-                <div className="text-sm text-slate-500">综合分</div>
+                <div className="text-sm text-slate-500">综合分 · {result.mode === "advanced" ? "高级检查" : "基础检查"}</div>
               </div>
               <p className="text-sm leading-6 text-slate-600">{result.summary}</p>
             </div>

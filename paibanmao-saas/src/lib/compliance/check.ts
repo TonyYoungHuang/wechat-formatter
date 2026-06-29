@@ -6,47 +6,144 @@ export type ComplianceIssue = {
   suggestion: string;
 };
 
-const forbiddenPatterns = [
-  { pattern: /最[佳强]|第一|唯一|全网最低|稳赚|保证|躺赚/g, category: "夸大承诺" },
-  { pattern: /诱导分享|转发后领取|强制关注/g, category: "诱导行为" },
-  { pattern: /治疗|疗效|投资收益|保本/g, category: "高风险行业表达" },
+type CheckOptions = {
+  advanced?: boolean;
+};
+
+const basePatterns = [
+  {
+    pattern: /全网最|唯一|第一|最强|最佳|稳赚|暴富|保证|躺赚|百分百|100%/g,
+    category: "夸大承诺",
+    severity: "medium" as const,
+    suggestion: "改成更克制、可验证的表达，例如“更适合”“有机会”“可以尝试”。",
+  },
+  {
+    pattern: /转发后领取|分享后领取|强制关注|不转不是|拉人头/g,
+    category: "诱导行为",
+    severity: "medium" as const,
+    suggestion: "避免把转发、关注作为强制条件，改成自然收藏、评论或私信引导。",
+  },
+  {
+    pattern: /治疗|疗效|治愈|投资收益|保本|贷款包过|诊断|处方/g,
+    category: "高风险行业表达",
+    severity: "high" as const,
+    suggestion: "医疗、金融、教育等方向要避免结果承诺，必要时增加资质、风险和免责声明。",
+  },
 ];
 
-export function checkContentCompliance(input: { title?: string; content: string }) {
-  const issues: ComplianceIssue[] = [];
-  const text = `${input.title || ""}\n${input.content}`;
+const aiSmellPatterns = [
+  /作为一名AI|作为一个语言模型|综上所述|总而言之|在当今时代|不可否认的是/g,
+  /赋能|闭环|抓手|矩阵化|降本增效|私域流量池/g,
+];
 
-  for (const item of forbiddenPatterns) {
+function countOccurrences(text: string, keyword: string) {
+  if (!keyword.trim()) {
+    return 0;
+  }
+
+  return text.split(keyword).length - 1;
+}
+
+function pushPatternIssues(issues: ComplianceIssue[], text: string) {
+  for (const item of basePatterns) {
     const matches = text.match(item.pattern) || [];
+
     for (const match of matches.slice(0, 5)) {
       issues.push({
         category: item.category,
-        severity: item.category === "高风险行业表达" ? "high" : "medium",
+        severity: item.severity,
         excerpt: match,
-        message: `发现可能存在风险的表达：「${match}」。`,
-        suggestion: "建议改成更克制、可验证、不承诺结果的表达。",
+        message: `发现可能存在风险的表达：“${match}”。`,
+        suggestion: item.suggestion,
+      });
+    }
+  }
+}
+
+function pushAdvancedIssues(issues: ComplianceIssue[], input: { title?: string; content: string }) {
+  const title = input.title?.trim() || "";
+  const content = input.content.trim();
+
+  if (title.length > 32) {
+    issues.push({
+      category: "标题风险",
+      severity: "low",
+      excerpt: title,
+      message: "标题偏长，可能影响公众号列表页和搜一搜结果中的完整展示。",
+      suggestion: "尽量把标题压缩到 18-28 个中文字符，并保留核心关键词。",
+    });
+  }
+
+  for (const pattern of aiSmellPatterns) {
+    const matches = content.match(pattern) || [];
+
+    for (const match of matches.slice(0, 4)) {
+      issues.push({
+        category: "AI 味",
+        severity: "low",
+        excerpt: match,
+        message: `这类表达容易显得模板化：“${match}”。`,
+        suggestion: "替换成更具体的场景、真实经历、数据或读者问题。",
       });
     }
   }
 
-  if (input.content.length < 300) {
+  const titleKeyword = title.replace(/[，。！？、\s]/g, "").slice(0, 8);
+
+  if (titleKeyword && countOccurrences(content, titleKeyword) >= 6) {
+    issues.push({
+      category: "搜索优化",
+      severity: "medium",
+      excerpt: titleKeyword,
+      message: "核心词出现频率偏高，可能显得关键词堆砌。",
+      suggestion: "保留标题、开头、一个小标题和结尾中的自然出现即可。",
+    });
+  }
+
+  if (!/(私信|评论|收藏|关注|回复|领取|咨询|保存)/.test(content)) {
+    issues.push({
+      category: "转化 CTA",
+      severity: "low",
+      excerpt: "",
+      message: "正文缺少明确但自然的下一步行动。",
+      suggestion: "可以补一个低压力 CTA，例如收藏清单、评论问题、私信关键词或继续阅读。",
+    });
+  }
+}
+
+export function checkContentCompliance(input: { title?: string; content: string }, options: CheckOptions = {}) {
+  const issues: ComplianceIssue[] = [];
+  const text = `${input.title || ""}\n${input.content}`;
+
+  pushPatternIssues(issues, text);
+
+  if (input.content.trim().length < 300) {
     issues.push({
       category: "内容完整度",
       severity: "low",
       excerpt: input.content.slice(0, 40),
       message: "正文较短，可能不足以支撑公众号长文发布。",
-      suggestion: "可以补充案例、步骤或读者常见问题。",
+      suggestion: "可以补充案例、步骤、读者常见问题或结尾行动建议。",
     });
   }
 
-  const score = Math.max(40, 100 - issues.reduce((sum, issue) => sum + (issue.severity === "high" ? 25 : issue.severity === "medium" ? 15 : 8), 0));
+  if (options.advanced) {
+    pushAdvancedIssues(issues, input);
+  }
+
+  const score = Math.max(
+    40,
+    100 - issues.reduce((sum, issue) => sum + (issue.severity === "high" ? 25 : issue.severity === "medium" ? 15 : 8), 0),
+  );
   const level = score >= 85 ? "可发布" : score >= 65 ? "建议修改" : "高风险";
 
   return {
     score,
     level,
-    summary: issues.length ? "发现一些发布前建议修改的问题。" : "未发现明显风险，仍建议人工复核。",
+    mode: options.advanced ? "advanced" : "basic",
+    summary: issues.length
+      ? "发现一些发布前建议修改的问题。排版猫只提供辅助检查，不保证平台审核结果。"
+      : "未发现明显风险，仍建议人工复核重点表述和行业合规边界。",
     issues,
   };
 }
-

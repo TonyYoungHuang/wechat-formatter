@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getCurrentUser, requireCurrentUser } from "@/lib/auth/session";
 import { checkContentCompliance } from "@/lib/compliance/check";
-import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { getPlanConfig } from "@/lib/entitlements/service";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 const schema = z.object({
@@ -21,13 +22,20 @@ export async function POST(request: Request) {
       return errorResponse("Content is required for compliance checking.");
     }
 
-    const result = checkContentCompliance(parsed.data);
+    const current = parsed.data.projectId ? await requireCurrentUser() : await getCurrentUser();
+    const plan = current ? await getPlanConfig(current.workspace.planCode) : null;
+    const result = checkContentCompliance(parsed.data, {
+      advanced: Boolean(plan?.advancedChecks),
+    });
 
     if (!parsed.data.projectId) {
       return NextResponse.json(result);
     }
 
-    const current = await requireCurrentUser();
+    if (!current) {
+      return errorResponse("Please sign in before saving a compliance report.", 401);
+    }
+
     await prisma.contentProject.findFirstOrThrow({
       where: { id: parsed.data.projectId, workspaceId: current.workspace.id },
     });
