@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { createSession, hashPassword } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/schemas";
@@ -6,12 +7,12 @@ import { errorResponse } from "@/lib/http/errors";
 export async function POST(request: Request) {
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return errorResponse("请填写有效的注册信息。");
+    return errorResponse("Valid registration details are required.");
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
-    return errorResponse("这个邮箱已经注册。", 409);
+    return errorResponse("This email is already registered.", 409);
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     });
 
     const workspace = await tx.workspace.create({
-      data: { name: `${parsed.data.name}的工作台` },
+      data: { name: `${parsed.data.name}'s workspace` },
     });
 
     await tx.workspaceMember.create({
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
 
   await createSession(result.user.id);
 
-  return Response.json({
+  return NextResponse.json({
     user: {
       id: result.user.id,
       name: result.user.name,

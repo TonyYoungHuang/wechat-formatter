@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 export async function POST(request: Request) {
@@ -5,7 +6,7 @@ export async function POST(request: Request) {
   const orderId = typeof payload.orderId === "string" ? payload.orderId : "";
 
   if (!orderId) {
-    return Response.json({ message: "orderId required" }, { status: 400 });
+    return NextResponse.json({ message: "orderId required" }, { status: 400 });
   }
 
   const order = await prisma.paymentOrder.update({
@@ -22,6 +23,6 @@ export async function POST(request: Request) {
     data: { planCode: order.planCode },
   });
 
-  return Response.json({ ok: true });
+  return NextResponse.json({ ok: true });
 }
 

@@ -1,10 +1,10 @@
+import { NextResponse } from "next/server";
 import { defaultPlans } from "@/lib/entitlements/plans";
 
 export async function GET() {
-  return Response.json({
+  return NextResponse.json({
     plans: defaultPlans,
     status: "placeholder",
-    message: "后续在这里接入管理员鉴权、价格配置和额度配置。",
+    message: "Admin auth, pricing configuration, and quota configuration are reserved here.",
   });
 }
-

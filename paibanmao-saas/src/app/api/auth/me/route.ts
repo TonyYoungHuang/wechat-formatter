@@ -1,13 +1,14 @@
+import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export async function GET() {
   const current = await getCurrentUser();
 
   if (!current) {
-    return Response.json({ user: null, workspace: null });
+    return NextResponse.json({ user: null, workspace: null });
   }
 
-  return Response.json({
+  return NextResponse.json({
     user: {
       id: current.user.id,
       name: current.user.name,

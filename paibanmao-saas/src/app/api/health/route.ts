@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 export async function GET() {
-  return Response.json({
+  return NextResponse.json({
     status: "ok",
     service: "paibanmao-saas",
     timestamp: new Date().toISOString(),

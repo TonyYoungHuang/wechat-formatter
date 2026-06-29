@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { accountProfilePatchSchema } from "@/lib/account-profiles/schemas";
 import { normalizeDefaultProfile } from "@/lib/account-profiles/service";
@@ -15,7 +16,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const parsed = accountProfilePatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return errorResponse("账号档案格式不正确。");
+      return errorResponse("Account profile payload is invalid.");
     }
 
     await prisma.accountProfile.findFirstOrThrow({
@@ -31,7 +32,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       await normalizeDefaultProfile(current.workspace.id, profile.id);
     }
 
-    return Response.json({ profile });
+    return NextResponse.json({ profile });
   } catch (error) {
     return mapApiError(error);
   }

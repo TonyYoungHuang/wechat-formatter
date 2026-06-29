@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { accountProfileSchema } from "@/lib/account-profiles/schemas";
 import { assertCanCreateAccountProfile, normalizeDefaultProfile } from "@/lib/account-profiles/service";
@@ -12,7 +13,7 @@ export async function GET() {
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
     });
 
-    return Response.json({ profiles });
+    return NextResponse.json({ profiles });
   } catch (error) {
     return mapApiError(error);
   }
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     const parsed = accountProfileSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return errorResponse("请填写完整的账号档案。");
+      return errorResponse("Complete account profile details are required.");
     }
 
     await assertCanCreateAccountProfile(current.workspace.id, current.workspace.planCode);
@@ -45,9 +46,8 @@ export async function POST(request: Request) {
       await normalizeDefaultProfile(current.workspace.id, profile.id);
     }
 
-    return Response.json({ profile }, { status: 201 });
+    return NextResponse.json({ profile }, { status: 201 });
   } catch (error) {
     return mapApiError(error);
   }
 }
-

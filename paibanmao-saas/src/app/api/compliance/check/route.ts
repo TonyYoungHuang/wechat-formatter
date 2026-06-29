@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { checkContentCompliance } from "@/lib/compliance/check";
@@ -13,9 +14,8 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
 
   if (!parsed.success) {
-    return errorResponse("请输入需要检查的内容。");
+    return errorResponse("Content is required for compliance checking.");
   }
 
-  return Response.json(checkContentCompliance(parsed.data));
+  return NextResponse.json(checkContentCompliance(parsed.data));
 }
-

@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { normalizeDefaultProfile } from "@/lib/account-profiles/service";
 import { prisma } from "@/lib/db/prisma";
@@ -18,7 +19,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
     await normalizeDefaultProfile(current.workspace.id, id);
 
-    return Response.json({ ok: true });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return mapApiError(error);
   }

@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { buildPlaceholderCheckout, getPlanPriceCents } from "@/lib/billing/orders";
 import { createPaymentOrderSchema } from "@/lib/billing/schemas";
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
     const parsed = createPaymentOrderSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return errorResponse("请选择套餐和支付方式。");
+      return errorResponse("Plan and payment provider are required.");
     }
 
     const amountCents = getPlanPriceCents(parsed.data.planCode);
@@ -33,9 +34,8 @@ export async function POST(request: Request) {
       data: { checkout },
     });
 
-    return Response.json({ order: updated });
+    return NextResponse.json({ order: updated });
   } catch (error) {
     return mapApiError(error);
   }
 }
-

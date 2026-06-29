@@ -1,3 +1,6 @@
+import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+
 import { requireCurrentUser } from "@/lib/auth/session";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
@@ -11,7 +14,7 @@ export async function POST(request: Request) {
     const parsed = generateFiveEntrySchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return errorResponse("请输入有效选题。");
+      return errorResponse("A valid topic is required.");
     }
 
     await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
         });
 
     if (!accountProfile) {
-      return errorResponse("请先创建账号档案。");
+      return errorResponse("Create an account profile first.");
     }
 
     const variants = buildFallbackFiveEntry({
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
           type: "five_entry_generation",
           status: "succeeded",
           input: parsed.data,
-          output: { variants },
+          output: { variants } as Prisma.InputJsonValue,
         },
       });
 
@@ -57,7 +60,7 @@ export async function POST(request: Request) {
               entry: variant.entry,
               title: variant.title,
               body: variant.body,
-              metadata: variant.metadata,
+              metadata: variant.metadata as Prisma.InputJsonValue | undefined,
             })),
           },
         },
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
       return { job, project };
     });
 
-    return Response.json(result);
+    return NextResponse.json(result);
   } catch (error) {
     return mapApiError(error);
   }

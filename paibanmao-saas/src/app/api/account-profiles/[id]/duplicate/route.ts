@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { assertCanCreateAccountProfile } from "@/lib/account-profiles/service";
 import { prisma } from "@/lib/db/prisma";
@@ -37,7 +38,7 @@ export async function POST(_request: Request, context: RouteContext) {
       },
     });
 
-    return Response.json({ profile }, { status: 201 });
+    return NextResponse.json({ profile }, { status: 201 });
   } catch (error) {
     return mapApiError(error);
   }

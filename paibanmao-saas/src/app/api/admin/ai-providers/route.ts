@@ -1,9 +1,10 @@
+import { NextResponse } from "next/server";
 import { getDefaultAiProvider } from "@/lib/ai/provider";
 
 export async function GET() {
   const provider = getDefaultAiProvider();
 
-  return Response.json({
+  return NextResponse.json({
     provider: {
       type: provider.type,
       name: provider.name,
@@ -12,7 +13,6 @@ export async function GET() {
       model: provider.model,
     },
     status: "placeholder",
-    message: "首版预留 OpenAI-compatible 中转站配置，不在接口中返回密钥明文。",
+    message: "OpenAI-compatible provider configuration is reserved; API keys are never returned here.",
   });
 }
-
