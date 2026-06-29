@@ -19,6 +19,8 @@ export async function POST(request: Request) {
   const verified = verifyAlipayCallback({
     rawBody,
     signature,
+    timestamp: request.headers.get("x-paibanmao-timestamp"),
+    nonce: request.headers.get("x-paibanmao-nonce"),
   });
 
   if (!verified) {

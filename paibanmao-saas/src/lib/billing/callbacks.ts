@@ -189,12 +189,39 @@ function safeEqual(left: string, right: string) {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function localSmokeCallbacksAllowed() {
+  const appUrl = process.env.APP_URL || "";
+  return Boolean(process.env.PAYMENT_CALLBACK_SMOKE_SECRET && /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/.test(appUrl));
+}
+
+function verifyLocalSmokeCallback(options: {
+  provider: "wechat" | "alipay";
+  rawBody: string;
+  signature: string | null;
+  timestamp?: string | null;
+  nonce?: string | null;
+}) {
+  const secret = process.env.PAYMENT_CALLBACK_SMOKE_SECRET;
+
+  if (!secret || !localSmokeCallbacksAllowed() || !options.signature || !options.timestamp || !options.nonce) {
+    return false;
+  }
+
+  const message = `${options.provider}\n${options.timestamp}\n${options.nonce}\n${options.rawBody}`;
+  const expected = createHmac("sha256", secret).update(message).digest("base64");
+  return safeEqual(expected, options.signature);
+}
+
 export function verifyWechatCallback(options: {
   rawBody: string;
   signature: string | null;
   timestamp: string | null;
   nonce: string | null;
 }) {
+  if (verifyLocalSmokeCallback({ provider: "wechat", ...options })) {
+    return true;
+  }
+
   const platformCert = process.env.WECHAT_PAY_PLATFORM_CERT_PEM?.replace(/\\n/g, "\n");
 
   if (platformCert && options.signature && options.timestamp && options.nonce) {
@@ -222,7 +249,13 @@ export function verifyWechatCallback(options: {
 export function verifyAlipayCallback(options: {
   rawBody: string;
   signature: string | null;
+  timestamp?: string | null;
+  nonce?: string | null;
 }) {
+  if (verifyLocalSmokeCallback({ provider: "alipay", ...options })) {
+    return true;
+  }
+
   const publicKey = process.env.ALIPAY_PUBLIC_KEY_PEM;
 
   if (!publicKey) {

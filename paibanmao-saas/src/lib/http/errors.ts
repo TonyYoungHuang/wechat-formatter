@@ -21,6 +21,19 @@ function businessErrorStatus(message: string) {
   return null;
 }
 
+function prismaErrorCode(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code;
+  }
+
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    return typeof code === "string" ? code : null;
+  }
+
+  return null;
+}
+
 export function mapApiError(error: unknown) {
   if (error instanceof Error && error.message === "UNAUTHENTICATED") {
     return errorResponse("Please sign in first.", 401);
@@ -30,16 +43,18 @@ export function mapApiError(error: unknown) {
     return errorResponse("You do not have permission to perform this action.", 403);
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2025") {
+  const code = prismaErrorCode(error);
+
+  if (code) {
+    if (code === "P2025") {
       return errorResponse("Resource not found.", 404);
     }
 
-    if (error.code === "P2002") {
+    if (code === "P2002") {
       return errorResponse("This record already exists.", 409);
     }
 
-    if (error.code === "P2003") {
+    if (code === "P2003") {
       return errorResponse("This record is still linked to other data.", 409);
     }
   }

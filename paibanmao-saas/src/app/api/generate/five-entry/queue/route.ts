@@ -17,19 +17,25 @@ export async function POST(request: Request) {
       return errorResponse("A valid topic is required.");
     }
 
-    const queue = getGenerationQueue();
+    const scoped = await resolveFiveEntryGenerationScope(current.workspace.id, parsed.data);
+    let queue = null;
+    let queueError: string | null = null;
+
+    try {
+      queue = getGenerationQueue();
+    } catch (error) {
+      queueError = error instanceof Error ? error.message : "Queue unavailable.";
+    }
 
     if (!queue) {
       const result = await runFiveEntryGeneration({
         workspaceId: current.workspace.id,
         planCode: current.workspace.planCode,
-        payload: parsed.data,
+        payload: scoped.payload,
       });
 
-      return NextResponse.json({ ...result, queued: false, fallback: "sync" });
+      return NextResponse.json({ ...result, queued: false, fallback: "sync", queueError });
     }
-
-    const scoped = await resolveFiveEntryGenerationScope(current.workspace.id, parsed.data);
 
     await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
 

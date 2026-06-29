@@ -1,9 +1,12 @@
+import { createHmac } from "node:crypto";
+
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const timestamp = Date.now();
 const email = process.env.SMOKE_EMAIL || `smoke+${timestamp}@paibanmao.local`;
 const normalizedEmail = email.trim().toLowerCase();
 const password = process.env.SMOKE_PASSWORD || "paibanmao-smoke-123";
 const requireAdmin = process.env.SMOKE_REQUIRE_ADMIN === "1";
+const paymentCallbackSmokeSecret = process.env.PAYMENT_CALLBACK_SMOKE_SECRET;
 const topic = "\u666e\u901a\u4eba\u505a\u516c\u4f17\u53f7\u526f\u4e1a\u8fd8\u6709\u673a\u4f1a\u5417";
 
 const cookieJar = new Map();
@@ -71,6 +74,28 @@ async function jsonRequest(path, body, options = {}) {
       ...(options.headers || {}),
     },
     body: JSON.stringify(body),
+  });
+}
+
+async function paymentCallbackRequest(path, provider, body) {
+  const rawBody = JSON.stringify(body);
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (paymentCallbackSmokeSecret) {
+    const signedAt = Math.floor(Date.now() / 1000).toString();
+    const nonce = `smoke-${timestamp}-${provider}`;
+    const message = `${provider}\n${signedAt}\n${nonce}\n${rawBody}`;
+    headers["x-paibanmao-timestamp"] = signedAt;
+    headers["x-paibanmao-nonce"] = nonce;
+    headers["x-paibanmao-signature"] = createHmac("sha256", paymentCallbackSmokeSecret).update(message).digest("base64");
+  }
+
+  return request(path, {
+    method: "POST",
+    headers,
+    body: rawBody,
   });
 }
 
@@ -416,13 +441,14 @@ async function checkProjectMetricsReview(generated) {
 
 async function checkTemplateAndCtaLibraries(profile) {
   const marker = `SMOKE_LIBRARY_${timestamp}`;
+  const markerTag = `smoke-${String(timestamp).slice(-8)}`;
   const template = await jsonRequest("/api/content-templates", {
     accountProfileId: profile.id,
     title: `${marker} template`,
     category: "wechat_structure",
     entry: "wechat_article",
     content: "# Hook\n\n## Pain point\n\n## Solution\n\n## CTA",
-    tags: [marker, "wechat"],
+    tags: [markerTag, "wechat"],
     active: true,
   });
 
@@ -452,7 +478,7 @@ async function checkTemplateAndCtaLibraries(profile) {
     category: "lead_magnet",
     entry: "moments",
     content: "Reply with START and I will send you the checklist.",
-    tags: [marker, "conversion"],
+    tags: [markerTag, "conversion"],
     active: true,
   });
 
@@ -678,7 +704,7 @@ async function checkPaymentFlow() {
   assert(order.payload?.order?.id, "payment order id missing");
   assert(order.payload.order.amountCents === 9900, "payment order amount mismatch");
 
-  const callback = await jsonRequest("/api/billing/callback/wechat", {
+  const callback = await paymentCallbackRequest("/api/billing/callback/wechat", "wechat", {
     orderId: order.payload.order.id,
     paid: true,
     amountCents: 9900,
@@ -720,7 +746,7 @@ async function checkAlipayPaymentFlow() {
   assert(order.payload?.order?.id, "alipay payment order id missing");
   assert(order.payload.order.amountCents === 9900, "alipay payment order amount mismatch");
 
-  const callback = await jsonRequest("/api/billing/callback/alipay", {
+  const callback = await paymentCallbackRequest("/api/billing/callback/alipay", "alipay", {
     orderId: order.payload.order.id,
     paid: true,
     amountCents: 9900,
@@ -746,7 +772,7 @@ async function checkPaymentFailureFlow() {
   assert(order.response.ok, `/api/billing/orders for failed callback returned ${order.response.status}: ${order.text}`);
   assert(order.payload?.order?.id, "failed-payment order id missing");
 
-  const callback = await jsonRequest("/api/billing/callback/wechat", {
+  const callback = await paymentCallbackRequest("/api/billing/callback/wechat", "wechat", {
     orderId: order.payload.order.id,
     paid: false,
     amountCents: 9900,
@@ -762,7 +788,7 @@ async function checkPaymentFailureFlow() {
   assert(refreshed.payload?.order?.status === "failed", "payment order was not marked failed after failed callback");
   assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "failed payment callback diagnostic missing");
 
-  const recovery = await jsonRequest("/api/billing/callback/wechat", {
+  const recovery = await paymentCallbackRequest("/api/billing/callback/wechat", "wechat", {
     orderId: order.payload.order.id,
     paid: true,
     amountCents: 9900,
@@ -786,7 +812,7 @@ async function checkPaymentAmountMismatchFlow() {
   assert(order.response.ok, `/api/billing/orders for mismatch callback returned ${order.response.status}: ${order.text}`);
   assert(order.payload?.order?.id, "amount-mismatch order id missing");
 
-  const callback = await jsonRequest("/api/billing/callback/wechat", {
+  const callback = await paymentCallbackRequest("/api/billing/callback/wechat", "wechat", {
     orderId: order.payload.order.id,
     paid: true,
     amountCents: 1,
