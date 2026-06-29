@@ -76,6 +76,12 @@ const protectedPostChecks = [
     },
   },
   {
+    path: "/api/generate/five-entry/queue",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
     path: "/api/generate/wechat-article",
     body: {
       topic: previewInput,
