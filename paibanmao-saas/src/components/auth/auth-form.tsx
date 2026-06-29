@@ -24,7 +24,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = normalizePlan(searchParams.get("plan"));
-  const next = searchParams.get("next") || (plan && plan !== "free" ? `/dashboard/billing?plan=${plan}` : "/dashboard");
+  const next = normalizeNextPath(searchParams.get("next"), plan);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -116,6 +116,25 @@ export function AuthForm({ mode }: AuthFormProps) {
 
 function normalizePlan(value: string | null) {
   return value === "free" || value === "starter" || value === "pro" ? value : "";
+}
+
+function normalizeNextPath(value: string | null, plan: string) {
+  const fallback = plan && plan !== "free" ? `/dashboard/billing?plan=${plan}` : "/dashboard";
+
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return fallback;
+  }
+
+  try {
+    const parsed = new URL(value, "https://paibanmao.local");
+    if (parsed.origin !== "https://paibanmao.local" || parsed.pathname === "/login" || parsed.pathname === "/register") {
+      return fallback;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return fallback;
+  }
 }
 
 function buildAuthSwitchHref(path: string, plan: string, next: string) {
