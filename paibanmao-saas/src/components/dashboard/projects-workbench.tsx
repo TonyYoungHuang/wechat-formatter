@@ -36,6 +36,7 @@ type Metric = {
 };
 
 type MetricForm = {
+  entry: string;
   readCount: string;
   likeCount: string;
   watchCount: string;
@@ -57,6 +58,7 @@ const entryLabels: Record<string, string> = {
 };
 
 const emptyMetricForm: MetricForm = {
+  entry: "",
   readCount: "",
   likeCount: "",
   watchCount: "",
@@ -141,6 +143,7 @@ export function ProjectsWorkbench() {
             followerGain: toCount(form.followerGain),
             consultationCount: toCount(form.consultationCount),
             dealCount: toCount(form.dealCount),
+            entry: form.entry || undefined,
             note: form.note || undefined,
             reviewNote: form.reviewNote || undefined,
           }),
@@ -189,8 +192,9 @@ export function ProjectsWorkbench() {
             </CardHeader>
             <CardContent className="space-y-4">
               {project.metrics?.[0] ? (
-                <div className="grid gap-2 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900 sm:grid-cols-4">
+                <div className="grid gap-2 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900 sm:grid-cols-5">
                   <span>阅读 {project.metrics[0].readCount}</span>
+                  <span>入口 {project.metrics[0].entry ? entryLabels[project.metrics[0].entry] || project.metrics[0].entry : "整体"}</span>
                   <span>收藏 {project.metrics[0].favoriteCount}</span>
                   <span>新增关注 {project.metrics[0].followerGain}</span>
                   <span>成交 {project.metrics[0].dealCount}</span>
@@ -225,6 +229,21 @@ export function ProjectsWorkbench() {
               </div>
               {activeReviewProjectId === project.id ? (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <label className="mb-3 block space-y-1 text-sm">
+                    <span className="text-slate-600">复盘入口</span>
+                    <select
+                      value={getMetricForm(project).entry}
+                      onChange={(event) => updateMetricForm(project.id, { entry: event.target.value })}
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400 md:w-64"
+                    >
+                      <option value="">整体项目</option>
+                      {project.variants.map((variant) => (
+                        <option key={variant.id} value={variant.entry}>
+                          {entryLabels[variant.entry] || variant.entry}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                       ["readCount", "阅读量"],
