@@ -8,7 +8,35 @@ import { errorResponse, mapApiError } from "@/lib/http/errors";
 export async function GET() {
   try {
     await requireSiteAdmin();
-    return NextResponse.json(await getAiProviderStatus());
+    const [status, provider] = await Promise.all([
+      getAiProviderStatus(),
+      prisma.aiProvider.findFirst({
+        where: {
+          active: true,
+          type: "openai-compatible",
+        },
+        include: {
+          models: {
+            orderBy: [{ purpose: "asc" }, { updatedAt: "desc" }],
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
+
+    return NextResponse.json({
+      ...status,
+      provider: {
+        ...status.provider,
+        models:
+          provider?.models.map((model) => ({
+            name: model.name,
+            modelId: model.modelId,
+            purpose: model.purpose,
+            active: model.active,
+          })) ?? [],
+      },
+    });
   } catch (error) {
     return mapApiError(error);
   }

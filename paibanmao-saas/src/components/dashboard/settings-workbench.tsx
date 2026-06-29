@@ -17,7 +17,15 @@ type ProviderStatus = {
     model: string;
     modelName: string;
     source: "database" | "environment";
+    models: ProviderModelConfig[];
   };
+};
+
+type ProviderModelConfig = {
+  name: string;
+  modelId: string;
+  purpose: string;
+  active: boolean;
 };
 
 type PromptConfig = {
@@ -54,6 +62,12 @@ type PaymentConfigStatus = {
   providers: PaymentProviderConfig[];
 };
 
+const defaultProviderModels: ProviderModelConfig[] = [
+  { name: "内容生成模型", modelId: "gpt-4.1-mini", purpose: "content", active: true },
+  { name: "选题生成模型", modelId: "gpt-4.1-mini", purpose: "topic", active: true },
+  { name: "图片提示词模型", modelId: "gpt-4.1-mini", purpose: "image", active: true },
+];
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -69,8 +83,7 @@ export function SettingsWorkbench() {
   const [name, setName] = useState("default-router");
   const [baseUrl, setBaseUrl] = useState("https://example-model-router.com/v1");
   const [apiKeyRef, setApiKeyRef] = useState("AI_OPENAI_COMPATIBLE_API_KEY");
-  const [modelName, setModelName] = useState("GPT compatible model");
-  const [modelId, setModelId] = useState("gpt-4.1-mini");
+  const [models, setModels] = useState<ProviderModelConfig[]>(defaultProviderModels);
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -84,8 +97,7 @@ export function SettingsWorkbench() {
       setName(providerData.provider.name || "default-router");
       setBaseUrl(providerData.provider.baseUrl || "https://example-model-router.com/v1");
       setApiKeyRef(providerData.provider.apiKeyRef || "AI_OPENAI_COMPATIBLE_API_KEY");
-      setModelName(providerData.provider.modelName || "GPT compatible model");
-      setModelId(providerData.provider.model || "gpt-4.1-mini");
+      setModels(providerData.provider.models?.length ? providerData.provider.models : defaultProviderModels);
       setPrompts(promptData.prompts);
       setPaymentStatus(paymentData);
       setMessage("");
@@ -114,7 +126,7 @@ export function SettingsWorkbench() {
             baseUrl,
             apiKeyRef,
             active: true,
-            models: [{ name: modelName, modelId, purpose: "content", active: true }],
+            models: models.filter((model) => model.name.trim() && model.modelId.trim() && model.purpose.trim()),
           }),
         }),
       );
@@ -127,6 +139,10 @@ export function SettingsWorkbench() {
 
   function updatePrompt(key: string, content: string) {
     setPrompts((items) => items.map((item) => (item.key === key ? { ...item, content } : item)));
+  }
+
+  function updateModel(index: number, patch: Partial<ProviderModelConfig>) {
+    setModels((items) => items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
 
   async function savePrompt(prompt: PromptConfig) {
@@ -179,14 +195,38 @@ export function SettingsWorkbench() {
               <span className="text-slate-600">Base URL</span>
               <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
             </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-600">模型名称</span>
-              <input value={modelName} onChange={(event) => setModelName(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-600">模型 ID</span>
-              <input value={modelId} onChange={(event) => setModelId(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-            </label>
+            <div className="space-y-3 md:col-span-2">
+              <div>
+                <h2 className="text-sm font-medium text-slate-800">模型用途</h2>
+                <p className="mt-1 text-xs text-slate-500">同一个中转站可以给内容生成、选题生成和图片提示词配置不同模型。</p>
+              </div>
+              {models.map((model, index) => (
+                <div key={`${model.purpose}-${index}`} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 md:grid-cols-[150px_1fr_1fr_90px] md:items-center">
+                  <input
+                    value={model.purpose}
+                    onChange={(event) => updateModel(index, { purpose: event.target.value })}
+                    className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                    placeholder="purpose"
+                  />
+                  <input
+                    value={model.name}
+                    onChange={(event) => updateModel(index, { name: event.target.value })}
+                    className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                    placeholder="模型名称"
+                  />
+                  <input
+                    value={model.modelId}
+                    onChange={(event) => updateModel(index, { modelId: event.target.value })}
+                    className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                    placeholder="模型 ID"
+                  />
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" checked={model.active} onChange={(event) => updateModel(index, { active: event.target.checked })} />
+                    启用
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex flex-col gap-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <span>
