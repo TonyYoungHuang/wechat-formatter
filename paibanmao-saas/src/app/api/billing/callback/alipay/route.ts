@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 
 import { markOrderPaid, parseAlipayCallbackBody, parseAlipayCallbackPayload, recordPaymentCallback, verifyAlipayCallback } from "@/lib/billing/callbacks";
 
+function alipayResponse(body: "success" | "fail", status = 200) {
+  return new NextResponse(body, {
+    status,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const json = parseAlipayCallbackBody(rawBody);
@@ -23,7 +30,7 @@ export async function POST(request: Request) {
       signature,
       message: "invalid signature",
     });
-    return NextResponse.json({ message: "invalid signature" }, { status: 401 });
+    return alipayResponse("fail", 401);
   }
 
   const payload = parseAlipayCallbackPayload(json);
@@ -37,7 +44,7 @@ export async function POST(request: Request) {
       signature,
       message: "orderId required",
     });
-    return NextResponse.json({ message: "orderId required" }, { status: 400 });
+    return alipayResponse("fail", 400);
   }
 
   try {
@@ -70,8 +77,8 @@ export async function POST(request: Request) {
       providerTradeNo: payload.tradeNo,
       message: error instanceof Error ? error.message : "callback processing failed",
     });
-    throw error;
+    return alipayResponse("fail", 500);
   }
 
-  return NextResponse.json({ ok: true });
+  return alipayResponse("success");
 }

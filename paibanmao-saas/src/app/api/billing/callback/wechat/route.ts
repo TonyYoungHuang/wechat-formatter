@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 
 import { markOrderPaid, parseCallbackJson, parseWechatCallbackPayload, recordPaymentCallback, verifyWechatCallback } from "@/lib/billing/callbacks";
 
+function wechatSuccessResponse() {
+  return NextResponse.json({ code: "SUCCESS" });
+}
+
+function wechatFailResponse(message: string, status = 500) {
+  return NextResponse.json({ code: "FAIL", message }, { status });
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const signature = request.headers.get("wechatpay-signature") || request.headers.get("x-paibanmao-signature");
@@ -22,7 +30,7 @@ export async function POST(request: Request) {
       signature,
       message: "invalid signature",
     });
-    return NextResponse.json({ message: "invalid signature" }, { status: 401 });
+    return wechatFailResponse("invalid signature", 401);
   }
 
   const payload = parseWechatCallbackPayload(json);
@@ -36,7 +44,7 @@ export async function POST(request: Request) {
       signature,
       message: "orderId required",
     });
-    return NextResponse.json({ message: "orderId required" }, { status: 400 });
+    return wechatFailResponse("orderId required", 400);
   }
 
   try {
@@ -69,8 +77,8 @@ export async function POST(request: Request) {
       providerTradeNo: payload.tradeNo,
       message: error instanceof Error ? error.message : "callback processing failed",
     });
-    throw error;
+    return wechatFailResponse(error instanceof Error ? error.message : "callback processing failed");
   }
 
-  return NextResponse.json({ ok: true });
+  return wechatSuccessResponse();
 }

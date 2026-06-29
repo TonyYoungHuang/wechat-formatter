@@ -274,6 +274,16 @@ export async function markOrderPaid(input: {
       throw new Error("Payment callback amount does not match the order amount.");
     }
 
+    if (order.status === "paid") {
+      return tx.paymentOrder.update({
+        where: { id: order.id },
+        data: {
+          providerOrderId: input.providerOrderId ?? order.providerOrderId,
+          providerTradeNo: input.tradeNo ?? order.providerTradeNo,
+        },
+      });
+    }
+
     const paidOrder = await tx.paymentOrder.update({
       where: { id: order.id },
       data: {
