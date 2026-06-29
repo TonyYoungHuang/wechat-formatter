@@ -76,6 +76,36 @@ const protectedPostChecks = [
     },
   },
   {
+    path: "/api/generate/wechat-article",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
+    path: "/api/generate/green-note",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
+    path: "/api/generate/search",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
+    path: "/api/generate/question",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
+    path: "/api/generate/moments",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
     path: "/api/generate/image-prompts",
     body: {
       topic: previewInput,
