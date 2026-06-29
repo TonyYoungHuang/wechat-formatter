@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { getGenerationUsageSummary } from "@/lib/usage/service";
 
@@ -26,7 +27,12 @@ function quotaText(used: number, limit: number | null) {
 }
 
 export default async function DashboardPage() {
-  const current = await requireCurrentUser();
+  const current = await getCurrentUser();
+
+  if (!current) {
+    redirect("/login");
+  }
+
   const [accountProfileCount, projectCount, pendingCalendarCount, usage] = await Promise.all([
     prisma.accountProfile.count({ where: { workspaceId: current.workspace.id } }),
     prisma.contentProject.count({ where: { workspaceId: current.workspace.id } }),

@@ -1,6 +1,7 @@
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const timestamp = Date.now();
 const email = process.env.SMOKE_EMAIL || `smoke+${timestamp}@paibanmao.local`;
+const normalizedEmail = email.trim().toLowerCase();
 const password = process.env.SMOKE_PASSWORD || "paibanmao-smoke-123";
 const requireAdmin = process.env.SMOKE_REQUIRE_ADMIN === "1";
 const topic = "\u666e\u901a\u4eba\u505a\u516c\u4f17\u53f7\u526f\u4e1a\u8fd8\u6709\u673a\u4f1a\u5417";
@@ -112,13 +113,51 @@ async function registerAndCheckSession() {
   });
 
   assert(registration.response.ok, `/api/auth/register returned ${registration.response.status}: ${registration.text}`);
-  assert(registration.payload?.user?.email === email, "registered user email mismatch");
+  assert(registration.payload?.user?.email === normalizedEmail, "registered user email mismatch");
 
   const me = await request("/api/auth/me");
   assert(me.response.ok, `/api/auth/me returned ${me.response.status}: ${me.text}`);
-  assert(me.payload?.user?.email === email, "session user missing after registration");
+  assert(me.payload?.user?.email === normalizedEmail, "session user missing after registration");
 
   return me.payload;
+}
+
+async function checkAuthRejections() {
+  const duplicate = await jsonRequest("/api/auth/register", {
+    name: "Duplicate Smoke User",
+    email: email.toUpperCase(),
+    password,
+  });
+
+  assert(duplicate.response.status === 409, `/api/auth/register duplicate returned ${duplicate.response.status}, expected 409`);
+
+  const wrongPassword = await jsonRequest("/api/auth/login", {
+    email: email.toUpperCase(),
+    password: "definitely-the-wrong-password",
+  });
+
+  assert(wrongPassword.response.status === 401, `/api/auth/login wrong password returned ${wrongPassword.response.status}, expected 401`);
+}
+
+async function checkLogoutAndReloginFlow() {
+  const logout = await request("/api/auth/logout", { method: "POST" });
+  assert(logout.response.status === 204, `/api/auth/logout returned ${logout.response.status}, expected 204`);
+
+  const meAfterLogout = await request("/api/auth/me");
+  assert(meAfterLogout.response.ok, `/api/auth/me after logout returned ${meAfterLogout.response.status}: ${meAfterLogout.text}`);
+  assert(meAfterLogout.payload?.user === null, "session user still present after logout");
+  assert(meAfterLogout.payload?.workspace === null, "session workspace still present after logout");
+
+  const protectedAfterLogout = await request("/api/account-profiles");
+  assert(protectedAfterLogout.response.status === 401, `/api/account-profiles after logout returned ${protectedAfterLogout.response.status}, expected 401`);
+
+  const relogin = await jsonRequest("/api/auth/login", {
+    email: email.toUpperCase(),
+    password,
+  });
+
+  assert(relogin.response.ok, `/api/auth/login after logout returned ${relogin.response.status}: ${relogin.text}`);
+  assert(relogin.payload?.user?.email === normalizedEmail, "relogin user email mismatch");
 }
 
 async function checkAccountProfiles() {
@@ -643,7 +682,7 @@ async function checkPaymentFlow() {
   const invoicePayload = {
     paymentOrderId: order.payload.order.id,
     title: "\u6392\u7248\u732b\u6d4b\u8bd5\u53d1\u7968",
-    email,
+    email: normalizedEmail,
   };
   const invoice = await jsonRequest("/api/billing/invoices", invoicePayload);
   assert(invoice.response.status === 201, `/api/billing/invoices returned ${invoice.response.status}: ${invoice.text}`);
@@ -736,6 +775,7 @@ async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   await checkDashboardRequiresValidSession();
   const current = await registerAndCheckSession();
+  await checkAuthRejections();
   const profile = await checkAccountProfiles();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);
@@ -761,8 +801,10 @@ async function main() {
     await checkRewrite(profile, generated);
   }
 
+  await checkLogoutAndReloginFlow();
+
   console.log("App smoke checks passed.");
-  console.log(`Smoke email: ${email}`);
+  console.log(`Smoke email: ${normalizedEmail}`);
 }
 
 main().catch((error) => {

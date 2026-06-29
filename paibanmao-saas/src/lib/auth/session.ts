@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 
 const SESSION_COOKIE = "paibanmao_session";
 const SESSION_TTL_DAYS = 14;
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 export function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -24,6 +25,10 @@ export function verifyPassword(password: string, storedHash: string) {
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function isSessionToken(token: string) {
+  return SESSION_TOKEN_PATTERN.test(token);
 }
 
 export async function createSession(userId: string) {
@@ -54,7 +59,7 @@ export async function clearSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  if (token) {
+  if (token && isSessionToken(token)) {
     await prisma.session.updateMany({
       where: { tokenHash: hashToken(token), revokedAt: null },
       data: { revokedAt: new Date() },
@@ -68,7 +73,7 @@ export async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  if (!token) return null;
+  if (!token || !isSessionToken(token)) return null;
 
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
