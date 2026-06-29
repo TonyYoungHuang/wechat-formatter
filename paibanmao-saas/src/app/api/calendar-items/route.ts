@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { requireCurrentUser } from "@/lib/auth/session";
+import { syncProjectStatusFromCalendarItem } from "@/lib/calendar/project-sync";
 import { calendarItemCreateSchema } from "@/lib/calendar/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -8,6 +10,12 @@ import { errorResponse, mapApiError } from "@/lib/http/errors";
 function toDate(value: string | null | undefined) {
   return value ? new Date(value) : null;
 }
+
+const calendarItemInclude = {
+  accountProfile: { select: { id: true, name: true, niche: true } },
+  topic: { select: { id: true, title: true } },
+  project: { select: { id: true, title: true, status: true } },
+} satisfies Prisma.ContentCalendarItemInclude;
 
 export async function GET(request: Request) {
   try {
@@ -83,24 +91,33 @@ export async function POST(request: Request) {
       });
     }
 
-    const item = await prisma.contentCalendarItem.create({
-      data: {
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.contentCalendarItem.create({
+        data: {
+          workspaceId: current.workspace.id,
+          accountProfileId,
+          topicId,
+          projectId: parsed.data.projectId,
+          entry: parsed.data.entry,
+          title: parsed.data.title,
+          status: parsed.data.status,
+          scheduledFor: new Date(parsed.data.scheduledFor),
+          publishedAt: toDate(parsed.data.publishedAt),
+          note: parsed.data.note,
+        },
+      });
+
+      await syncProjectStatusFromCalendarItem(tx, {
         workspaceId: current.workspace.id,
-        accountProfileId,
-        topicId,
-        projectId: parsed.data.projectId,
-        entry: parsed.data.entry,
-        title: parsed.data.title,
-        status: parsed.data.status,
-        scheduledFor: new Date(parsed.data.scheduledFor),
-        publishedAt: toDate(parsed.data.publishedAt),
-        note: parsed.data.note,
-      },
-      include: {
-        accountProfile: { select: { id: true, name: true, niche: true } },
-        topic: { select: { id: true, title: true } },
-        project: { select: { id: true, title: true, status: true } },
-      },
+        projectId: created.projectId,
+        status: created.status,
+        publishedAt: created.publishedAt,
+      });
+
+      return tx.contentCalendarItem.findUniqueOrThrow({
+        where: { id: created.id },
+        include: calendarItemInclude,
+      });
     });
 
     return NextResponse.json({ item }, { status: 201 });
