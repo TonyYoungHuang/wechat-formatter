@@ -1,21 +1,28 @@
 import { NextResponse } from "next/server";
 
+import { requireWorkspaceOwner } from "@/lib/auth/session";
 import { adminPlansPatchSchema } from "@/lib/entitlements/schemas";
 import { getPlanConfigs, getPricingVersions, upsertPlanConfig } from "@/lib/entitlements/service";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 export async function GET() {
-  const [plans, versions] = await Promise.all([getPlanConfigs(), getPricingVersions()]);
+  try {
+    await requireWorkspaceOwner();
+    const [plans, versions] = await Promise.all([getPlanConfigs(), getPricingVersions()]);
 
-  return NextResponse.json({
-    plans,
-    versions,
-    configurable: true,
-  });
+    return NextResponse.json({
+      plans,
+      versions,
+      configurable: true,
+    });
+  } catch (error) {
+    return mapApiError(error);
+  }
 }
 
 export async function PATCH(request: Request) {
   try {
+    await requireWorkspaceOwner();
     const parsed = adminPlansPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success || !parsed.data.plans) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireWorkspaceOwner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 import { defaultPromptTemplates, upsertPromptTemplate } from "@/lib/prompts/service";
@@ -17,29 +18,35 @@ const promptPatchSchema = z.object({
 });
 
 export async function GET() {
-  const templates = await prisma.promptTemplate.findMany({
-    orderBy: [{ key: "asc" }, { version: "desc" }],
-  });
+  try {
+    await requireWorkspaceOwner();
+    const templates = await prisma.promptTemplate.findMany({
+      orderBy: [{ key: "asc" }, { version: "desc" }],
+    });
 
-  const activeByKey = Object.keys(defaultPromptTemplates).map((key) => {
-    const active = templates.find((template) => template.key === key && template.active);
-    return {
-      key,
-      version: active?.version ?? 0,
-      content: active?.content ?? defaultPromptTemplates[key],
-      active: active?.active ?? true,
-      source: active ? "database" : "default",
-    };
-  });
+    const activeByKey = Object.keys(defaultPromptTemplates).map((key) => {
+      const active = templates.find((template) => template.key === key && template.active);
+      return {
+        key,
+        version: active?.version ?? 0,
+        content: active?.content ?? defaultPromptTemplates[key],
+        active: active?.active ?? true,
+        source: active ? "database" : "default",
+      };
+    });
 
-  return NextResponse.json({
-    prompts: activeByKey,
-    history: templates,
-  });
+    return NextResponse.json({
+      prompts: activeByKey,
+      history: templates,
+    });
+  } catch (error) {
+    return mapApiError(error);
+  }
 }
 
 export async function PATCH(request: Request) {
   try {
+    await requireWorkspaceOwner();
     const parsed = promptPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {

@@ -9,6 +9,10 @@ export function mapApiError(error: unknown) {
     return errorResponse("Please sign in first.", 401);
   }
 
+  if (error instanceof Error && error.message === "FORBIDDEN") {
+    return errorResponse("You do not have permission to perform this action.", 403);
+  }
+
   const message = error instanceof Error ? error.message : "Request failed.";
   return errorResponse(message, 400);
 }

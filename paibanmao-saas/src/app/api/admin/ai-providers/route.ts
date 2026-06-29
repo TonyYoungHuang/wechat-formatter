@@ -1,27 +1,34 @@
 import { NextResponse } from "next/server";
 import { getDefaultAiProvider } from "@/lib/ai/provider";
 import { aiProviderPatchSchema } from "@/lib/ai/schemas";
+import { requireWorkspaceOwner } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 export async function GET() {
-  const provider = getDefaultAiProvider();
+  try {
+    await requireWorkspaceOwner();
+    const provider = getDefaultAiProvider();
 
-  return NextResponse.json({
-    provider: {
-      type: provider.type,
-      name: provider.name,
-      baseUrlConfigured: Boolean(provider.baseUrl),
-      apiKeyConfigured: Boolean(provider.apiKey),
-      model: provider.model,
-    },
-    status: "env",
-    message: "OpenAI-compatible provider configuration is reserved; API keys are never returned here.",
-  });
+    return NextResponse.json({
+      provider: {
+        type: provider.type,
+        name: provider.name,
+        baseUrlConfigured: Boolean(provider.baseUrl),
+        apiKeyConfigured: Boolean(provider.apiKey),
+        model: provider.model,
+      },
+      status: "env",
+      message: "OpenAI-compatible provider configuration is reserved; API keys are never returned here.",
+    });
+  } catch (error) {
+    return mapApiError(error);
+  }
 }
 
 export async function PATCH(request: Request) {
   try {
+    await requireWorkspaceOwner();
     const parsed = aiProviderPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {

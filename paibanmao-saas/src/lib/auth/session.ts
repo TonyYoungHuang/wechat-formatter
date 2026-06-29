@@ -106,3 +106,12 @@ export async function requireCurrentUser() {
   return current;
 }
 
+export async function requireWorkspaceOwner() {
+  const current = await requireCurrentUser();
+
+  if (current.role !== "owner") {
+    throw new Error("FORBIDDEN");
+  }
+
+  return current;
+}
