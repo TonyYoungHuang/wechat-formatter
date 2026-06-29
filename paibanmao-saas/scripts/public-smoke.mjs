@@ -16,6 +16,10 @@ const publicPages = [
   "/tools/compliance-checker",
 ];
 
+const toolPages = publicPages.filter((path) => path.startsWith("/tools/"));
+const usageHeading = "\u600e\u4e48\u4f7f\u7528\u8fd9\u4e2a\u5de5\u5177";
+const faqHeading = "\u5e38\u89c1\u95ee\u9898";
+
 const sitemapPaths = [
   "/tools/topic-generator",
   "/tools/wechat-title-generator",
@@ -166,6 +170,16 @@ async function checkSitemapAndRobots() {
   assert(robots.text.includes("Sitemap:"), "/robots.txt missing sitemap reference");
 }
 
+async function checkToolSeoSections() {
+  for (const path of toolPages) {
+    const { response, text } = await request(path);
+    assert(response.ok, `${path} returned ${response.status}`);
+    assert(text.includes(usageHeading), `${path} missing usage guide section`);
+    assert(text.includes(faqHeading), `${path} missing FAQ section`);
+    assert(text.includes("FAQPage"), `${path} missing FAQPage structured data`);
+  }
+}
+
 async function checkDashboardRedirect() {
   const response = await fetch(`${baseUrl}/dashboard/generate?topic=smoke`, {
     redirect: "manual",
@@ -244,6 +258,7 @@ async function main() {
   console.log(`Running public smoke checks against ${baseUrl}`);
   await checkPublicPages();
   await checkSitemapAndRobots();
+  await checkToolSeoSections();
   await checkDashboardRedirect();
   await checkProtectedApiAuth();
   await checkToolPreview();

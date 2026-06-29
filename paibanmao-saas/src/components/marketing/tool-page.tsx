@@ -27,6 +27,49 @@ const toolPaths: Record<PublicToolKind, string> = {
   compliance: "/tools/compliance-checker",
 };
 
+const toolActionLabels: Record<PublicToolKind, string> = {
+  topic: "选题",
+  green_note: "小绿书图文文案",
+  search: "搜一搜关键词建议",
+  question: "问一问回答草稿",
+  moments: "朋友圈转发文案",
+  compliance: "发布前检查结果",
+};
+
+function usageSteps(title: string, toolKind: PublicToolKind) {
+  const target = toolActionLabels[toolKind];
+
+  return [
+    `输入你的主题、读者或现有内容，尽量写清楚账号方向和想达到的目标。`,
+    `先生成一次免费预览，快速判断这个方向是否适合继续写。`,
+    `登录排版猫后，把${target}保存进工作台，并继续生成公众号、小绿书、搜一搜、问一问和朋友圈内容包。`,
+    `进入编辑器做公众号 HTML 排版、小绿书图片提示词、发布前检查和内容日历安排。`,
+  ];
+}
+
+function faqs(title: string, toolKind: PublicToolKind) {
+  const target = toolActionLabels[toolKind];
+  const saveAnswer =
+    toolKind === "compliance"
+      ? "未登录可以试用一次基础预览；登录后可以把检查报告保存到内容项目，并继续按入口做发布前复核。"
+      : `未登录可以试用一次预览；登录后可以保存完整${target}，并继续生成五个微信入口内容。`;
+
+  return [
+    {
+      question: `${title}适合谁使用？`,
+      answer: "适合公众号副业创作者、个人 IP、个体商家和小团队，用来把一个主题拆成更容易发布和复用的微信内容。",
+    },
+    {
+      question: "免费预览和登录后的结果有什么区别？",
+      answer: saveAnswer,
+    },
+    {
+      question: "生成结果可以直接发布吗？",
+      answer: "建议把结果当作初稿和结构参考。发布前仍需要结合你的真实经历、产品信息和平台规则人工修改，排版猫不承诺流量、收入、排名或审核通过。",
+    },
+  ];
+}
+
 export function ToolPage({
   title,
   description,
@@ -41,6 +84,8 @@ export function ToolPage({
   toolKind: PublicToolKind;
 }) {
   const canonicalUrl = absoluteUrl(toolPaths[toolKind]);
+  const steps = usageSteps(title, toolKind);
+  const faqItems = faqs(title, toolKind);
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -80,6 +125,18 @@ export function ToolPage({
         },
       ],
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
   ];
 
   return (
@@ -118,6 +175,28 @@ export function ToolPage({
           </CardContent>
         </Card>
       </div>
+      <section className="mt-10 border-t border-slate-100 pt-8">
+        <h2 className="text-xl font-semibold text-slate-950">怎么使用这个工具</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {steps.map((step, index) => (
+            <div key={step} className="rounded-lg border border-slate-100 bg-white p-4">
+              <div className="text-sm font-semibold text-emerald-700">步骤 {index + 1}</div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{step}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="mt-10 border-t border-slate-100 pt-8">
+        <h2 className="text-xl font-semibold text-slate-950">常见问题</h2>
+        <div className="mt-4 space-y-3">
+          {faqItems.map((item) => (
+            <details key={item.question} className="rounded-lg border border-slate-100 bg-white p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-950">{item.question}</summary>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
       <section className="mt-10 border-t border-slate-100 pt-8">
         <h2 className="text-xl font-semibold text-slate-950">相关免费工具</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

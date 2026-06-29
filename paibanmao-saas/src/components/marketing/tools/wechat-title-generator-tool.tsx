@@ -16,6 +16,28 @@ const goals = [
   { value: "interaction", label: "互动" },
 ];
 
+const usageSteps = [
+  "输入公众号选题、目标读者和想要的标题语气，尽量让选题具体到一个读者问题。",
+  "选择内容目标，比如涨粉、搜一搜、转化、信任或互动，让标题角度更贴近发布目的。",
+  "生成 12 个标题候选后，优先挑选与正文承诺一致、适合微信语境的标题。",
+  "登录排版猫后，把选题继续生成公众号正文、小绿书、搜一搜、问一问和朋友圈内容包。",
+];
+
+const faqItems = [
+  {
+    question: "公众号标题生成器适合谁使用？",
+    answer: "适合公众号副业创作者、个人 IP、个体商家和小团队，用来为同一个选题生成不同角度的公众号标题。",
+  },
+  {
+    question: "免费预览和登录后的结果有什么区别？",
+    answer: "未登录可以试用一次标题预览；登录后可以把标题继续扩写成公众号正文、小绿书、搜一搜、问一问和朋友圈内容包。",
+  },
+  {
+    question: "生成的标题可以直接使用吗？",
+    answer: "建议把标题当作候选方向。发布前仍要结合正文内容和平台规则人工修改，避免标题党、夸大承诺和与正文不匹配。",
+  },
+];
+
 export function WechatTitleGeneratorTool() {
   const [topic, setTopic] = useState("普通人做公众号副业还有机会吗");
   const [audience, setAudience] = useState("公众号副业新手");
@@ -216,6 +238,30 @@ export function WechatTitleGeneratorTool() {
               ))}
             </>
           )}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl border-t border-slate-100 px-4 py-8 sm:px-6">
+        <h2 className="text-xl font-semibold text-slate-950">怎么使用这个工具</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {usageSteps.map((step, index) => (
+            <div key={step} className="rounded-lg border border-slate-100 bg-white p-4">
+              <div className="text-sm font-semibold text-emerald-700">步骤 {index + 1}</div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{step}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl border-t border-slate-100 px-4 py-8 sm:px-6">
+        <h2 className="text-xl font-semibold text-slate-950">常见问题</h2>
+        <div className="mt-4 space-y-3">
+          {faqItems.map((item) => (
+            <details key={item.question} className="rounded-lg border border-slate-100 bg-white p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-950">{item.question}</summary>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+            </details>
+          ))}
         </div>
       </section>
     </main>

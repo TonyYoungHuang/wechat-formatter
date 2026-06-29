@@ -15,6 +15,20 @@ export default function WechatTitleGeneratorPage() {
   const title = "公众号标题生成器";
   const description = metadata.description as string;
   const canonicalUrl = absoluteUrl("/tools/wechat-title-generator");
+  const faqItems = [
+    {
+      question: "公众号标题生成器适合谁使用？",
+      answer: "适合公众号副业创作者、个人 IP、个体商家和小团队，用来为同一个选题生成不同角度的公众号标题。",
+    },
+    {
+      question: "免费预览和登录后的结果有什么区别？",
+      answer: "未登录可以试用一次标题预览；登录后可以把标题继续扩写成公众号正文、小绿书、搜一搜、问一问和朋友圈内容包。",
+    },
+    {
+      question: "生成的标题可以直接使用吗？",
+      answer: "建议把标题当作候选方向。发布前仍要结合正文内容和平台规则人工修改，避免标题党、夸大承诺和与正文不匹配。",
+    },
+  ];
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -53,6 +67,18 @@ export default function WechatTitleGeneratorPage() {
           item: canonicalUrl,
         },
       ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
     },
   ];
 
