@@ -61,6 +61,13 @@ enum PaymentStatus {
   expired
 }
 
+enum InvoiceStatus {
+  requested
+  issued
+  rejected
+  cancelled
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -101,6 +108,7 @@ model Workspace {
   subscriptions    Subscription[]
   paymentOrders    PaymentOrder[]
   paymentCallbacks PaymentCallback[]
+  invoices         InvoiceRequest[]
   ctaSnippets      CtaSnippet[]
   contentTemplates ContentTemplate[]
 }
@@ -456,6 +464,29 @@ model PaymentOrder {
 
   workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   callbacks PaymentCallback[]
+  invoices  InvoiceRequest[]
+}
+
+model InvoiceRequest {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  paymentOrderId String
+  title          String
+  taxNumber      String?
+  email          String
+  amountCents    Int
+  status         InvoiceStatus @default(requested)
+  note           String?
+  issuedAt       DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  paymentOrder PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([paymentOrderId])
+  @@index([status])
 }
 
 model PaymentCallback {

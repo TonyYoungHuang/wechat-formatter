@@ -49,6 +49,30 @@ type Checkout = {
   paymentUrl?: string;
 };
 
+type PaymentOrder = {
+  id: string;
+  planCode: PlanCode;
+  provider: string;
+  amountCents: number;
+  status: string;
+  paidAt?: string | null;
+  createdAt: string;
+};
+
+type InvoiceRequest = {
+  id: string;
+  paymentOrderId: string;
+  title: string;
+  taxNumber?: string | null;
+  email: string;
+  amountCents: number;
+  status: "requested" | "issued" | "rejected" | "cancelled";
+  note?: string | null;
+  issuedAt?: string | null;
+  createdAt: string;
+  paymentOrder?: PaymentOrder;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -73,6 +97,9 @@ export function BillingWorkbench() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [versions, setVersions] = useState<PricingVersion[]>([]);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [orders, setOrders] = useState<PaymentOrder[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRequest[]>([]);
+  const [invoiceForm, setInvoiceForm] = useState({ paymentOrderId: "", title: "", taxNumber: "", email: "" });
   const [message, setMessage] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>("starter");
   const [provider, setProvider] = useState("wechat");
@@ -86,9 +113,15 @@ export function BillingWorkbench() {
         fetch("/api/admin/pricing").then((response) => readJson<{ plans: Plan[]; versions: PricingVersion[] }>(response)),
         fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response)),
       ]);
+      const [orderData, invoiceData] = await Promise.all([
+        fetch("/api/billing/orders").then((response) => readJson<{ orders: PaymentOrder[] }>(response)),
+        fetch("/api/billing/invoices").then((response) => readJson<{ invoices: InvoiceRequest[] }>(response)),
+      ]);
       setPlans(planData.plans);
       setVersions(planData.versions || []);
       setUsage(usageData);
+      setOrders(orderData.orders);
+      setInvoices(invoiceData.invoices);
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载会员额度失败。");
@@ -147,6 +180,30 @@ export function BillingWorkbench() {
       setMessage(error instanceof Error ? error.message : "创建订单失败。");
     }
   }
+
+  async function createInvoice() {
+    try {
+      await readJson<{ invoice: InvoiceRequest }>(
+        await fetch("/api/billing/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentOrderId: invoiceForm.paymentOrderId,
+            title: invoiceForm.title,
+            taxNumber: invoiceForm.taxNumber || undefined,
+            email: invoiceForm.email,
+          }),
+        }),
+      );
+      setMessage("发票申请已提交。");
+      setInvoiceForm({ paymentOrderId: "", title: "", taxNumber: "", email: "" });
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "提交发票申请失败。");
+    }
+  }
+
+  const paidOrders = orders.filter((order) => order.status === "paid");
 
   return (
     <div className="space-y-6">
@@ -322,6 +379,66 @@ export function BillingWorkbench() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>发票申请</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_160px] md:items-end">
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">已支付订单</span>
+              <select
+                value={invoiceForm.paymentOrderId}
+                onChange={(event) => setInvoiceForm({ ...invoiceForm, paymentOrderId: event.target.value })}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+              >
+                <option value="">选择订单</option>
+                {paidOrders.map((order) => (
+                  <option key={order.id} value={order.id}>
+                    {order.planCode} · ¥{(order.amountCents / 100).toFixed(2)} · {new Date(order.createdAt).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">发票抬头</span>
+              <input value={invoiceForm.title} onChange={(event) => setInvoiceForm({ ...invoiceForm, title: event.target.value })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">接收邮箱</span>
+              <input value={invoiceForm.email} onChange={(event) => setInvoiceForm({ ...invoiceForm, email: event.target.value })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+            </label>
+            <Button onClick={createInvoice} disabled={!invoiceForm.paymentOrderId || invoiceForm.title.trim().length < 2 || !invoiceForm.email.includes("@")}>
+              提交申请
+            </Button>
+          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="text-slate-600">税号（企业发票可填）</span>
+            <input value={invoiceForm.taxNumber} onChange={(event) => setInvoiceForm({ ...invoiceForm, taxNumber: event.target.value })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+          </label>
+
+          {paidOrders.length ? null : <p className="text-sm text-slate-500">暂无可开票的已支付订单。支付成功后可在这里提交开票信息。</p>}
+
+          {invoices.length ? (
+            <div className="space-y-3">
+              {invoices.map((invoice) => (
+                <div key={invoice.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[1fr_120px_140px_160px] md:items-center">
+                  <div>
+                    <div className="font-medium text-slate-950">{invoice.title}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {invoice.email} {invoice.taxNumber ? `· ${invoice.taxNumber}` : ""}
+                    </div>
+                  </div>
+                  <div className="text-slate-600">¥{(invoice.amountCents / 100).toFixed(2)}</div>
+                  <div className="rounded-full bg-white px-2 py-1 text-center text-xs text-slate-600">{invoice.status}</div>
+                  <div className="text-xs text-slate-500 md:text-right">{new Date(invoice.createdAt).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

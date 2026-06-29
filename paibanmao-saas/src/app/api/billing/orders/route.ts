@@ -6,6 +6,21 @@ import { createPaymentOrderSchema } from "@/lib/billing/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
+export async function GET() {
+  try {
+    const current = await requireCurrentUser();
+    const orders = await prisma.paymentOrder.findMany({
+      where: { workspaceId: current.workspace.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return NextResponse.json({ orders });
+  } catch (error) {
+    return mapApiError(error);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const current = await requireCurrentUser();
