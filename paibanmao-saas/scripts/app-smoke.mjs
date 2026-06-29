@@ -287,6 +287,46 @@ async function checkProjectEditingSave(generated) {
   assert(greenNote.metadata.imagePrompts.some((prompt) => String(prompt).includes(marker)), "saved green note image prompt marker missing");
 }
 
+async function checkCalendarProjectSync(generated) {
+  const scheduledFor = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const publishedAt = new Date().toISOString();
+  const created = await jsonRequest("/api/calendar-items", {
+    projectId: generated.project.id,
+    entry: "wechat_article",
+    title: `${generated.project.title}\uff1a\u65e5\u5386\u56de\u5f52`,
+    status: "ready",
+    scheduledFor,
+    note: "\u4ece\u5185\u5bb9\u9879\u76ee\u52a0\u5165\u65e5\u5386\u3002",
+  });
+
+  assert(created.response.status === 201, `/api/calendar-items returned ${created.response.status}: ${created.text}`);
+  assert(created.payload?.item?.id, "calendar item id missing");
+  assert(created.payload?.item?.accountProfile?.id, "calendar item did not inherit account profile from project");
+  assert(created.payload?.item?.project?.status === "ready", "project status was not synced to ready from calendar item");
+
+  const readyProject = await request(`/api/projects/${generated.project.id}`);
+  assert(readyProject.response.ok, `/api/projects/:id after calendar ready returned ${readyProject.response.status}: ${readyProject.text}`);
+  assert(readyProject.payload?.project?.status === "ready", "project status was not ready after calendar creation");
+
+  const published = await jsonRequest(
+    `/api/calendar-items/${created.payload.item.id}`,
+    {
+      status: "published",
+      publishedAt,
+    },
+    { method: "PATCH" },
+  );
+
+  assert(published.response.ok, `/api/calendar-items/:id PATCH returned ${published.response.status}: ${published.text}`);
+  assert(published.payload?.item?.status === "published", "calendar item status was not published");
+  assert(published.payload?.item?.project?.status === "published", "project status was not synced to published from calendar item");
+
+  const publishedProject = await request(`/api/projects/${generated.project.id}`);
+  assert(publishedProject.response.ok, `/api/projects/:id after publish returned ${publishedProject.response.status}: ${publishedProject.text}`);
+  assert(publishedProject.payload?.project?.status === "published", "project status was not published after calendar update");
+  assert(publishedProject.payload?.project?.publishedAt, "project publishedAt missing after calendar publish");
+}
+
 async function checkRewrite(profile, generated) {
   const source =
     generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
@@ -514,6 +554,7 @@ async function main() {
   await checkFreeGenerationLimit(profile);
   await checkComplianceReport(generated);
   await checkProjectEditingSave(generated);
+  await checkCalendarProjectSync(generated);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
