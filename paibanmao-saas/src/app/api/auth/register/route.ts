@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createStarterAccountProfileData } from "@/lib/account-profiles/service";
 import { prisma } from "@/lib/db/prisma";
 import { createSession, hashPassword } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/schemas";
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
         userId: user.id,
         workspaceId: workspace.id,
         role: "owner",
+      },
+    });
+
+    await tx.accountProfile.create({
+      data: {
+        ...createStarterAccountProfileData(parsed.data.name),
+        workspaceId: workspace.id,
       },
     });
 

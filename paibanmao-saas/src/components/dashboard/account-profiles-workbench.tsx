@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Plus, Star, Trash2 } from "lucide-react";
+import { Copy, PencilLine, Plus, Star, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +85,7 @@ function profileCompleteness(profile: AccountProfile) {
 export function AccountProfilesWorkbench() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [editingProfileId, setEditingProfileId] = useState("");
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -111,22 +112,49 @@ export function AccountProfilesWorkbench() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function createProfile() {
+  function editProfile(profile: AccountProfile) {
+    setEditingProfileId(profile.id);
+    setForm({
+      name: profile.name,
+      type: profile.type,
+      niche: profile.niche,
+      persona: profile.persona,
+      audience: profile.audience,
+      audiencePainPoints: profile.audiencePainPoints,
+      productOrService: profile.productOrService,
+      monetizationMethods: profile.monetizationMethods.join("，"),
+      tone: profile.tone,
+      commonCta: profile.commonCta,
+      forbiddenWords: profile.forbiddenWords.join("，"),
+      sampleText: profile.sampleText || "",
+    });
+    setMessage(`正在编辑：${profile.name}`);
+  }
+
+  function cancelEdit() {
+    setEditingProfileId("");
+    setForm(initialForm);
+    setMessage("");
+  }
+
+  async function saveProfile() {
+    const payload = {
+      ...form,
+      monetizationMethods: splitList(form.monetizationMethods),
+      forbiddenWords: splitList(form.forbiddenWords),
+    };
+
     try {
       await readJson<{ profile: AccountProfile }>(
-        await fetch("/api/account-profiles", {
-          method: "POST",
+        await fetch(editingProfileId ? `/api/account-profiles/${editingProfileId}` : "/api/account-profiles", {
+          method: editingProfileId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...form,
-            monetizationMethods: splitList(form.monetizationMethods),
-            forbiddenWords: splitList(form.forbiddenWords),
-            isDefault: profiles.length === 0,
-          }),
+          body: JSON.stringify(editingProfileId ? payload : { ...payload, isDefault: profiles.length === 0 }),
         }),
       );
+      setEditingProfileId("");
       setForm(initialForm);
-      setMessage("账号档案已保存。");
+      setMessage(editingProfileId ? "账号档案已更新。" : "账号档案已保存。");
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "保存失败。");
@@ -181,7 +209,15 @@ export function AccountProfilesWorkbench() {
 
       <Card>
         <CardHeader>
-          <CardTitle>新建账号档案</CardTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>{editingProfileId ? "编辑账号档案" : "新建账号档案"}</CardTitle>
+            {editingProfileId ? (
+              <Button size="sm" variant="secondary" onClick={cancelEdit}>
+                <X className="size-4" />
+                取消编辑
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -239,9 +275,9 @@ export function AccountProfilesWorkbench() {
             </label>
           </div>
           <div className="flex justify-end">
-            <Button onClick={createProfile} disabled={!form.name || !form.niche || !form.persona || !form.audience || !form.audiencePainPoints}>
-              <Plus className="size-4" />
-              保存档案
+            <Button onClick={saveProfile} disabled={!form.name || !form.niche || !form.persona || !form.audience || !form.audiencePainPoints}>
+              {editingProfileId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}
+              {editingProfileId ? "更新档案" : "保存档案"}
             </Button>
           </div>
         </CardContent>
@@ -279,6 +315,10 @@ export function AccountProfilesWorkbench() {
                   <Button size="sm" variant="secondary" onClick={() => setDefault(profile.id)}>
                     <Star className="size-4" />
                     设为默认
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => editProfile(profile)}>
+                    <PencilLine className="size-4" />
+                    编辑
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => duplicateProfile(profile.id)}>
                     <Copy className="size-4" />
