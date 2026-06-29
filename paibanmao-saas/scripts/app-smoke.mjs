@@ -664,6 +664,31 @@ async function checkQueuedGeneration(profile) {
   assert(Array.isArray(queued.payload.project.variants) && queued.payload.project.variants.length === 5, "queue fallback variants missing");
 }
 
+async function checkSingleEntryGeneration(profile) {
+  const checks = [
+    { path: "/api/generate/wechat-article", entry: "wechat_article" },
+    { path: "/api/generate/green-note", entry: "green_note" },
+    { path: "/api/generate/search", entry: "search" },
+    { path: "/api/generate/question", entry: "question" },
+    { path: "/api/generate/moments", entry: "moments" },
+  ];
+
+  for (const check of checks) {
+    const result = await jsonRequest(check.path, {
+      accountProfileId: profile.id,
+      topic: `${topic}\uff1a${check.entry} 单入口回归`,
+      goal: "trust",
+    });
+
+    assert(result.response.ok, `${check.path} returned ${result.response.status}: ${result.text}`);
+    assert(result.payload?.variant?.entry === check.entry, `${check.path} returned the wrong entry`);
+    assert(result.payload?.project?.id, `${check.path} project id missing`);
+    assert(Array.isArray(result.payload.project.variants) && result.payload.project.variants.length === 5, `${check.path} did not preserve full five-entry project`);
+    assertNoMojibake(result.payload.variant.title, `${check.entry} single-entry title`);
+    assertNoMojibake(result.payload.variant.body, `${check.entry} single-entry body`);
+  }
+}
+
 async function configurePricingIfAdmin(currentUser) {
   if (!currentUser?.user?.isSiteAdmin) {
     const message = `Smoke user ${email} is not a site admin. Set SITE_ADMIN_EMAIL to this email before starting the server to test pricing and payment.`;
@@ -968,6 +993,7 @@ async function main() {
     await checkPaymentAmountMismatchFlow();
     await checkStarterAccountProfileLimit();
     await checkQueuedGeneration(profile);
+    await checkSingleEntryGeneration(profile);
     await checkTopicSuggestions(profile);
     await checkImagePrompts();
     await checkRewrite(profile, generated);
