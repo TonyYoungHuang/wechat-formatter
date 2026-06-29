@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToolPreviewForm } from "@/components/marketing/tool-preview-form";
+import type { PublicToolKind } from "@/lib/tools/public-tool-preview";
 
 const relatedTools = [
   { href: "/templates", label: "微信内容模板库" },
@@ -20,11 +22,13 @@ export function ToolPage({
   description,
   placeholder,
   unlocks,
+  toolKind,
 }: {
   title: string;
   description: string;
   placeholder: string;
   unlocks: string[];
+  toolKind: PublicToolKind;
 }) {
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-12 sm:px-6">
@@ -40,11 +44,7 @@ export function ToolPage({
               <CardTitle>免费试用</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <textarea className="min-h-28 w-full rounded-lg border border-slate-200 p-4 outline-none focus:border-emerald-400" placeholder={placeholder} />
-              <Button>
-                生成预览
-                <ArrowRight className="size-4" />
-              </Button>
+              <ToolPreviewForm kind={toolKind} placeholder={placeholder} />
             </CardContent>
           </Card>
         </div>

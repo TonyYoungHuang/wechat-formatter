@@ -13,6 +13,7 @@ export default function ComplianceCheckerPage() {
       title="公众号发布前检查工具"
       description="发布前检查广告法极限词、夸大承诺、诱导分享、AI 味、搜一搜优化和 CTA 自然度。工具只做辅助提示，最终发布责任仍由创作者自行判断。"
       placeholder="粘贴你的公众号正文、小绿书文案或问一问回答"
+      toolKind="compliance"
       unlocks={["合规风险", "标题风险", "AI 味建议", "CTA 自然度", "入口规则检查"]}
     />
   );

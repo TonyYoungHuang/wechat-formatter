@@ -13,6 +13,7 @@ export default function GreenNoteGeneratorPage() {
       title="小绿书文案生成器"
       description="把公众号长文选题改写成更适合微信图文卡片的小绿书文案，生成封面标题、3/6/9 图脚本、每页图片提示词和朋友圈转发卡片。"
       placeholder="例如：普通人做公众号副业的第一步"
+      toolKind="green_note"
       unlocks={["3/6/9 图脚本", "封面图提示词", "每页图片提示词", "朋友圈转发卡片文案"]}
     />
   );

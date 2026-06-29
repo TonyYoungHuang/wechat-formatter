@@ -13,6 +13,7 @@ export default function SearchKeywordHelperPage() {
       title="微信搜一搜关键词助手"
       description="围绕一个公众号选题，生成主关键词、长尾关键词、搜索型标题和摘要前 100 字建议，帮助文章在微信搜一搜里更容易被需要的人看到。"
       placeholder="例如：公众号副业怎么赚钱"
+      toolKind="search"
       unlocks={["长尾关键词地图", "搜索型标题候选", "摘要前 100 字建议", "关键词自然嵌入建议"]}
     />
   );
