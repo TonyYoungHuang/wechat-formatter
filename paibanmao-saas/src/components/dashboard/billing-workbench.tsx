@@ -100,6 +100,18 @@ function formatLimit(value: number | null) {
   return value === null ? "不限" : `${value} 次`;
 }
 
+function formatMoney(priceCents: number | null | undefined) {
+  if (priceCents === null || priceCents === undefined) {
+    return "待配置";
+  }
+
+  if (priceCents === 0) {
+    return "免费";
+  }
+
+  return `¥${(priceCents / 100).toFixed(2)}`;
+}
+
 function getInitialPlan(): PlanCode {
   if (typeof window === "undefined") {
     return "starter";
@@ -184,12 +196,17 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
   }
 
   async function createOrder() {
+    if (!canCreateOrder) {
+      setMessage("当前套餐价格未配置，暂不能创建支付订单。请先在后台配置价格。");
+      return;
+    }
+
     try {
       const data = await readJson<{ order: PaymentOrder }>(
         await fetch("/api/billing/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planCode: selectedPlan, provider }),
+          body: JSON.stringify({ planCode: activeSelectedPlan, provider }),
         }),
       );
       setCheckout(data.order.checkout || null);
@@ -270,6 +287,10 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
   }
 
   const paidOrders = orders.filter((order) => order.status === "paid");
+  const payablePlans = plans.filter((plan) => plan.code !== "free");
+  const activeSelectedPlan = payablePlans.some((plan) => plan.code === selectedPlan) ? selectedPlan : payablePlans[0]?.code ?? "starter";
+  const selectedPlanConfig = plans.find((plan) => plan.code === activeSelectedPlan);
+  const canCreateOrder = Boolean(selectedPlanConfig && selectedPlanConfig.code !== "free" && typeof selectedPlanConfig.priceCents === "number" && selectedPlanConfig.priceCents > 0);
 
   return (
     <div className="space-y-6">
@@ -392,13 +413,13 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
 
       <Card>
         <CardHeader>
-          <CardTitle>支付订单链路测试</CardTitle>
+          <CardTitle>开通会员套餐</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[180px_180px_1fr] md:items-end">
           <label className="space-y-1 text-sm">
             <span className="text-slate-600">套餐</span>
-            <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value as PlanCode)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
-              {plans.map((plan) => (
+            <select value={activeSelectedPlan} onChange={(event) => setSelectedPlan(event.target.value as PlanCode)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+              {payablePlans.map((plan) => (
                 <option key={plan.code} value={plan.code}>
                   {plan.name}
                 </option>
@@ -412,10 +433,17 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
               <option value="alipay">支付宝</option>
             </select>
           </label>
-          <Button onClick={createOrder}>
+          <Button onClick={createOrder} disabled={!canCreateOrder}>
             <CreditCard className="size-4" />
-            创建测试订单
+            创建支付订单
           </Button>
+          {selectedPlanConfig ? (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900 md:col-span-3">
+              当前选择：{selectedPlanConfig.name}，价格 {formatMoney(selectedPlanConfig.priceCents)}，账号档案 {selectedPlanConfig.accountProfileLimit} 个，
+              每日生成 {formatLimit(selectedPlanConfig.dailyGenerationLimit)}，每月生成 {formatLimit(selectedPlanConfig.monthlyGenerationLimit)}。
+              {!canCreateOrder ? " 价格配置为待定或免费时不会创建支付订单。" : ""}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
