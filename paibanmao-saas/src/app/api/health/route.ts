@@ -16,7 +16,10 @@ async function checkRedis() {
   const redis = getRedis();
 
   if (!redis) {
-    return { status: "not_configured" };
+    return {
+      status: process.env.NODE_ENV === "production" ? "error" : "not_configured",
+      message: "REDIS_URL is not configured.",
+    };
   }
 
   try {
