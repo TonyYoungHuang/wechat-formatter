@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+
+import { requireCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/prisma";
+import { generateFiveEntrySchema } from "@/lib/generation/schemas";
+import { errorResponse, mapApiError } from "@/lib/http/errors";
+import { enqueueFiveEntryGeneration, ensureGenerationWorker, getGenerationQueue } from "@/lib/queues/generation";
+import { assertCanUseGeneration } from "@/lib/usage/service";
+
+export async function POST(request: Request) {
+  try {
+    const current = await requireCurrentUser();
+    const queue = getGenerationQueue();
+
+    if (!queue) {
+      return errorResponse("Redis queue is not configured.", 503);
+    }
+
+    const parsed = generateFiveEntrySchema.safeParse(await request.json().catch(() => null));
+
+    if (!parsed.success) {
+      return errorResponse("A valid topic is required.");
+    }
+
+    await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
+
+    const job = await prisma.generationJob.create({
+      data: {
+        workspaceId: current.workspace.id,
+        accountProfileId: parsed.data.accountProfileId,
+        type: "five_entry_generation",
+        status: "pending",
+        input: {
+          mode: "queued",
+          payload: parsed.data,
+        },
+      },
+    });
+
+    await enqueueFiveEntryGeneration(job.id);
+    ensureGenerationWorker();
+
+    return NextResponse.json({ job, queued: true }, { status: 202 });
+  } catch (error) {
+    return mapApiError(error);
+  }
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Loader2, Save, Sparkles } from "lucide-react";
+import { Clock3, Copy, Loader2, Save, Sparkles } from "lucide-react";
 
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,15 @@ type GenerationResult = {
     title: string;
     variants: GeneratedVariant[];
   };
+};
+
+type QueuedGenerationResult = {
+  job: {
+    id: string;
+    status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
+    error?: string | null;
+  };
+  project?: GenerationResult["project"] | null;
 };
 
 const goals = [
@@ -62,6 +71,8 @@ export function FiveEntryGenerator() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [queueing, setQueueing] = useState(false);
+  const [queuedJobId, setQueuedJobId] = useState("");
 
   useEffect(() => {
     fetch("/api/account-profiles")
@@ -77,6 +88,44 @@ export function FiveEntryGenerator() {
     () => result?.project.variants.find((variant) => variant.entry === activeEntry),
     [activeEntry, result],
   );
+
+  useEffect(() => {
+    if (!queuedJobId) {
+      return;
+    }
+
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      try {
+        const data = await readJson<QueuedGenerationResult>(await fetch(`/api/generation-jobs/${queuedJobId}`));
+
+        if (cancelled) {
+          return;
+        }
+
+        if (data.job.status === "succeeded" && data.project) {
+          setResult({ project: data.project });
+          setQueuedJobId("");
+          setMessage("后台生成已完成，并保存为内容项目。");
+        } else if (data.job.status === "failed") {
+          setQueuedJobId("");
+          setMessage(data.job.error || "后台生成失败。");
+        } else {
+          setMessage(data.job.status === "running" ? "后台正在生成中..." : "已加入后台队列，等待生成...");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setQueuedJobId("");
+          setMessage(error instanceof Error ? error.message : "查询生成任务失败。");
+        }
+      }
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [queuedJobId]);
 
   async function submit() {
     setLoading(true);
@@ -100,6 +149,31 @@ export function FiveEntryGenerator() {
       setMessage(error instanceof Error ? error.message : "生成失败。");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function queueSubmit() {
+    setQueueing(true);
+    setMessage("");
+    try {
+      const data = await readJson<QueuedGenerationResult>(
+        await fetch("/api/generate/five-entry/queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountProfileId: accountProfileId || undefined,
+            topicId: topicId || undefined,
+            topic,
+            goal,
+          }),
+        }),
+      );
+      setQueuedJobId(data.job.id);
+      setMessage("已加入后台队列，稍后自动刷新结果。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "后台生成提交失败。");
+    } finally {
+      setQueueing(false);
     }
   }
 
@@ -160,10 +234,20 @@ export function FiveEntryGenerator() {
           </label>
           <div className="flex flex-col gap-3 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">{message || "生成会消耗 1 次额度，结果会自动保存到内容项目。"}</p>
-            <Button onClick={submit} disabled={loading || topic.trim().length < 2}>
-              {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              生成五入口内容
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={submit} disabled={loading || queueing || Boolean(queuedJobId) || topic.trim().length < 2}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                生成五入口内容
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={queueSubmit}
+                disabled={loading || queueing || Boolean(queuedJobId) || topic.trim().length < 2}
+              >
+                {queueing || queuedJobId ? <Loader2 className="size-4 animate-spin" /> : <Clock3 className="size-4" />}
+                后台生成
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

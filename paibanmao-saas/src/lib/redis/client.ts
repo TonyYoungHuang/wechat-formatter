@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import type { ConnectionOptions } from "bullmq";
 
 const globalForRedis = globalThis as unknown as {
   redis?: Redis;
@@ -20,4 +21,17 @@ export function getRedis() {
   }
 
   return globalForRedis.redis;
+}
+
+export function createBullMqConnection(): ConnectionOptions | null {
+  if (!process.env.REDIS_URL) {
+    return null;
+  }
+
+  return {
+    url: process.env.REDIS_URL,
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: true,
+    connectTimeout: 1500,
+  };
 }
