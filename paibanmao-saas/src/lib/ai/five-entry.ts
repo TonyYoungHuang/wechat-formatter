@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-import { getDefaultAiProvider } from "@/lib/ai/provider";
+import { getActiveAiProvider } from "@/lib/ai/provider";
 import { contentEntries } from "@/lib/content/entries";
 import type { GeneratedVariant } from "@/lib/generation/fallback";
 
@@ -39,8 +39,8 @@ export type AiFiveEntryResult = {
   tokenOutput: number;
 };
 
-export function isAiProviderConfigured() {
-  const config = getDefaultAiProvider();
+export async function isAiProviderConfigured() {
+  const config = await getActiveAiProvider();
   return Boolean(config.baseUrl && config.apiKey && config.model);
 }
 
@@ -50,7 +50,7 @@ export async function generateFiveEntryWithAi(input: {
   accountProfile: AccountProfileLike;
   prompt?: string;
 }): Promise<AiFiveEntryResult> {
-  const config = getDefaultAiProvider();
+  const config = await getActiveAiProvider();
 
   if (!config.baseUrl || !config.apiKey || !config.model) {
     throw new Error("AI provider is not configured.");

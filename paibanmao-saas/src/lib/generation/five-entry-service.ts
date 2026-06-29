@@ -76,7 +76,7 @@ export async function runFiveEntryGeneration(input: {
     accountProfile,
   });
 
-  if (isAiProviderConfigured()) {
+  if (await isAiProviderConfigured()) {
     try {
       const aiResult = await generateFiveEntryWithAi({
         topic: payload.topic,

@@ -12,7 +12,11 @@ type ProviderStatus = {
     name: string;
     baseUrlConfigured: boolean;
     apiKeyConfigured: boolean;
+    baseUrl: string;
+    apiKeyRef: string;
     model: string;
+    modelName: string;
+    source: "database" | "environment";
   };
 };
 
@@ -78,6 +82,9 @@ export function SettingsWorkbench() {
       ]);
       setStatus(providerData);
       setName(providerData.provider.name || "default-router");
+      setBaseUrl(providerData.provider.baseUrl || "https://example-model-router.com/v1");
+      setApiKeyRef(providerData.provider.apiKeyRef || "AI_OPENAI_COMPATIBLE_API_KEY");
+      setModelName(providerData.provider.modelName || "GPT compatible model");
       setModelId(providerData.provider.model || "gpt-4.1-mini");
       setPrompts(promptData.prompts);
       setPaymentStatus(paymentData);
