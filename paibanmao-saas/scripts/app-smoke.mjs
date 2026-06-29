@@ -515,6 +515,68 @@ async function configurePricingIfAdmin(currentUser) {
   return true;
 }
 
+async function checkAdminSettingsFlow() {
+  const providerName = `smoke-provider-${timestamp}`;
+  const provider = await jsonRequest(
+    "/api/admin/ai-providers",
+    {
+      name: providerName,
+      type: "openai-compatible",
+      baseUrl: "https://example-model-router.com/v1",
+      apiKeyRef: "AI_OPENAI_COMPATIBLE_API_KEY",
+      active: true,
+      models: ["content", "topic", "rewrite", "image"].map((purpose) => ({
+        name: `smoke ${purpose}`,
+        modelId: `smoke-${purpose}-model`,
+        purpose,
+        active: true,
+      })),
+    },
+    { method: "PATCH" },
+  );
+
+  assert(provider.response.ok, `/api/admin/ai-providers PATCH returned ${provider.response.status}: ${provider.text}`);
+  assert(provider.payload?.provider?.name === providerName, "AI provider name was not saved");
+  assert(Array.isArray(provider.payload?.provider?.models) && provider.payload.provider.models.length === 4, "AI provider models were not saved");
+
+  const providerStatus = await request("/api/admin/ai-providers");
+  assert(providerStatus.response.ok, `/api/admin/ai-providers GET returned ${providerStatus.response.status}: ${providerStatus.text}`);
+  assert(providerStatus.payload?.provider?.baseUrlConfigured === true, "AI provider base URL status missing");
+  assert(providerStatus.payload?.provider?.apiKeyRef === "AI_OPENAI_COMPATIBLE_API_KEY", "AI provider apiKeyRef mismatch");
+  assert(["content", "topic", "rewrite", "image"].every((purpose) => providerStatus.payload?.provider?.models?.some((model) => model.purpose === purpose)), "AI provider purpose models missing");
+
+  const promptContent = [
+    `Smoke prompt ${timestamp}`,
+    "账号：{{accountName}}",
+    "内容：{{content}}",
+    "请保持微信创作者语气，不要承诺收益、排名或审核通过。",
+  ].join("\n");
+  const prompt = await jsonRequest(
+    "/api/admin/prompts",
+    {
+      prompts: {
+        ai_tone_rewrite: {
+          content: promptContent,
+        },
+      },
+    },
+    { method: "PATCH" },
+  );
+
+  assert(prompt.response.ok, `/api/admin/prompts PATCH returned ${prompt.response.status}: ${prompt.text}`);
+  assert(prompt.payload?.prompts?.[0]?.key === "ai_tone_rewrite", "prompt update key mismatch");
+
+  const prompts = await request("/api/admin/prompts");
+  assert(prompts.response.ok, `/api/admin/prompts GET returned ${prompts.response.status}: ${prompts.text}`);
+  assert(prompts.payload?.prompts?.some((item) => item.key === "ai_tone_rewrite" && item.content.includes(`Smoke prompt ${timestamp}`)), "updated prompt missing from active prompts");
+
+  const paymentSettings = await request("/api/admin/payment-settings");
+  assert(paymentSettings.response.ok, `/api/admin/payment-settings returned ${paymentSettings.response.status}: ${paymentSettings.text}`);
+  assert(Array.isArray(paymentSettings.payload?.providers) && paymentSettings.payload.providers.length === 2, "payment settings provider status missing");
+  assert(paymentSettings.payload.providers.some((item) => item.provider === "wechat"), "wechat payment status missing");
+  assert(paymentSettings.payload.providers.some((item) => item.provider === "alipay"), "alipay payment status missing");
+}
+
 async function checkPaymentFlow() {
   const order = await jsonRequest("/api/billing/orders", {
     planCode: "starter",
@@ -653,6 +715,7 @@ async function main() {
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
+    await checkAdminSettingsFlow();
     await checkPaymentFlow();
     await checkAlipayPaymentFlow();
     await checkPaymentFailureFlow();
