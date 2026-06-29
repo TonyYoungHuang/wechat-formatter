@@ -18,6 +18,7 @@ export function getRedis() {
       connectTimeout: 1500,
       commandTimeout: 1500,
     });
+    globalForRedis.redis.on("error", () => null);
   }
 
   return globalForRedis.redis;

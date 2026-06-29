@@ -143,6 +143,14 @@ async function request(path, options = {}) {
   return { response, text };
 }
 
+function visitorHeaders(name, headers = {}) {
+  return {
+    "User-Agent": `paibanmao-public-smoke/${name}`,
+    "X-Forwarded-For": `203.0.113.${name.length}`,
+    ...headers,
+  };
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -209,7 +217,7 @@ async function checkProtectedApiAuth() {
 async function checkToolPreview() {
   const { response, text } = await request("/api/tools/preview", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: visitorHeaders("tool-preview", { "Content-Type": "application/json" }),
     body: JSON.stringify({
       kind: "topic",
       input: previewInput,
@@ -224,7 +232,7 @@ async function checkToolPreview() {
 async function checkPublicPreviewLimit() {
   const title = await request("/api/tools/wechat-title-generator", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: visitorHeaders("preview-limit", { "Content-Type": "application/json" }),
     body: JSON.stringify({
       topic: previewInput,
       audience: "\u516c\u4f17\u53f7\u526f\u4e1a\u65b0\u624b",
@@ -242,10 +250,10 @@ async function checkPublicPreviewLimit() {
 
   const blocked = await request("/api/tools/preview", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+    headers: visitorHeaders("preview-limit", {
       Cookie: cookieHeader,
-    },
+      "Content-Type": "application/json",
+    }),
     body: JSON.stringify({
       kind: "topic",
       input: previewInput,

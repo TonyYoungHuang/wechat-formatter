@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return errorResponse("请输入 2-120 个字的公众号选题。");
   }
 
-  const previewGate = await getPublicPreviewGate();
+  const previewGate = await getPublicPreviewGate(request);
 
   if (previewGate.shouldBlock) {
     return errorResponse(PUBLIC_PREVIEW_LIMIT_MESSAGE, 429);
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     unlocks: ["保存到选题库", "一键扩写公众号正文", "同步生成小绿书、搜一搜、问一问和朋友圈版本"],
   });
 
-  markPublicPreviewUsed(response, previewGate.current);
+  await markPublicPreviewUsed(response, previewGate);
 
   return response;
 }

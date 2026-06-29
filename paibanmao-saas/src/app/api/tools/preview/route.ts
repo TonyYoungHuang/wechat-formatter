@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return errorResponse("请输入至少 2 个字的内容。");
   }
 
-  const previewGate = await getPublicPreviewGate();
+  const previewGate = await getPublicPreviewGate(request);
 
   if (previewGate.shouldBlock) {
     return errorResponse(PUBLIC_PREVIEW_LIMIT_MESSAGE, 429);
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     preview: generatePublicToolPreview(parsed.data.kind, parsed.data.input),
   });
 
-  markPublicPreviewUsed(response, previewGate.current);
+  await markPublicPreviewUsed(response, previewGate);
 
   return response;
 }
