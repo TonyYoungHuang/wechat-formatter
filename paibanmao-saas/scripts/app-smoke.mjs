@@ -73,6 +73,24 @@ async function jsonRequest(path, body, options = {}) {
   });
 }
 
+function accountProfilePayload(name) {
+  return {
+    name,
+    type: "wechat_official",
+    niche: "WeChat creator side business",
+    persona: "A practical solo creator writing for small WeChat creators.",
+    audience: "Small WeChat creators who want repeatable topic and publishing workflows.",
+    audiencePainPoints: "They do not know what to write, how to repurpose one topic, or how to make content feel trustworthy.",
+    productOrService: "Templates, consulting, and lightweight courses",
+    monetizationMethods: ["consulting", "templates"],
+    tone: "Clear, specific, and grounded.",
+    commonCta: "Save this workflow and adapt it to your own account profile.",
+    forbiddenWords: ["guaranteed", "get rich"],
+    sampleText: "",
+    isDefault: false,
+  };
+}
+
 async function checkDashboardRequiresValidSession() {
   const response = await fetch(`${baseUrl}/dashboard`, {
     headers: {
@@ -108,6 +126,22 @@ async function checkAccountProfiles() {
   assert(profiles.response.ok, `/api/account-profiles returned ${profiles.response.status}: ${profiles.text}`);
   assert(Array.isArray(profiles.payload?.profiles) && profiles.payload.profiles.length >= 1, "starter account profile missing");
   return profiles.payload.profiles[0];
+}
+
+async function checkFreeAccountProfileLimit() {
+  const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Free extra profile"));
+  assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
+}
+
+async function checkStarterAccountProfileLimit() {
+  const second = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile two"));
+  assert(second.response.status === 201, `/api/account-profiles starter second returned ${second.response.status}: ${second.text}`);
+
+  const third = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile three"));
+  assert(third.response.status === 201, `/api/account-profiles starter third returned ${third.response.status}: ${third.text}`);
+
+  const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile four"));
+  assert(blocked.response.status === 409, `/api/account-profiles starter fourth returned ${blocked.response.status}, expected 409`);
 }
 
 async function checkFiveEntryGeneration(profile) {
@@ -296,12 +330,14 @@ async function main() {
   await checkDashboardRequiresValidSession();
   const current = await registerAndCheckSession();
   const profile = await checkAccountProfiles();
+  await checkFreeAccountProfileLimit();
   const generated = await checkFiveEntryGeneration(profile);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
     await checkPaymentFlow();
     await checkPaymentFailureFlow();
+    await checkStarterAccountProfileLimit();
     await checkQueuedGeneration(profile);
     await checkTopicSuggestions(profile);
     await checkImagePrompts();
