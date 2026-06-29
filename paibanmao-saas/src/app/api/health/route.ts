@@ -3,12 +3,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getRedis } from "@/lib/redis/client";
 
+function safeHealthMessage(error: unknown, fallback: string) {
+  if (process.env.NODE_ENV === "production") {
+    return fallback;
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
+
 async function checkDatabase() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return { status: "ok" };
   } catch (error) {
-    return { status: "error", message: error instanceof Error ? error.message : "Database check failed." };
+    return { status: "error", message: safeHealthMessage(error, "Database check failed.") };
   }
 }
 
@@ -26,7 +34,7 @@ async function checkRedis() {
     const pong = await redis.ping();
     return { status: pong === "PONG" ? "ok" : "error", message: pong };
   } catch (error) {
-    return { status: "error", message: error instanceof Error ? error.message : "Redis check failed." };
+    return { status: "error", message: safeHealthMessage(error, "Redis check failed.") };
   }
 }
 
