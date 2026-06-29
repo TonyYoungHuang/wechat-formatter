@@ -25,7 +25,9 @@ export function WechatTitleGeneratorTool() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const canSubmit = useMemo(() => topic.trim().length >= 2 && !loading, [loading, topic]);
+  const trimmedTopic = topic.trim();
+  const continuationHref = buildContinuationHref(trimmedTopic);
+  const canSubmit = useMemo(() => trimmedTopic.length >= 2 && !loading, [loading, trimmedTopic]);
 
   async function generatePreview() {
     if (!canSubmit) {
@@ -39,7 +41,7 @@ export function WechatTitleGeneratorTool() {
       const response = await fetch("/api/tools/wechat-title-generator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, audience, goal, tone }),
+        body: JSON.stringify({ topic: trimmedTopic, audience, goal, tone }),
       });
       const data = await response.json();
 
@@ -88,7 +90,7 @@ export function WechatTitleGeneratorTool() {
                 <p>同步生成小绿书、搜一搜、问一问和朋友圈版本。</p>
                 <p>进入发布前检查，减少标题党、AI 味和转化突兀问题。</p>
                 <Button asChild className="w-full">
-                  <Link href="/register">
+                  <Link href={continuationHref}>
                     免费注册
                     <ArrowRight className="size-4" />
                   </Link>
@@ -170,7 +172,24 @@ export function WechatTitleGeneratorTool() {
               </CardContent>
             </Card>
           ) : (
-            suggestions.map((item, index) => (
+            <>
+              <Card className="border-emerald-100 bg-emerald-50/70">
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold text-slate-950">选好标题后，继续生成完整五入口内容</h2>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      注册后会带着当前选题进入工作台，继续生成公众号正文、小绿书图文、搜一搜关键词、问一问回答和朋友圈文案。
+                    </p>
+                  </div>
+                  <Button asChild className="shrink-0">
+                    <Link href={continuationHref}>
+                      生成完整内容包
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+              {suggestions.map((item, index) => (
               <Card key={`${item.title}-${index}`} className="border-slate-100">
                 <CardContent className="flex gap-4 p-4">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-sm font-semibold text-emerald-700">
@@ -194,10 +213,17 @@ export function WechatTitleGeneratorTool() {
                   </Button>
                 </CardContent>
               </Card>
-            ))
+              ))}
+            </>
           )}
         </div>
       </section>
     </main>
   );
+}
+
+function buildContinuationHref(topic: string) {
+  const next = topic ? `/dashboard/generate?topic=${encodeURIComponent(topic)}` : "/dashboard/generate";
+  const params = new URLSearchParams({ next });
+  return `/register?${params.toString()}`;
 }
