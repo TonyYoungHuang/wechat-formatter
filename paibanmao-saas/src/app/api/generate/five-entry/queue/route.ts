@@ -44,8 +44,24 @@ export async function POST(request: Request) {
       },
     });
 
-    await enqueueFiveEntryGeneration(job.id);
-    ensureGenerationWorker();
+    try {
+      await enqueueFiveEntryGeneration(job.id);
+      ensureGenerationWorker();
+    } catch (queueError) {
+      const result = await runFiveEntryGeneration({
+        workspaceId: current.workspace.id,
+        planCode: current.workspace.planCode,
+        payload: parsed.data,
+        existingJobId: job.id,
+      });
+
+      return NextResponse.json({
+        ...result,
+        queued: false,
+        fallback: "sync",
+        queueError: queueError instanceof Error ? queueError.message : "Queue unavailable.",
+      });
+    }
 
     return NextResponse.json({ job, queued: true }, { status: 202 });
   } catch (error) {
