@@ -162,6 +162,30 @@ async function checkFiveEntryGeneration(profile) {
   return generation.payload;
 }
 
+async function checkComplianceReport(generated) {
+  const variant =
+    generated.project.variants.find((item) => item.entry === "wechat_article") ||
+    generated.project.variants[0];
+
+  assert(variant?.body, "generated variant body missing for compliance check");
+
+  const check = await jsonRequest("/api/compliance/check", {
+    projectId: generated.project.id,
+    entry: variant.entry,
+    title: variant.title,
+    content: variant.body,
+  });
+
+  assert(check.response.ok, `/api/compliance/check returned ${check.response.status}: ${check.text}`);
+  assert(check.payload?.report?.id, "compliance report id missing");
+  assert(Array.isArray(check.payload?.issues), "compliance issues missing");
+
+  const report = await request(`/api/compliance/reports/${check.payload.report.id}`);
+  assert(report.response.ok, `/api/compliance/reports/:id returned ${report.response.status}: ${report.text}`);
+  assert(report.payload?.report?.id === check.payload.report.id, "fetched compliance report id mismatch");
+  assert(report.payload?.report?.project?.id === generated.project.id, "fetched compliance report project mismatch");
+}
+
 async function checkRewrite(profile, generated) {
   const source =
     generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
@@ -358,6 +382,7 @@ async function main() {
   const profile = await checkAccountProfiles();
   await checkFreeAccountProfileLimit();
   const generated = await checkFiveEntryGeneration(profile);
+  await checkComplianceReport(generated);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
