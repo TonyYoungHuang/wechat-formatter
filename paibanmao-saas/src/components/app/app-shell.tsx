@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard/editor", label: "公众号编辑", icon: FileText },
   { href: "/dashboard/projects", label: "内容项目", icon: FileText },
   { href: "/dashboard/calendar", label: "内容日历", icon: CalendarDays },
+  { href: "/dashboard/templates", label: "模板库", icon: Layers3 },
   { href: "/dashboard/cta-library", label: "CTA 库", icon: MessageSquareText },
   { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
   { href: "/dashboard/billing", label: "会员额度", icon: CreditCard },
