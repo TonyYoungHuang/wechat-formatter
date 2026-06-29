@@ -73,6 +73,19 @@ async function jsonRequest(path, body, options = {}) {
   });
 }
 
+async function checkDashboardRequiresValidSession() {
+  const response = await fetch(`${baseUrl}/dashboard`, {
+    headers: {
+      Cookie: "paibanmao_session=invalid-smoke-session",
+    },
+    redirect: "manual",
+  });
+  const location = response.headers.get("location") || "";
+
+  assert([303, 307, 308].includes(response.status), `/dashboard with invalid session returned ${response.status}, expected redirect`);
+  assert(location.includes("/login"), "dashboard invalid-session redirect does not point to login");
+}
+
 async function registerAndCheckSession() {
   const registration = await jsonRequest("/api/auth/register", {
     name: "Smoke User",
@@ -260,6 +273,7 @@ async function checkPaymentFailureFlow() {
 
 async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
+  await checkDashboardRequiresValidSession();
   const current = await registerAndCheckSession();
   const profile = await checkAccountProfiles();
   const generated = await checkFiveEntryGeneration(profile);
