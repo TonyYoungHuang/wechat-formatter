@@ -16,9 +16,19 @@ const publicPages = [
   "/tools/compliance-checker",
 ];
 
+const tutorialPaths = [
+  "/tutorials/wechat-topic-to-five-entries",
+  "/tutorials/green-note-from-wechat-topic",
+  "/tutorials/wechat-search-keywords",
+  "/tutorials/question-answer-to-wechat",
+  "/tutorials/moments-copy-for-wechat",
+  "/tutorials/wechat-publish-checklist",
+];
+
 const toolPages = publicPages.filter((path) => path.startsWith("/tools/"));
 const usageHeading = "\u600e\u4e48\u4f7f\u7528\u8fd9\u4e2a\u5de5\u5177";
 const faqHeading = "\u5e38\u89c1\u95ee\u9898";
+const tutorialSectionHeadings = ["\u76f4\u63a5\u7b54\u6848", "\u64cd\u4f5c\u6b65\u9aa4", "\u793a\u4f8b", "\u5e38\u89c1\u8bef\u533a"];
 
 const sitemapPaths = [
   "/tools/topic-generator",
@@ -31,7 +41,7 @@ const sitemapPaths = [
   "/pricing",
   "/templates",
   "/tutorials",
-  "/tutorials/wechat-topic-to-five-entries",
+  ...tutorialPaths,
 ];
 
 const protectedGetPaths = [
@@ -158,7 +168,7 @@ function assert(condition, message) {
 }
 
 async function checkPublicPages() {
-  for (const path of publicPages) {
+  for (const path of [...publicPages, ...tutorialPaths]) {
     const { response, text } = await request(path);
     assert(response.ok, `${path} returned ${response.status}`);
     assert(text.includes(brandText), `${path} does not include brand text`);
@@ -185,6 +195,18 @@ async function checkToolSeoSections() {
     assert(text.includes(usageHeading), `${path} missing usage guide section`);
     assert(text.includes(faqHeading), `${path} missing FAQ section`);
     assert(text.includes("FAQPage"), `${path} missing FAQPage structured data`);
+  }
+}
+
+async function checkTutorialSeoSections() {
+  for (const path of tutorialPaths) {
+    const { response, text } = await request(path);
+    assert(response.ok, `${path} returned ${response.status}`);
+    assert(text.includes("Article"), `${path} missing Article structured data`);
+    assert(text.includes("BreadcrumbList"), `${path} missing BreadcrumbList structured data`);
+    for (const heading of tutorialSectionHeadings) {
+      assert(text.includes(heading), `${path} missing tutorial section: ${heading}`);
+    }
   }
 }
 
@@ -267,6 +289,7 @@ async function main() {
   await checkPublicPages();
   await checkSitemapAndRobots();
   await checkToolSeoSections();
+  await checkTutorialSeoSections();
   await checkDashboardRedirect();
   await checkProtectedApiAuth();
   await checkToolPreview();
