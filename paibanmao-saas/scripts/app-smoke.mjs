@@ -130,7 +130,7 @@ async function checkFiveEntryGeneration(profile) {
 
 async function checkRewrite(profile, generated) {
   const source =
-    generated.project.variants.find((variant) => variant.entry === "wechat_article")?.content ||
+    generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
     "\u8fd9\u662f\u4e00\u6bb5\u7528\u4e8e\u9a8c\u8bc1\u964d\u4f4e AI \u5473\u7684\u516c\u4f17\u53f7\u6b63\u6587\uff0c\u9700\u8981\u4fdd\u7559\u6838\u5fc3\u89c2\u70b9\uff0c\u4f46\u8ba9\u8868\u8fbe\u66f4\u50cf\u771f\u5b9e\u521b\u4f5c\u8005\u5199\u7ed9\u8bfb\u8005\u7684\u5185\u5bb9\u3002";
   const rewrite = await jsonRequest("/api/generate/rewrite", {
     accountProfileId: profile.id,
@@ -141,7 +141,7 @@ async function checkRewrite(profile, generated) {
 
   assert(rewrite.response.ok, `/api/generate/rewrite returned ${rewrite.response.status}: ${rewrite.text}`);
   assert(rewrite.payload?.job?.type === "ai_tone_rewrite", "rewrite generation job type mismatch");
-  assert(rewrite.payload?.output?.content, "rewrite output content missing");
+  assert(rewrite.payload?.output?.body, "rewrite output body missing");
 }
 
 async function checkTopicSuggestions(profile) {
