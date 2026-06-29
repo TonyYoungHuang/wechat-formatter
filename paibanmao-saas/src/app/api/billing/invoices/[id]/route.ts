@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { requireSiteAdmin } from "@/lib/auth/session";
 import { invoiceRequestPatchSchema } from "@/lib/billing/schemas";
@@ -24,13 +25,22 @@ export async function PATCH(request: Request, context: RouteContext) {
       select: { id: true },
     });
 
+    const data: Prisma.InvoiceRequestUpdateInput = {
+      status: parsed.data.status,
+      note: parsed.data.note,
+    };
+
+    if (parsed.data.issuedAt !== undefined) {
+      data.issuedAt = parsed.data.issuedAt ? new Date(parsed.data.issuedAt) : null;
+    } else if (parsed.data.status === "issued") {
+      data.issuedAt = new Date();
+    } else if (parsed.data.status === "requested" || parsed.data.status === "rejected" || parsed.data.status === "cancelled") {
+      data.issuedAt = null;
+    }
+
     const invoice = await prisma.invoiceRequest.update({
       where: { id },
-      data: {
-        status: parsed.data.status,
-        note: parsed.data.note,
-        issuedAt: parsed.data.issuedAt ? new Date(parsed.data.issuedAt) : parsed.data.issuedAt,
-      },
+      data,
       include: {
         workspace: {
           select: {

@@ -89,6 +89,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Confirm paid callback updates workspace plan and subscription.
 - Confirm paid order can be selected for invoice request.
 - Confirm duplicate active invoice requests for the same paid order are rejected.
+- Confirm admin can mark invoices as issued, cancellation clears `issuedAt`, and cancelled invoices allow a new request for the same paid order.
 
 ## 6. Public Growth Pages
 

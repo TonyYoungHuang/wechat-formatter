@@ -866,6 +866,32 @@ async function checkPaymentFlow() {
 
   const duplicateInvoice = await jsonRequest("/api/billing/invoices", invoicePayload);
   assert(duplicateInvoice.response.status === 409, `/api/billing/invoices duplicate returned ${duplicateInvoice.response.status}, expected 409`);
+
+  const issuedInvoice = await jsonRequest(
+    `/api/billing/invoices/${invoice.payload.invoice.id}`,
+    { status: "issued" },
+    { method: "PATCH" },
+  );
+  assert(issuedInvoice.response.ok, `/api/billing/invoices/:id issued returned ${issuedInvoice.response.status}: ${issuedInvoice.text}`);
+  assert(issuedInvoice.payload?.invoice?.status === "issued", "invoice was not marked issued");
+  assert(issuedInvoice.payload?.invoice?.issuedAt, "issued invoice missing issuedAt");
+
+  const duplicateIssuedInvoice = await jsonRequest("/api/billing/invoices", invoicePayload);
+  assert(duplicateIssuedInvoice.response.status === 409, `/api/billing/invoices duplicate issued returned ${duplicateIssuedInvoice.response.status}, expected 409`);
+
+  const cancelledInvoice = await jsonRequest(
+    `/api/billing/invoices/${invoice.payload.invoice.id}`,
+    { status: "cancelled" },
+    { method: "PATCH" },
+  );
+  assert(cancelledInvoice.response.ok, `/api/billing/invoices/:id cancelled returned ${cancelledInvoice.response.status}: ${cancelledInvoice.text}`);
+  assert(cancelledInvoice.payload?.invoice?.status === "cancelled", "invoice was not cancelled");
+  assert(cancelledInvoice.payload?.invoice?.issuedAt === null, "cancelled invoice should clear issuedAt");
+
+  const recreatedInvoice = await jsonRequest("/api/billing/invoices", invoicePayload);
+  assert(recreatedInvoice.response.status === 201, `/api/billing/invoices after cancellation returned ${recreatedInvoice.response.status}: ${recreatedInvoice.text}`);
+  const duplicateRecreatedInvoice = await jsonRequest("/api/billing/invoices", invoicePayload);
+  assert(duplicateRecreatedInvoice.response.status === 409, `/api/billing/invoices duplicate recreated returned ${duplicateRecreatedInvoice.response.status}, expected 409`);
 }
 
 async function checkAlipayPaymentFlow() {
