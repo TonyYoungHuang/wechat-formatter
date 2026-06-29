@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { markOrderPaid, parseAlipayCallbackBody, parseAlipayCallbackPayload, recordPaymentCallback, verifyAlipayCallback } from "@/lib/billing/callbacks";
+import { markOrderPaid, markOrderPaymentFailed, parseAlipayCallbackBody, parseAlipayCallbackPayload, recordPaymentCallback, verifyAlipayCallback } from "@/lib/billing/callbacks";
 
 function alipayResponse(body: "success" | "fail", status = 200) {
   return new NextResponse(body, {
@@ -67,6 +67,12 @@ export async function POST(request: Request) {
       providerTradeNo: payload.tradeNo,
     });
   } catch (error) {
+    await markOrderPaymentFailed({
+      provider: "alipay",
+      orderId: payload.orderId,
+      tradeNo: payload.tradeNo,
+      providerOrderId: payload.providerOrderId,
+    }).catch(() => null);
     await recordPaymentCallback({
       provider: "alipay",
       status: "failed",

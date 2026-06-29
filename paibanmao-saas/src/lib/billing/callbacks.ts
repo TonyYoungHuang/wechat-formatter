@@ -317,3 +317,23 @@ export async function markOrderPaid(input: {
     return paidOrder;
   });
 }
+
+export async function markOrderPaymentFailed(input: {
+  orderId: string;
+  provider: "wechat" | "alipay";
+  tradeNo?: string;
+  providerOrderId?: string;
+}) {
+  return prisma.paymentOrder.updateMany({
+    where: {
+      id: input.orderId,
+      provider: input.provider,
+      status: { not: "paid" },
+    },
+    data: {
+      status: "failed",
+      providerOrderId: input.providerOrderId,
+      providerTradeNo: input.tradeNo,
+    },
+  });
+}

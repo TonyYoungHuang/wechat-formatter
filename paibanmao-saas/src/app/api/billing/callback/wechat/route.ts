@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { markOrderPaid, parseCallbackJson, parseWechatCallbackPayload, recordPaymentCallback, verifyWechatCallback } from "@/lib/billing/callbacks";
+import { markOrderPaid, markOrderPaymentFailed, parseCallbackJson, parseWechatCallbackPayload, recordPaymentCallback, verifyWechatCallback } from "@/lib/billing/callbacks";
 
 function wechatSuccessResponse() {
   return NextResponse.json({ code: "SUCCESS" });
@@ -67,6 +67,12 @@ export async function POST(request: Request) {
       providerTradeNo: payload.tradeNo,
     });
   } catch (error) {
+    await markOrderPaymentFailed({
+      provider: "wechat",
+      orderId: payload.orderId,
+      tradeNo: payload.tradeNo,
+      providerOrderId: payload.providerOrderId,
+    }).catch(() => null);
     await recordPaymentCallback({
       provider: "wechat",
       status: "failed",

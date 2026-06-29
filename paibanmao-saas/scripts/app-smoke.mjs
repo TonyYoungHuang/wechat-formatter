@@ -220,6 +220,32 @@ async function checkPaymentFlow() {
   assert(me.payload?.workspace?.planCode === "starter", "workspace plan was not upgraded after payment callback");
 }
 
+async function checkPaymentFailureFlow() {
+  const order = await jsonRequest("/api/billing/orders", {
+    planCode: "starter",
+    provider: "wechat",
+  });
+
+  assert(order.response.ok, `/api/billing/orders for failed callback returned ${order.response.status}: ${order.text}`);
+  assert(order.payload?.order?.id, "failed-payment order id missing");
+
+  const callback = await jsonRequest("/api/billing/callback/wechat", {
+    orderId: order.payload.order.id,
+    paid: false,
+    amountCents: 9900,
+    tradeNo: `SMOKE_FAILED_${timestamp}`,
+    providerOrderId: `SMOKE_FAILED_PROVIDER_${timestamp}`,
+    status: "PAYERROR",
+  });
+
+  assert(callback.response.status >= 400, `/api/billing/callback/wechat failed callback returned ${callback.response.status}, expected failure`);
+
+  const refreshed = await request(`/api/billing/orders/${order.payload.order.id}`);
+  assert(refreshed.response.ok, `/api/billing/orders/:id for failed callback returned ${refreshed.response.status}: ${refreshed.text}`);
+  assert(refreshed.payload?.order?.status === "failed", "payment order was not marked failed after failed callback");
+  assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "failed payment callback diagnostic missing");
+}
+
 async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   const current = await registerAndCheckSession();
@@ -229,6 +255,7 @@ async function main() {
 
   if (canCheckPayment) {
     await checkPaymentFlow();
+    await checkPaymentFailureFlow();
     await checkTopicSuggestions(profile);
     await checkImagePrompts();
     await checkRewrite(profile, generated);
