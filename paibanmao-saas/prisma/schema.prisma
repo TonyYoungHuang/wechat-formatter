@@ -96,6 +96,7 @@ model Workspace {
   accountProfiles AccountProfile[]
   topics          Topic[]
   projects        ContentProject[]
+  calendarItems   ContentCalendarItem[]
   usageLogs       UsageLog[]
   subscriptions   Subscription[]
   paymentOrders   PaymentOrder[]
@@ -157,7 +158,7 @@ model Subscription {
 
 model AccountProfile {
   id                  String             @id @default(cuid())
-  workspaceId          String
+  workspaceId         String
   name                String
   type                AccountProfileType
   niche               String
@@ -174,26 +175,28 @@ model AccountProfile {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  topics    Topic[]
-  projects  ContentProject[]
+  workspace     Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  topics        Topic[]
+  projects      ContentProject[]
+  calendarItems ContentCalendarItem[]
 }
 
 model Topic {
-  id               String        @id @default(cuid())
+  id               String         @id @default(cuid())
   workspaceId      String
   accountProfileId String
   title            String
   reason           String
   goals            ContentGoal[]
   entries          ContentEntry[]
-  status           TopicStatus   @default(idea)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  status           TopicStatus    @default(idea)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  accountProfile AccountProfile @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile        @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
   projects       ContentProject[]
+  calendarItems  ContentCalendarItem[]
 }
 
 model ContentProject {
@@ -208,11 +211,37 @@ model ContentProject {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  accountProfile AccountProfile   @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
-  topic          Topic?           @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile        @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
+  topic          Topic?                @relation(fields: [topicId], references: [id], onDelete: SetNull)
   variants       ContentVariant[]
   reports        ComplianceReport[]
+  calendarItems  ContentCalendarItem[]
+}
+
+model ContentCalendarItem {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  accountProfileId String?
+  topicId          String?
+  projectId        String?
+  entry            ContentEntry
+  title            String
+  status           TopicStatus  @default(ready)
+  scheduledFor     DateTime
+  publishedAt      DateTime?
+  note             String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile? @relation(fields: [accountProfileId], references: [id], onDelete: SetNull)
+  topic          Topic?          @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  project        ContentProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, scheduledFor])
+  @@index([workspaceId, status])
+  @@index([workspaceId, entry])
 }
 
 model ContentVariant {
@@ -296,19 +325,19 @@ model ComplianceReport {
   summary   String
   createdAt DateTime @default(now())
 
-  project ContentProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project ContentProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues  ComplianceIssue[]
 }
 
 model ComplianceIssue {
-  id        String   @id @default(cuid())
-  reportId  String
-  category  String
-  severity  String
-  excerpt   String
-  message   String
+  id         String   @id @default(cuid())
+  reportId   String
+  category   String
+  severity   String
+  excerpt    String
+  message    String
   suggestion String
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   report ComplianceReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
