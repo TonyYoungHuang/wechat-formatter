@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard/account-profiles", label: "账号档案", icon: UserRoundCog },
   { href: "/dashboard/topics", label: "选题库", icon: Layers3 },
   { href: "/dashboard/generate", label: "五入口生成", icon: Sparkles },
+  { href: "/dashboard/editor", label: "公众号编辑", icon: FileText },
   { href: "/dashboard/projects", label: "内容项目", icon: FileText },
   { href: "/dashboard/calendar", label: "内容日历", icon: CalendarDays },
   { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
