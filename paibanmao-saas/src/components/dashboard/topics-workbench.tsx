@@ -32,6 +32,14 @@ type Suggestion = {
   goals: string[];
 };
 
+const entryLabels: Record<string, string> = {
+  wechat_article: "公众号",
+  green_note: "小绿书",
+  search: "搜一搜",
+  question: "问一问",
+  moments: "朋友圈",
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -61,21 +69,16 @@ export function TopicsWorkbench() {
       setTopics(topicData.topics);
       setAccountProfileId((current) => current || profileData.profiles[0]?.id || "");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "加载失败。");
+      setMessage(error instanceof Error ? error.message : "加载选题失败。");
     }
   }
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/account-profiles").then((response) => readJson<{ profiles: AccountProfile[] }>(response)),
-      fetch("/api/topics").then((response) => readJson<{ topics: Topic[] }>(response)),
-    ])
-      .then(([profileData, topicData]) => {
-        setProfiles(profileData.profiles);
-        setTopics(topicData.topics);
-        setAccountProfileId((current) => current || profileData.profiles[0]?.id || "");
-      })
-      .catch((error: Error) => setMessage(error.message));
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function createTopic(title: string, reason = "手动保存的选题。") {
@@ -136,7 +139,7 @@ export function TopicsWorkbench() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">选题库</h1>
-          <p className="mt-1 text-sm text-slate-600">保存可以复用的微信内容选题，并一键进入五入口生成器。</p>
+          <p className="mt-1 text-sm text-slate-600">保存可复用的微信内容选题，并一键进入五入口生成器。</p>
         </div>
         <Button asChild variant="secondary">
           <Link href="/dashboard/account-profiles">管理账号档案</Link>
@@ -203,7 +206,7 @@ export function TopicsWorkbench() {
                 <div className="flex flex-wrap gap-2">
                   {item.entries.map((entry) => (
                     <span key={entry} className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
-                      {entry}
+                      {entryLabels[entry] || entry}
                     </span>
                   ))}
                 </div>

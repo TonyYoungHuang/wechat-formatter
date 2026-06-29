@@ -18,6 +18,14 @@ type Project = {
   _count?: { reports: number };
 };
 
+const entryLabels: Record<string, string> = {
+  wechat_article: "公众号",
+  green_note: "小绿书",
+  search: "搜一搜",
+  question: "问一问",
+  moments: "朋友圈",
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -38,21 +46,18 @@ export function ProjectsWorkbench() {
       setProjects(data.projects);
       setMessage("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "加载失败。");
+      setMessage(error instanceof Error ? error.message : "加载内容项目失败。");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetch("/api/projects")
-      .then((response) => readJson<{ projects: Project[] }>(response))
-      .then((data) => {
-        setProjects(data.projects);
-        setMessage("");
-      })
-      .catch((error: Error) => setMessage(error.message))
-      .finally(() => setLoading(false));
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   return (
@@ -91,7 +96,7 @@ export function ProjectsWorkbench() {
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 {project.variants.map((variant) => (
                   <div key={variant.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                    <div className="text-xs text-slate-500">{variant.entry}</div>
+                    <div className="text-xs text-slate-500">{entryLabels[variant.entry] || variant.entry}</div>
                     <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">{variant.title}</div>
                   </div>
                 ))}

@@ -127,6 +127,7 @@ export function ComplianceWorkbench() {
                     <span className="font-medium text-slate-950">{issue.category}</span>
                     <span className="rounded-full bg-amber-50 px-2 py-1 text-xs text-amber-700">{issue.severity}</span>
                   </div>
+                  {issue.excerpt ? <p className="mt-2 rounded bg-slate-50 px-3 py-2 text-sm text-slate-500">原文片段：{issue.excerpt}</p> : null}
                   <p className="mt-2 text-sm text-slate-600">{issue.message}</p>
                   <p className="mt-2 text-sm text-emerald-700">{issue.suggestion}</p>
                 </div>
