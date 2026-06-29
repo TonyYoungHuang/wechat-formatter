@@ -1,8 +1,9 @@
-import { defaultPlans, type PlanCode } from "@/lib/entitlements/plans";
+import type { PlanCode } from "@/lib/entitlements/plans";
+import { getPlanConfig } from "@/lib/entitlements/service";
 
-export function getPlanPriceCents(planCode: PlanCode) {
-  const plan = defaultPlans.find((item) => item.code === planCode);
-  return plan?.priceCents ?? 0;
+export async function getPlanPriceCents(planCode: PlanCode) {
+  const plan = await getPlanConfig(planCode);
+  return plan.priceCents ?? 0;
 }
 
 export function buildPlaceholderCheckout(orderId: string, provider: "wechat" | "alipay") {
@@ -12,8 +13,7 @@ export function buildPlaceholderCheckout(orderId: string, provider: "wechat" | "
     orderId,
     instructions:
       provider === "wechat"
-        ? "微信支付参数已预留，价格配置完成后接入 Native Pay。"
-        : "支付宝参数已预留，价格配置完成后接入网页/扫码支付。",
+        ? "微信支付参数已预留；接入商户号后在这里返回 Native Pay 二维码链接。"
+        : "支付宝参数已预留；接入应用私钥后在这里返回网页支付或扫码支付参数。",
   };
 }
-

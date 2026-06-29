@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return errorResponse("Plan and payment provider are required.");
     }
 
-    const amountCents = getPlanPriceCents(parsed.data.planCode);
+    const amountCents = await getPlanPriceCents(parsed.data.planCode);
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
     const order = await prisma.paymentOrder.create({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
+import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
@@ -42,11 +43,31 @@ export async function POST(request: Request) {
       });
     }
 
-    const variants = buildFallbackFiveEntry({
+    let generationSource = "fallback";
+    let aiError: string | null = null;
+    let tokenInput = 0;
+    let tokenOutput = 0;
+    let variants = buildFallbackFiveEntry({
       topic: parsed.data.topic,
       goal: parsed.data.goal,
       accountProfile,
     });
+
+    if (isAiProviderConfigured()) {
+      try {
+        const aiResult = await generateFiveEntryWithAi({
+          topic: parsed.data.topic,
+          goal: parsed.data.goal,
+          accountProfile,
+        });
+        variants = aiResult.variants;
+        tokenInput = aiResult.tokenInput;
+        tokenOutput = aiResult.tokenOutput;
+        generationSource = `${aiResult.provider}:${aiResult.model}`;
+      } catch (error) {
+        aiError = error instanceof Error ? error.message : "AI generation failed.";
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const job = await tx.generationJob.create({
@@ -55,8 +76,11 @@ export async function POST(request: Request) {
           accountProfileId: accountProfile.id,
           type: "five_entry_generation",
           status: "succeeded",
-          input: parsed.data,
-          output: { variants } as Prisma.InputJsonValue,
+          input: { ...parsed.data, source: generationSource } as Prisma.InputJsonValue,
+          output: { variants, source: generationSource, aiError } as Prisma.InputJsonValue,
+          error: aiError,
+          tokenInput,
+          tokenOutput,
         },
       });
 

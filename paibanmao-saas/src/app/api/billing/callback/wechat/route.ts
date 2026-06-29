@@ -1,28 +1,32 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
+
+import { markOrderPaid, parseCallbackPayload, verifyWechatCallback } from "@/lib/billing/callbacks";
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => ({}));
-  const orderId = typeof payload.orderId === "string" ? payload.orderId : "";
+  const rawBody = await request.text();
+  const verified = verifyWechatCallback({
+    rawBody,
+    signature: request.headers.get("wechatpay-signature") || request.headers.get("x-paibanmao-signature"),
+    timestamp: request.headers.get("wechatpay-timestamp") || request.headers.get("x-paibanmao-timestamp"),
+    nonce: request.headers.get("wechatpay-nonce") || request.headers.get("x-paibanmao-nonce"),
+  });
 
-  if (!orderId) {
+  if (!verified) {
+    return NextResponse.json({ message: "invalid signature" }, { status: 401 });
+  }
+
+  const payload = parseCallbackPayload(JSON.parse(rawBody || "{}"));
+
+  if (!payload) {
     return NextResponse.json({ message: "orderId required" }, { status: 400 });
   }
 
-  const order = await prisma.paymentOrder.update({
-    where: { id: orderId },
-    data: {
-      status: "paid",
-      paidAt: new Date(),
-      providerTradeNo: typeof payload.tradeNo === "string" ? payload.tradeNo : `WECHAT_PLACEHOLDER_${orderId}`,
-    },
-  });
-
-  await prisma.workspace.update({
-    where: { id: order.workspaceId },
-    data: { planCode: order.planCode },
+  await markOrderPaid({
+    provider: "wechat",
+    orderId: payload.orderId,
+    tradeNo: payload.tradeNo,
+    providerOrderId: payload.providerOrderId,
   });
 
   return NextResponse.json({ ok: true });
 }
-
