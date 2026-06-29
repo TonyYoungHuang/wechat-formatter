@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, Copy, FolderOpen, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
 
-import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 
 type AccountProfile = {
   id: string;
@@ -64,6 +64,14 @@ const goals = [
   { value: "interaction", label: "互动" },
 ];
 
+const statusLabels: Record<GenerationJob["status"], string> = {
+  pending: "等待中",
+  running: "生成中",
+  succeeded: "已完成",
+  failed: "失败",
+  cancelled: "已取消",
+};
+
 function getInitialSearchParam(key: string) {
   if (typeof window === "undefined") {
     return "";
@@ -113,6 +121,10 @@ function formatJobType(type: string) {
   return labels[type] || type;
 }
 
+function getEntrySummary(entry: ContentEntry) {
+  return contentEntries.find((item) => item.id === entry)?.summary || "";
+}
+
 export function FiveEntryGenerator() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
   const [accountProfileId, setAccountProfileId] = useState(() => getInitialSearchParam("accountProfileId"));
@@ -143,7 +155,7 @@ export function FiveEntryGenerator() {
       const data = await readJson<{ jobs: GenerationJob[] }>(await fetch("/api/generation-jobs"));
       setJobs(data.jobs);
     } catch {
-      // The generator remains usable even if history fails to load.
+      // 生成器本身仍可使用，历史记录失败不阻断主流程。
     }
   }
 
@@ -349,7 +361,7 @@ export function FiveEntryGenerator() {
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
               <CardTitle>{activeVariant?.title || contentEntries.find((item) => item.id === activeEntry)?.label}</CardTitle>
-              <p className="mt-1 text-sm text-slate-500">{contentEntries.find((item) => item.id === activeEntry)?.summary}</p>
+              <p className="mt-1 text-sm text-slate-500">{getEntrySummary(activeEntry)}</p>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               {result ? (
@@ -463,7 +475,7 @@ export function FiveEntryGenerator() {
                   <div className="mt-1 text-xs text-slate-500">{new Date(job.createdAt).toLocaleString()}</div>
                 </div>
                 <span className={`w-fit rounded-full px-2 py-1 text-xs ${job.status === "succeeded" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
-                  {job.status}
+                  {statusLabels[job.status]}
                 </span>
                 <div className="min-w-0 text-slate-600">
                   <div className="truncate">来源：{getJobSource(job)}</div>

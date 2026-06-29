@@ -224,6 +224,17 @@ async function checkEditorFiveEntryView() {
   }
 }
 
+async function checkFiveEntryGeneratorView() {
+  const generator = await request("/dashboard/generate");
+  assert(generator.response.ok, `/dashboard/generate returned ${generator.response.status}: ${generator.text.slice(0, 200)}`);
+  assert(generator.text.includes("五入口生成器"), "generator page title missing");
+  assert(generator.text.includes("生成五入口内容"), "generator primary action missing");
+  assert(generator.text.includes("后台生成"), "generator queue action missing");
+  for (const label of ["公众号", "小绿书", "搜一搜", "问一问", "朋友圈"]) {
+    assert(generator.text.includes(label), `generator entry label missing: ${label}`);
+  }
+}
+
 async function checkFreeAccountProfileLimit() {
   const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Free extra profile"));
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
@@ -888,6 +899,7 @@ async function main() {
   const profile = await checkAccountProfiles();
   await checkDashboardOperatingView();
   await checkEditorFiveEntryView();
+  await checkFiveEntryGeneratorView();
   await checkQueuedGenerationScopeRejection();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);
