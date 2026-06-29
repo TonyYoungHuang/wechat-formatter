@@ -7,6 +7,7 @@ import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
+import { getActivePromptTemplate } from "@/lib/prompts/service";
 import { assertCanUseGeneration } from "@/lib/usage/service";
 
 export async function POST(request: Request) {
@@ -52,6 +53,21 @@ export async function POST(request: Request) {
       goal: parsed.data.goal,
       accountProfile,
     });
+    const promptTemplate = await getActivePromptTemplate("five_entry_generation", {
+      topic: parsed.data.topic,
+      goal: parsed.data.goal,
+      accountName: accountProfile.name,
+      niche: accountProfile.niche,
+      persona: accountProfile.persona,
+      audience: accountProfile.audience,
+      audiencePainPoints: accountProfile.audiencePainPoints,
+      productOrService: accountProfile.productOrService || "未填写",
+      monetizationMethods: accountProfile.monetizationMethods.join(", ") || "未填写",
+      tone: accountProfile.tone,
+      commonCta: accountProfile.commonCta || "未填写",
+      forbiddenWords: accountProfile.forbiddenWords.join(", ") || "无",
+      sampleText: accountProfile.sampleText || "无",
+    });
 
     if (isAiProviderConfigured()) {
       try {
@@ -59,6 +75,7 @@ export async function POST(request: Request) {
           topic: parsed.data.topic,
           goal: parsed.data.goal,
           accountProfile,
+          prompt: promptTemplate.rendered,
         });
         variants = aiResult.variants;
         tokenInput = aiResult.tokenInput;
@@ -74,9 +91,18 @@ export async function POST(request: Request) {
         data: {
           workspaceId: current.workspace.id,
           accountProfileId: accountProfile.id,
+          promptTemplateId: promptTemplate.id ?? undefined,
           type: "five_entry_generation",
           status: "succeeded",
-          input: { ...parsed.data, source: generationSource } as Prisma.InputJsonValue,
+          input: {
+            ...parsed.data,
+            source: generationSource,
+            promptTemplate: {
+              key: promptTemplate.key,
+              version: promptTemplate.version,
+              source: promptTemplate.source,
+            },
+          } as Prisma.InputJsonValue,
           output: { variants, source: generationSource, aiError } as Prisma.InputJsonValue,
           error: aiError,
           tokenInput,

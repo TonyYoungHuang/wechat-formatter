@@ -16,6 +16,14 @@ type ProviderStatus = {
   };
 };
 
+type PromptConfig = {
+  key: string;
+  version: number;
+  content: string;
+  active: boolean;
+  source: string;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -26,6 +34,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export function SettingsWorkbench() {
   const [status, setStatus] = useState<ProviderStatus | null>(null);
+  const [prompts, setPrompts] = useState<PromptConfig[]>([]);
   const [name, setName] = useState("default-router");
   const [baseUrl, setBaseUrl] = useState("https://example-model-router.com/v1");
   const [apiKeyRef, setApiKeyRef] = useState("AI_OPENAI_COMPATIBLE_API_KEY");
@@ -35,27 +44,29 @@ export function SettingsWorkbench() {
 
   async function load() {
     try {
-      const data = await readJson<ProviderStatus>(await fetch("/api/admin/ai-providers"));
-      setStatus(data);
-      setName(data.provider.name || "default-router");
-      setModelId(data.provider.model || "gpt-4.1-mini");
+      const [providerData, promptData] = await Promise.all([
+        fetch("/api/admin/ai-providers").then((response) => readJson<ProviderStatus>(response)),
+        fetch("/api/admin/prompts").then((response) => readJson<{ prompts: PromptConfig[] }>(response)),
+      ]);
+      setStatus(providerData);
+      setName(providerData.provider.name || "default-router");
+      setModelId(providerData.provider.model || "gpt-4.1-mini");
+      setPrompts(promptData.prompts);
+      setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载配置失败。");
     }
   }
 
   useEffect(() => {
-    fetch("/api/admin/ai-providers")
-      .then((response) => readJson<ProviderStatus>(response))
-      .then((data) => {
-        setStatus(data);
-        setName(data.provider.name || "default-router");
-        setModelId(data.provider.model || "gpt-4.1-mini");
-      })
-      .catch((error: Error) => setMessage(error.message));
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
-  async function save() {
+  async function saveProvider() {
     try {
       await readJson(
         await fetch("/api/admin/ai-providers", {
@@ -78,11 +89,38 @@ export function SettingsWorkbench() {
     }
   }
 
+  function updatePrompt(key: string, content: string) {
+    setPrompts((items) => items.map((item) => (item.key === key ? { ...item, content } : item)));
+  }
+
+  async function savePrompt(prompt: PromptConfig) {
+    try {
+      await readJson(
+        await fetch("/api/admin/prompts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompts: {
+              [prompt.key]: {
+                content: prompt.content,
+                active: true,
+              },
+            },
+          }),
+        }),
+      );
+      setMessage(`${prompt.key} 模板已保存为新版本。`);
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "保存 Prompt 模板失败。");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">设置</h1>
-        <p className="mt-1 text-sm text-slate-600">管理模型中转站、价格额度入口和支付参数占位。</p>
+        <p className="mt-1 text-sm text-slate-600">管理模型中转站、Prompt 模板、价格额度入口和支付参数占位。</p>
       </div>
 
       {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
@@ -118,11 +156,34 @@ export function SettingsWorkbench() {
             <span>
               当前环境变量状态：Base URL {status?.provider.baseUrlConfigured ? "已配置" : "未配置"}，API Key {status?.provider.apiKeyConfigured ? "已配置" : "未配置"}
             </span>
-            <Button onClick={save}>
+            <Button onClick={saveProvider}>
               <Save className="size-4" />
               保存模型配置
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Prompt 模板版本</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {prompts.map((prompt) => (
+            <div key={prompt.key} className="rounded-lg border border-slate-200 p-4">
+              <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-medium text-slate-950">{prompt.key}</div>
+                  <div className="text-xs text-slate-500">当前版本：v{prompt.version} · 来源：{prompt.source}</div>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => savePrompt(prompt)}>
+                  <Save className="size-4" />
+                  保存新版本
+                </Button>
+              </div>
+              <textarea value={prompt.content} onChange={(event) => updatePrompt(prompt.key, event.target.value)} className="min-h-40 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 outline-none focus:border-emerald-400" />
+            </div>
+          ))}
         </CardContent>
       </Card>
 

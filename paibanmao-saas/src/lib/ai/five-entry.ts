@@ -48,6 +48,7 @@ export async function generateFiveEntryWithAi(input: {
   topic: string;
   goal: string;
   accountProfile: AccountProfileLike;
+  prompt?: string;
 }): Promise<AiFiveEntryResult> {
   const config = getDefaultAiProvider();
 
@@ -61,6 +62,30 @@ export async function generateFiveEntryWithAi(input: {
   });
 
   const profile = input.accountProfile;
+  const prompt = input.prompt ?? [
+    `Topic: ${input.topic}`,
+    `Goal: ${input.goal}`,
+    `Account name: ${profile.name}`,
+    `Niche: ${profile.niche}`,
+    `Persona: ${profile.persona}`,
+    `Audience: ${profile.audience}`,
+    `Audience pain points: ${profile.audiencePainPoints}`,
+    `Product or service: ${profile.productOrService || "not specified"}`,
+    `Monetization methods: ${profile.monetizationMethods.join(", ") || "not specified"}`,
+    `Tone: ${profile.tone}`,
+    `Common CTA: ${profile.commonCta || "natural follow or private-message CTA"}`,
+    `Forbidden words: ${profile.forbiddenWords.join(", ") || "none"}`,
+    `Sample text: ${profile.sampleText || "none"}`,
+    "",
+    "Entries to generate:",
+    contentEntries.map((entry) => `- ${entry.id}: ${entry.summary}`).join("\n"),
+    "",
+    "For green_note, include image prompt suggestions in metadata.imagePrompts.",
+    "For search, include keywords in metadata.keywords.",
+    "For question, make the answer useful and not spammy.",
+    "For moments, make the copy natural and personal.",
+  ].join("\n");
+
   const result = await generateObject({
     model: openai(config.model),
     schema: fiveEntrySchema,
@@ -70,29 +95,7 @@ export async function generateFiveEntryWithAi(input: {
       "Do not promise guaranteed traffic, income, ranking, audit approval, or medical/financial results.",
       "Respect forbidden words and keep the content practical for small individual creators.",
     ].join("\n"),
-    prompt: [
-      `Topic: ${input.topic}`,
-      `Goal: ${input.goal}`,
-      `Account name: ${profile.name}`,
-      `Niche: ${profile.niche}`,
-      `Persona: ${profile.persona}`,
-      `Audience: ${profile.audience}`,
-      `Audience pain points: ${profile.audiencePainPoints}`,
-      `Product or service: ${profile.productOrService || "not specified"}`,
-      `Monetization methods: ${profile.monetizationMethods.join(", ") || "not specified"}`,
-      `Tone: ${profile.tone}`,
-      `Common CTA: ${profile.commonCta || "natural follow or private-message CTA"}`,
-      `Forbidden words: ${profile.forbiddenWords.join(", ") || "none"}`,
-      `Sample text: ${profile.sampleText || "none"}`,
-      "",
-      "Entries to generate:",
-      contentEntries.map((entry) => `- ${entry.id}: ${entry.summary}`).join("\n"),
-      "",
-      "For green_note, include image prompt suggestions in metadata.imagePrompts.",
-      "For search, include keywords in metadata.keywords.",
-      "For question, make the answer useful and not spammy.",
-      "For moments, make the copy natural and personal.",
-    ].join("\n"),
+    prompt,
     temperature: 0.7,
   });
 
