@@ -23,7 +23,8 @@ async function readJson<T>(response: Response): Promise<T> {
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const plan = normalizePlan(searchParams.get("plan"));
+  const next = searchParams.get("next") || (plan && plan !== "free" ? `/dashboard/billing?plan=${plan}` : "/dashboard");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +61,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         <CardHeader>
           <CardTitle className="text-2xl">{isRegister ? "注册排版猫" : "登录排版猫"}</CardTitle>
           <p className="text-sm leading-6 text-slate-600">
-            {isRegister ? "免费版每天 1 次生成，先体验一个选题布局五个微信入口。" : "继续管理你的微信内容增长工作台。"}
+            {isRegister
+              ? plan && plan !== "free"
+                ? "创建账号后会进入会员页，继续开通你在价格页选择的套餐。"
+                : "免费版每天 1 次生成，先体验一个选题布局五个微信入口。"
+              : "继续管理你的微信内容增长工作台。"}
           </p>
         </CardHeader>
         <CardContent>
@@ -99,7 +104,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           </form>
           <p className="mt-4 text-center text-sm text-slate-500">
             {isRegister ? "已有账号？" : "还没有账号？"}
-            <Link className="ml-1 text-emerald-700" href={isRegister ? "/login" : "/register"}>
+            <Link className="ml-1 text-emerald-700" href={buildAuthSwitchHref(isRegister ? "/login" : "/register", plan, next)}>
               {isRegister ? "登录" : "注册"}
             </Link>
           </p>
@@ -107,4 +112,23 @@ export function AuthForm({ mode }: AuthFormProps) {
       </Card>
     </main>
   );
+}
+
+function normalizePlan(value: string | null) {
+  return value === "free" || value === "starter" || value === "pro" ? value : "";
+}
+
+function buildAuthSwitchHref(path: string, plan: string, next: string) {
+  const params = new URLSearchParams();
+
+  if (plan) {
+    params.set("plan", plan);
+  }
+
+  if (next && next !== "/dashboard") {
+    params.set("next", next);
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }

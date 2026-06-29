@@ -93,6 +93,15 @@ function formatLimit(value: number | null) {
   return value === null ? "不限" : `${value} 次`;
 }
 
+function getInitialPlan(): PlanCode {
+  if (typeof window === "undefined") {
+    return "starter";
+  }
+
+  const plan = new URLSearchParams(window.location.search).get("plan");
+  return plan === "free" || plan === "starter" || plan === "pro" ? plan : "starter";
+}
+
 export function BillingWorkbench() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [versions, setVersions] = useState<PricingVersion[]>([]);
@@ -101,7 +110,7 @@ export function BillingWorkbench() {
   const [invoices, setInvoices] = useState<InvoiceRequest[]>([]);
   const [invoiceForm, setInvoiceForm] = useState({ paymentOrderId: "", title: "", taxNumber: "", email: "" });
   const [message, setMessage] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<PlanCode>("starter");
+  const [selectedPlan, setSelectedPlan] = useState<PlanCode>(getInitialPlan);
   const [provider, setProvider] = useState("wechat");
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [loading, setLoading] = useState(true);
