@@ -512,6 +512,40 @@ async function configurePricingIfAdmin(currentUser) {
   );
 
   assert(pricing.response.ok, `/api/admin/pricing returned ${pricing.response.status}: ${pricing.text}`);
+  assert(pricing.payload?.plans?.some((plan) => plan.code === "starter" && plan.priceCents === 9900), "starter pricing update missing");
+  assert(pricing.payload?.versions?.some((version) => version.planCode === "starter"), "starter pricing version missing");
+
+  const entitlements = await jsonRequest(
+    "/api/admin/entitlements",
+    {
+      plans: {
+        pro: {
+          name: "\u4e13\u4e1a\u7248",
+          description: "Smoke test pro entitlement plan",
+          priceCents: null,
+          accountProfileLimit: 10,
+          dailyGenerationLimit: null,
+          monthlyGenerationLimit: 300,
+          advancedChecks: true,
+        },
+      },
+    },
+    { method: "PATCH" },
+  );
+
+  assert(entitlements.response.ok, `/api/admin/entitlements returned ${entitlements.response.status}: ${entitlements.text}`);
+  assert(entitlements.payload?.plans?.some((plan) => plan.code === "pro" && plan.accountProfileLimit === 10 && plan.monthlyGenerationLimit === 300), "pro entitlement update missing");
+  assert(entitlements.payload?.versions?.some((version) => version.planCode === "pro"), "pro entitlement version missing");
+
+  const adminPricing = await request("/api/admin/pricing");
+  assert(adminPricing.response.ok, `/api/admin/pricing GET returned ${adminPricing.response.status}: ${adminPricing.text}`);
+  assert(adminPricing.payload?.plans?.some((plan) => plan.code === "starter" && plan.priceCents === 9900), "admin pricing GET did not return starter price");
+  assert(adminPricing.payload?.plans?.some((plan) => plan.code === "pro" && plan.monthlyGenerationLimit === 300), "admin pricing GET did not return pro quota");
+
+  const publicPlans = await request("/api/billing/plans");
+  assert(publicPlans.response.ok, `/api/billing/plans returned ${publicPlans.response.status}: ${publicPlans.text}`);
+  assert(publicPlans.payload?.plans?.some((plan) => plan.code === "starter" && plan.priceCents === 9900), "public billing plans did not return starter price");
+  assert(publicPlans.payload?.plans?.some((plan) => plan.code === "pro" && plan.monthlyGenerationLimit === 300), "public billing plans did not return pro quota");
   return true;
 }
 
