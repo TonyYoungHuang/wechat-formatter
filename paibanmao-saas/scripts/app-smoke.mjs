@@ -192,6 +192,14 @@ async function checkAccountProfiles() {
   return profiles.payload.profiles[0];
 }
 
+async function checkDashboardOperatingView() {
+  const dashboard = await request("/dashboard");
+  assert(dashboard.response.ok, `/dashboard returned ${dashboard.response.status}: ${dashboard.text.slice(0, 200)}`);
+  assert(dashboard.text.includes("最近内容项目"), "dashboard recent projects section missing");
+  assert(dashboard.text.includes("待发布内容"), "dashboard upcoming content section missing");
+  assert(dashboard.text.includes("账号档案完整度"), "dashboard account profile completeness section missing");
+}
+
 async function checkFreeAccountProfileLimit() {
   const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Free extra profile"));
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
@@ -843,6 +851,7 @@ async function main() {
   const current = await registerAndCheckSession();
   await checkAuthRejections();
   const profile = await checkAccountProfiles();
+  await checkDashboardOperatingView();
   await checkQueuedGenerationScopeRejection();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);

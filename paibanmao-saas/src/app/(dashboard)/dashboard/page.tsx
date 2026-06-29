@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -22,8 +22,55 @@ const actions = [
   { href: "/dashboard/checks", title: "发布前检查", desc: "检查风险表达、标题和 CTA。", icon: SearchCheck },
 ];
 
+const statusLabels: Record<string, string> = {
+  idea: "选题",
+  generated: "已生成",
+  editing: "编辑中",
+  ready: "待发布",
+  published: "已发布",
+  reviewed: "已复盘",
+};
+
+const completenessFields = [
+  "name",
+  "niche",
+  "persona",
+  "audience",
+  "audiencePainPoints",
+  "productOrService",
+  "monetizationMethods",
+  "tone",
+  "commonCta",
+  "forbiddenWords",
+  "sampleText",
+] as const;
+
+type CompletenessProfile = Partial<Record<(typeof completenessFields)[number], string | string[] | null>> | null;
+
 function quotaText(used: number, limit: number | null) {
   return limit === null ? `${used} / 不限` : `${used} / ${limit}`;
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function profileCompleteness(profile: CompletenessProfile) {
+  if (!profile) {
+    return 0;
+  }
+
+  const filled = completenessFields.filter((field) => {
+    const value = profile[field];
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return typeof value === "string" && value.trim().length > 0;
+  }).length;
+
+  return Math.round((filled / completenessFields.length) * 100);
 }
 
 export default async function DashboardPage() {
@@ -33,12 +80,36 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [accountProfileCount, projectCount, pendingCalendarCount, usage] = await Promise.all([
+  const [accountProfileCount, projectCount, pendingCalendarCount, usage, defaultProfile, recentProjects, upcomingItems] = await Promise.all([
     prisma.accountProfile.count({ where: { workspaceId: current.workspace.id } }),
     prisma.contentProject.count({ where: { workspaceId: current.workspace.id } }),
     prisma.contentCalendarItem.count({ where: { workspaceId: current.workspace.id, status: { in: ["ready", "editing", "generated"] } } }),
     getGenerationUsageSummary(current.workspace.id, current.workspace.planCode),
+    prisma.accountProfile.findFirst({
+      where: { workspaceId: current.workspace.id, isDefault: true },
+      include: { _count: { select: { projects: true, topics: true } } },
+    }),
+    prisma.contentProject.findMany({
+      where: { workspaceId: current.workspace.id },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+      include: {
+        accountProfile: { select: { name: true } },
+        variants: { select: { entry: true } },
+      },
+    }),
+    prisma.contentCalendarItem.findMany({
+      where: { workspaceId: current.workspace.id, status: { in: ["ready", "editing", "generated"] } },
+      orderBy: { scheduledFor: "asc" },
+      take: 4,
+      include: {
+        accountProfile: { select: { name: true } },
+        project: { select: { id: true, title: true } },
+      },
+    }),
   ]);
+
+  const completeness = profileCompleteness(defaultProfile);
 
   const stats = [
     ["账号档案", `${accountProfileCount} / ${usage.plan.accountProfileLimit}`],
@@ -74,10 +145,10 @@ export default async function DashboardPage() {
               <Link
                 key={item}
                 href={`/dashboard/generate?topic=${encodeURIComponent(item)}`}
-                className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
               >
                 <span>{item}</span>
-                <ArrowRight className="size-4 text-emerald-600" />
+                <ArrowRight className="size-4 shrink-0 text-emerald-600" />
               </Link>
             ))}
           </CardContent>
@@ -91,10 +162,14 @@ export default async function DashboardPage() {
             <p className="mt-2 text-sm leading-6 text-slate-600">
               今日已用 {usage.daily.used} 次，本月已用 {usage.monthly.used} 次。套餐额度从后台配置读取，支付成功后立即更新。
             </p>
+            <Link href="/dashboard/billing" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:text-emerald-800">
+              查看套餐与支付
+              <ArrowRight className="size-4" />
+            </Link>
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         {actions.map((action) => {
           const Icon = action.icon;
           return (
@@ -105,6 +180,101 @@ export default async function DashboardPage() {
             </Link>
           );
         })}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>最近内容项目</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentProjects.length ? (
+              recentProjects.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/dashboard/editor?projectId=${project.id}`}
+                  className="block rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-slate-950">{project.title}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {project.accountProfile.name} · {project.variants.length} 个入口 · {formatDate(project.updatedAt)}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs text-slate-600">{statusLabels[project.status] || project.status}</span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-600">
+                还没有内容项目。先从一个选题生成公众号、小绿书、搜一搜、问一问和朋友圈内容。
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>待发布内容</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {upcomingItems.length ? (
+              upcomingItems.map((item) => (
+                <Link
+                  key={item.id}
+                  href={item.project?.id ? `/dashboard/editor?projectId=${item.project.id}` : "/dashboard/calendar"}
+                  className="block rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-white p-2 text-emerald-700">
+                      <CalendarDays className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-slate-950">{item.title}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {formatDate(item.scheduledFor)} · {item.accountProfile?.name || "通用账号"} · {statusLabels[item.status] || item.status}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-600">
+                还没有排期内容。生成内容后可以加入内容日历，形成固定发布节奏。
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>账号档案完整度</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <div className="text-3xl font-semibold text-slate-950">{completeness}%</div>
+                <div className="mt-1 text-sm text-slate-500">{defaultProfile?.name || "暂无默认账号"}</div>
+              </div>
+              <Link href="/dashboard/account-profiles" className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:text-emerald-800">
+                去完善
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${completeness}%` }} />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-slate-500">关联选题</div>
+                <div className="mt-1 text-lg font-semibold text-slate-950">{defaultProfile?._count.topics ?? 0}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-slate-500">内容项目</div>
+                <div className="mt-1 text-lg font-semibold text-slate-950">{defaultProfile?._count.projects ?? 0}</div>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">档案越完整，AI 越能稳定复用你的定位、语气、读者痛点和成交动作。</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
