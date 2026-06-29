@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createPaymentCheckout } from "@/lib/billing/gateways";
-import { getPlanPriceCents } from "@/lib/billing/orders";
+import { expirePendingPaymentOrders, getPlanPriceCents } from "@/lib/billing/orders";
 import { createPaymentOrderSchema } from "@/lib/billing/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -9,6 +9,8 @@ import { errorResponse, mapApiError } from "@/lib/http/errors";
 export async function GET() {
   try {
     const current = await requireCurrentUser();
+    await expirePendingPaymentOrders(current.workspace.id);
+
     const orders = await prisma.paymentOrder.findMany({
       where: { workspaceId: current.workspace.id },
       orderBy: { createdAt: "desc" },
@@ -24,6 +26,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const current = await requireCurrentUser();
+    await expirePendingPaymentOrders(current.workspace.id);
+
     const parsed = createPaymentOrderSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
