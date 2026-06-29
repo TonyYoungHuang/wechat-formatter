@@ -325,6 +325,32 @@ async function checkPaymentFailureFlow() {
   assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "failed payment callback diagnostic missing");
 }
 
+async function checkPaymentAmountMismatchFlow() {
+  const order = await jsonRequest("/api/billing/orders", {
+    planCode: "starter",
+    provider: "wechat",
+  });
+
+  assert(order.response.ok, `/api/billing/orders for mismatch callback returned ${order.response.status}: ${order.text}`);
+  assert(order.payload?.order?.id, "amount-mismatch order id missing");
+
+  const callback = await jsonRequest("/api/billing/callback/wechat", {
+    orderId: order.payload.order.id,
+    paid: true,
+    amountCents: 1,
+    tradeNo: `SMOKE_MISMATCH_${timestamp}`,
+    providerOrderId: `SMOKE_MISMATCH_PROVIDER_${timestamp}`,
+    status: "SUCCESS",
+  });
+
+  assert(callback.response.status >= 400, `/api/billing/callback/wechat mismatch returned ${callback.response.status}, expected failure`);
+
+  const refreshed = await request(`/api/billing/orders/${order.payload.order.id}`);
+  assert(refreshed.response.ok, `/api/billing/orders/:id for mismatch callback returned ${refreshed.response.status}: ${refreshed.text}`);
+  assert(refreshed.payload?.order?.status === "failed", "payment order was not marked failed after amount mismatch");
+  assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "amount mismatch callback diagnostic missing");
+}
+
 async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   await checkDashboardRequiresValidSession();
@@ -337,6 +363,7 @@ async function main() {
   if (canCheckPayment) {
     await checkPaymentFlow();
     await checkPaymentFailureFlow();
+    await checkPaymentAmountMismatchFlow();
     await checkStarterAccountProfileLimit();
     await checkQueuedGeneration(profile);
     await checkTopicSuggestions(profile);
