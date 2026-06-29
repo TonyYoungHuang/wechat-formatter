@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCurrentUser } from "@/lib/auth/session";
+import { isSiteAdminEmail, requireCurrentUser } from "@/lib/auth/session";
 import { createInvoiceRequestSchema } from "@/lib/billing/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -8,9 +8,17 @@ import { errorResponse, mapApiError } from "@/lib/http/errors";
 export async function GET() {
   try {
     const current = await requireCurrentUser();
+    const isSiteAdmin = isSiteAdminEmail(current.user.email);
     const invoices = await prisma.invoiceRequest.findMany({
-      where: { workspaceId: current.workspace.id },
+      where: isSiteAdmin ? {} : { workspaceId: current.workspace.id },
       include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            planCode: true,
+          },
+        },
         paymentOrder: {
           select: {
             id: true,

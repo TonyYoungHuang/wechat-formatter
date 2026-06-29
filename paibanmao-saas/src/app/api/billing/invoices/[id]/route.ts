@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requireSiteAdmin } from "@/lib/auth/session";
 import { invoiceRequestPatchSchema } from "@/lib/billing/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -11,7 +11,7 @@ type RouteContext = {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
-    const current = await requireCurrentUser();
+    await requireSiteAdmin();
     const { id } = await context.params;
     const parsed = invoiceRequestPatchSchema.safeParse(await request.json().catch(() => null));
 
@@ -20,7 +20,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     await prisma.invoiceRequest.findFirstOrThrow({
-      where: { id, workspaceId: current.workspace.id },
+      where: { id },
       select: { id: true },
     });
 
@@ -32,6 +32,13 @@ export async function PATCH(request: Request, context: RouteContext) {
         issuedAt: parsed.data.issuedAt ? new Date(parsed.data.issuedAt) : parsed.data.issuedAt,
       },
       include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            planCode: true,
+          },
+        },
         paymentOrder: {
           select: {
             id: true,

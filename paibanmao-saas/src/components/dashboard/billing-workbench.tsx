@@ -71,6 +71,11 @@ type InvoiceRequest = {
   issuedAt?: string | null;
   createdAt: string;
   paymentOrder?: PaymentOrder;
+  workspace?: {
+    id: string;
+    name: string;
+    planCode: PlanCode;
+  };
 };
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -209,6 +214,25 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "提交发票申请失败。");
+    }
+  }
+
+  async function updateInvoiceStatus(invoice: InvoiceRequest, status: InvoiceRequest["status"]) {
+    try {
+      await readJson<{ invoice: InvoiceRequest }>(
+        await fetch(`/api/billing/invoices/${invoice.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status,
+            issuedAt: status === "issued" ? new Date().toISOString() : invoice.issuedAt,
+          }),
+        }),
+      );
+      setMessage("发票状态已更新。");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "更新发票状态失败。");
     }
   }
 
@@ -436,16 +460,38 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           {invoices.length ? (
             <div className="space-y-3">
               {invoices.map((invoice) => (
-                <div key={invoice.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[1fr_120px_140px_160px] md:items-center">
+                <div key={invoice.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[1fr_120px_140px_220px] md:items-center">
                   <div>
                     <div className="font-medium text-slate-950">{invoice.title}</div>
                     <div className="mt-1 text-xs text-slate-500">
                       {invoice.email} {invoice.taxNumber ? `· ${invoice.taxNumber}` : ""}
                     </div>
+                    {isSiteAdmin && invoice.workspace ? <div className="mt-1 text-xs text-slate-500">工作区：{invoice.workspace.name}</div> : null}
                   </div>
                   <div className="text-slate-600">¥{(invoice.amountCents / 100).toFixed(2)}</div>
                   <div className="rounded-full bg-white px-2 py-1 text-center text-xs text-slate-600">{invoice.status}</div>
-                  <div className="text-xs text-slate-500 md:text-right">{new Date(invoice.createdAt).toLocaleString()}</div>
+                  <div className="space-y-2 md:text-right">
+                    <div className="text-xs text-slate-500">{new Date(invoice.createdAt).toLocaleString()}</div>
+                    {isSiteAdmin ? (
+                      <div className="flex flex-wrap gap-2 md:justify-end">
+                        {invoice.status !== "issued" ? (
+                          <Button size="sm" variant="secondary" onClick={() => updateInvoiceStatus(invoice, "issued")}>
+                            已开票
+                          </Button>
+                        ) : null}
+                        {invoice.status === "requested" ? (
+                          <Button size="sm" variant="secondary" onClick={() => updateInvoiceStatus(invoice, "rejected")}>
+                            驳回
+                          </Button>
+                        ) : null}
+                        {invoice.status !== "cancelled" ? (
+                          <Button size="sm" variant="ghost" onClick={() => updateInvoiceStatus(invoice, "cancelled")}>
+                            取消
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
