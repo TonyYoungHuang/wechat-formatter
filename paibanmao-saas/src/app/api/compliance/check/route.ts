@@ -9,6 +9,7 @@ import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 const schema = z.object({
   projectId: z.string().min(1).optional(),
+  entry: z.enum(["wechat_article", "green_note", "search", "question", "moments"]).optional(),
   title: z.string().max(160).optional(),
   content: z.string().min(1).max(50000),
   html: z.string().max(200000).optional(),
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     const plan = current ? await getPlanConfig(current.workspace.planCode) : null;
     const result = checkContentCompliance(parsed.data, {
       advanced: Boolean(plan?.advancedChecks),
+      entry: parsed.data.entry,
     });
 
     if (!parsed.data.projectId) {

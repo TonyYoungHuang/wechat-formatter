@@ -18,6 +18,7 @@ type CheckResult = {
   score: number;
   level: string;
   mode: "basic" | "advanced";
+  entry?: string;
   summary: string;
   issues: Issue[];
   report?: { id: string };
@@ -130,12 +131,14 @@ export function ComplianceWorkbench() {
     setLoading(true);
     setMessage("");
     try {
+      const selectedVariant = project?.variants.find((item) => item.id === selectedVariantId);
       const data = await readJson<CheckResult>(
         await fetch("/api/compliance/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             projectId: projectId || undefined,
+            entry: selectedVariant?.entry,
             title: title || undefined,
             content,
           }),
@@ -224,7 +227,10 @@ export function ComplianceWorkbench() {
             <div className="flex flex-col gap-3 rounded-lg bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-3xl font-semibold text-slate-950">{result.score}</div>
-                <div className="text-sm text-slate-500">综合分 · {result.mode === "advanced" ? "高级检查" : "基础检查"}</div>
+                <div className="text-sm text-slate-500">
+                  综合分 · {result.mode === "advanced" ? "高级检查" : "基础检查"}
+                  {result.entry ? ` · ${result.entry}` : ""}
+                </div>
               </div>
               <p className="text-sm leading-6 text-slate-600">{result.summary}</p>
             </div>

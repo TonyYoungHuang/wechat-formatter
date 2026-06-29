@@ -406,6 +406,7 @@ export function WechatEditor() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId: project?.id || undefined,
+        entry: "wechat_article",
         title: wechatVariant?.title || project?.title || "公众号文章",
         content: editor.getText(),
         html: editor.getHTML(),

@@ -8,6 +8,17 @@ export type ComplianceIssue = {
 
 type CheckOptions = {
   advanced?: boolean;
+  entry?: ContentEntry;
+};
+
+type ContentEntry = "wechat_article" | "green_note" | "search" | "question" | "moments";
+
+const entryLabels: Record<ContentEntry, string> = {
+  wechat_article: "公众号",
+  green_note: "小绿书",
+  search: "搜一搜",
+  question: "问一问",
+  moments: "朋友圈",
 };
 
 const basePatterns = [
@@ -111,13 +122,109 @@ function pushAdvancedIssues(issues: ComplianceIssue[], input: { title?: string; 
   }
 }
 
+function pushEntryRuleIssues(issues: ComplianceIssue[], input: { title?: string; content: string }, entry?: ContentEntry) {
+  if (!entry) {
+    return;
+  }
+
+  const title = input.title?.trim() || "";
+  const content = input.content.trim();
+
+  if (entry === "wechat_article" && content.length < 800) {
+    issues.push({
+      category: "入口规则检查",
+      severity: "low",
+      excerpt: content.slice(0, 40),
+      message: "公众号长文内容偏短，可能不足以支撑完整论证和搜一搜收录。",
+      suggestion: "补充问题背景、步骤拆解、案例、常见误区和自然 CTA，让文章更像完整公众号正文。",
+    });
+  }
+
+  if (entry === "green_note") {
+    if (content.length > 1000) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "medium",
+        excerpt: content.slice(0, 40),
+        message: "小绿书文案超过 1000 字，手机图文阅读压力较大。",
+        suggestion: "拆成 3/6/9 页脚本，每页只保留一个观点，把长解释放回公众号正文。",
+      });
+    }
+
+    if (!/(第\s*\d+\s*页|封面|图片提示词|图文|3:4)/.test(content)) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "low",
+        excerpt: "",
+        message: "小绿书内容缺少明显的分页脚本或图片提示词结构。",
+        suggestion: "补充封面页、观点页、结尾行动页，并为每页准备图片提示词。",
+      });
+    }
+  }
+
+  if (entry === "search" && !/(关键词|长尾词|搜索|搜一搜|摘要|标题)/.test(`${title}\n${content}`)) {
+    issues.push({
+      category: "入口规则检查",
+      severity: "medium",
+      excerpt: title,
+      message: "搜一搜版本缺少关键词、摘要或搜索型标题信号。",
+      suggestion: "明确主关键词、长尾词、搜索型标题和摘要前 100 字，避免只写普通正文。",
+    });
+  }
+
+  if (entry === "question") {
+    if (content.length > 1200) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "low",
+        excerpt: content.slice(0, 40),
+        message: "问一问回答偏长，可能不适合快速阅读和互动。",
+        suggestion: "先直接回答，再用 2-4 个要点解释，最后自然引导关注或阅读完整文章。",
+      });
+    }
+
+    if (!/(建议|可以|先|第一|直接回答|关注|完整文章)/.test(content)) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "low",
+        excerpt: "",
+        message: "问一问回答缺少清晰行动建议或关注引导。",
+        suggestion: "开头先给结论，结尾补一个低压力关注或延伸阅读引导。",
+      });
+    }
+  }
+
+  if (entry === "moments") {
+    if (content.length > 500) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "medium",
+        excerpt: content.slice(0, 40),
+        message: "朋友圈文案过长，容易不像自然转发。",
+        suggestion: "压缩为 80-200 字，用个人观察开头，再自然说明为什么推荐这篇内容。",
+      });
+    }
+
+    if (/(本文|本篇文章|读者朋友|综上所述|首先其次最后)/.test(content)) {
+      issues.push({
+        category: "入口规则检查",
+        severity: "low",
+        excerpt: "",
+        message: "朋友圈文案有偏公众号正文的书面表达。",
+        suggestion: "改成更像个人口吻的转发理由，减少正式小标题和总结腔。",
+      });
+    }
+  }
+}
+
 export function checkContentCompliance(input: { title?: string; content: string }, options: CheckOptions = {}) {
   const issues: ComplianceIssue[] = [];
   const text = `${input.title || ""}\n${input.content}`;
 
   pushPatternIssues(issues, text);
+  pushEntryRuleIssues(issues, input, options.entry);
 
-  if (input.content.trim().length < 300) {
+  if ((!options.entry || options.entry === "wechat_article") && input.content.trim().length < 300) {
     issues.push({
       category: "内容完整度",
       severity: "low",
@@ -141,6 +248,7 @@ export function checkContentCompliance(input: { title?: string; content: string 
     score,
     level,
     mode: options.advanced ? "advanced" : "basic",
+    entry: options.entry ? entryLabels[options.entry] : undefined,
     summary: issues.length
       ? "发现一些发布前建议修改的问题。排版猫只提供辅助检查，不保证平台审核结果。"
       : "未发现明显风险，仍建议人工复核重点表述和行业合规边界。",
