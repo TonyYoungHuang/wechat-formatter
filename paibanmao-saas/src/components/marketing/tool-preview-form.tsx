@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 
@@ -17,9 +18,11 @@ export function ToolPreviewForm({
   const [preview, setPreview] = useState<PublicToolPreview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const trimmedInput = input.trim();
+  const continuation = buildContinuation(kind, trimmedInput);
 
   async function generatePreview() {
-    if (input.trim().length < 2 || loading) {
+    if (trimmedInput.length < 2 || loading) {
       return;
     }
 
@@ -30,7 +33,7 @@ export function ToolPreviewForm({
       const response = await fetch("/api/tools/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, input }),
+        body: JSON.stringify({ kind, input: trimmedInput }),
       });
       const data = await response.json();
 
@@ -55,7 +58,7 @@ export function ToolPreviewForm({
         value={input}
       />
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <Button disabled={input.trim().length < 2 || loading} onClick={generatePreview}>
+      <Button disabled={trimmedInput.length < 2 || loading} onClick={generatePreview}>
         {loading ? <Loader2 className="size-4 animate-spin" /> : null}
         生成预览
         {!loading ? <ArrowRight className="size-4" /> : null}
@@ -74,8 +77,24 @@ export function ToolPreviewForm({
             ))}
           </div>
           <p className="mt-4 text-sm leading-6 text-slate-600">{preview.loginHint}</p>
+          <Button asChild className="mt-4 w-full">
+            <Link href={continuation.href}>
+              {continuation.label}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         </div>
       ) : null}
     </div>
   );
+}
+
+function buildContinuation(kind: PublicToolKind, input: string) {
+  const nextPath = kind === "compliance" ? "/dashboard/checks" : `/dashboard/generate?topic=${encodeURIComponent(input)}`;
+  const params = new URLSearchParams({ next: nextPath });
+
+  return {
+    href: `/register?${params.toString()}`,
+    label: kind === "compliance" ? "注册后保存检查报告" : "注册后生成完整内容包",
+  };
 }
