@@ -18,8 +18,57 @@ const publicPages = [
 
 const sitemapPaths = [
   "/tools/topic-generator",
+  "/tools/wechat-title-generator",
+  "/tools/green-note-generator",
+  "/tools/search-keyword-helper",
+  "/tools/question-answer-generator",
+  "/tools/moments-copy-generator",
   "/tools/compliance-checker",
+  "/pricing",
+  "/templates",
+  "/tutorials",
   "/tutorials/wechat-topic-to-five-entries",
+];
+
+const protectedGetPaths = [
+  "/api/account-profiles",
+  "/api/billing/orders",
+  "/api/calendar-items",
+  "/api/content-templates",
+  "/api/cta-snippets",
+  "/api/generation-jobs",
+  "/api/projects",
+  "/api/topics",
+  "/api/usage/summary",
+];
+
+const protectedPostChecks = [
+  {
+    path: "/api/generate/five-entry",
+    body: {
+      topic: previewInput,
+    },
+  },
+  {
+    path: "/api/generate/image-prompts",
+    body: {
+      topic: previewInput,
+      style: "\u5c0f\u7eff\u4e66\u5c01\u9762",
+    },
+  },
+  {
+    path: "/api/generate/rewrite",
+    body: {
+      content: `${previewInput}\u3002\u8fd9\u662f\u4e00\u6bb5\u7528\u4e8e\u9a8c\u8bc1\u672a\u767b\u5f55\u62e6\u622a\u7684\u6d4b\u8bd5\u6587\u672c\u3002`,
+      tone: "clear",
+    },
+  },
+  {
+    path: "/api/topics/generate",
+    body: {
+      seed: previewInput,
+    },
+  },
 ];
 
 async function request(path, options = {}) {
@@ -63,6 +112,22 @@ async function checkDashboardRedirect() {
   assert([307, 308].includes(response.status), `/dashboard/generate returned ${response.status}, expected redirect`);
   assert(location.includes("/login"), "dashboard redirect does not point to login");
   assert(location.includes("next="), "dashboard redirect does not preserve next parameter");
+}
+
+async function checkProtectedApiAuth() {
+  for (const path of protectedGetPaths) {
+    const { response } = await request(path);
+    assert(response.status === 401, `${path} returned ${response.status}, expected 401`);
+  }
+
+  for (const check of protectedPostChecks) {
+    const { response, text } = await request(check.path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(check.body),
+    });
+    assert(response.status === 401, `${check.path} returned ${response.status}, expected 401: ${text}`);
+  }
 }
 
 async function checkToolPreview() {
@@ -118,6 +183,7 @@ async function main() {
   await checkPublicPages();
   await checkSitemapAndRobots();
   await checkDashboardRedirect();
+  await checkProtectedApiAuth();
   await checkToolPreview();
   await checkPublicPreviewLimit();
   console.log("Public smoke checks passed.");
