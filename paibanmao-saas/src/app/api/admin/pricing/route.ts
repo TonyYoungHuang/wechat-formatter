@@ -18,7 +18,7 @@ export async function PATCH(request: Request) {
     const parsed = adminPlansPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success || !parsed.data.plans) {
-      return errorResponse("Entitlement configuration payload is invalid.");
+      return errorResponse("Pricing configuration payload is invalid.");
     }
 
     const updated = await Promise.all(

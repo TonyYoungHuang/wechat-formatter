@@ -232,7 +232,7 @@ model ContentVariant {
 
 model AiProvider {
   id        String   @id @default(cuid())
-  name      String
+  name      String   @unique
   type      String   @default("openai-compatible")
   baseUrl   String
   apiKeyRef String

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { defaultPlans } from "@/lib/entitlements/plans";
+import { getPlanConfigs } from "@/lib/entitlements/service";
 
 export async function GET() {
+  const plans = await getPlanConfigs();
+
   return NextResponse.json({
-    plans: defaultPlans,
+    plans,
     configurable: true,
-    note: "Pricing and quota controls are reserved for admin configuration.",
+    note: "Pricing and quota controls are loaded from admin configuration when present.",
   });
 }

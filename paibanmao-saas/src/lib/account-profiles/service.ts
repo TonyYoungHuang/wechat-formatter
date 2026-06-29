@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db/prisma";
-import { getDefaultPlan } from "@/lib/entitlements/plans";
+import { getPlanConfig } from "@/lib/entitlements/service";
 
 export async function assertCanCreateAccountProfile(workspaceId: string, planCode: string) {
-  const plan = getDefaultPlan(planCode === "starter" || planCode === "pro" ? planCode : "free");
+  const plan = await getPlanConfig(planCode === "starter" || planCode === "pro" ? planCode : "free");
   const count = await prisma.accountProfile.count({ where: { workspaceId } });
 
   if (count >= plan.accountProfileLimit) {
-    throw new Error(`当前套餐最多支持 ${plan.accountProfileLimit} 个账号档案。`);
+    throw new Error(`Current plan allows ${plan.accountProfileLimit} account profiles.`);
   }
 }
 
@@ -21,4 +21,3 @@ export async function normalizeDefaultProfile(workspaceId: string, selectedId: s
     data: { isDefault: true },
   });
 }
-

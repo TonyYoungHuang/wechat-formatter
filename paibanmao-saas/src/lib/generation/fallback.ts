@@ -24,18 +24,20 @@ export function buildFallbackFiveEntry(input: {
 }): GeneratedVariant[] {
   const { topic, accountProfile } = input;
   const cta = accountProfile.commonCta || "如果你也在做公众号副业，可以先从一个小选题开始测试。";
+  const audience = accountProfile.audience || "微信副业创作者";
+  const niche = accountProfile.niche || "微信内容增长";
 
   return [
     {
       entry: "wechat_article",
-      title: `${topic}：给${accountProfile.audience}的一份实操拆解`,
+      title: `${topic}：给${audience}的一份实操拆解`,
       body: [
         `# ${topic}`,
         "",
-        `这篇文章面向${accountProfile.audience}，用${accountProfile.tone}的方式讲清楚这个问题。`,
+        `这篇文章面向${audience}，用${accountProfile.tone || "自然、直接"}的方式讲清楚这个问题。`,
         "",
         "## 为什么这个选题值得写",
-        `它和「${accountProfile.niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。`,
+        `它和「${niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。`,
         "",
         "## 可以怎么展开",
         "1. 先讲读者当下的困惑。",
@@ -57,7 +59,7 @@ export function buildFallbackFiveEntry(input: {
         "第 2 页：告诉读者为什么现在适合做。",
         "第 3 页：给一个最小行动清单。",
         "",
-        `短文案：${accountProfile.audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口。`,
+        `短文案：${audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口。`,
       ].join("\n"),
       metadata: {
         pages: 3,
@@ -74,20 +76,20 @@ export function buildFallbackFiveEntry(input: {
       body: [
         "搜一搜关键词建议：",
         `- ${topic}`,
-        `- ${accountProfile.niche}怎么做`,
-        `- ${accountProfile.audience}公众号副业`,
+        `- ${niche}怎么做`,
+        `- ${audience}公众号副业`,
         "",
         "搜索型摘要建议：",
-        `本文用一篇文章讲清「${topic}」的可执行步骤，适合${accountProfile.audience}参考。`,
+        `本文用一篇文章讲清「${topic}」的可执行步骤，适合${audience}参考。`,
       ].join("\n"),
-      metadata: { keywords: [topic, accountProfile.niche, accountProfile.audience] },
+      metadata: { keywords: [topic, niche, audience] },
     },
     {
       entry: "question",
       title: `${topic}，普通人应该怎么开始？`,
       body: [
         "问一问回答草稿：",
-        `如果你是${accountProfile.audience}，建议先不要把目标定成马上变现。`,
+        `如果你是${audience}，建议先不要把目标定成马上变现。`,
         "更稳的做法是：先确定一个垂直问题，再连续输出 7-14 天，观察哪类内容有人收藏、评论和私信。",
         "",
         `可以从「${topic}」这个方向开始测试。${cta}`,
@@ -121,4 +123,3 @@ export function buildImagePrompts(topic: string, scene: string, style: string) {
     ],
   };
 }
-

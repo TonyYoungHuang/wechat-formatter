@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { getDefaultPlan } from "@/lib/entitlements/plans";
+import { getPlanConfig } from "@/lib/entitlements/service";
 
 function startOfToday() {
   const now = new Date();
@@ -7,7 +7,7 @@ function startOfToday() {
 }
 
 export async function assertCanUseGeneration(workspaceId: string, planCode: string) {
-  const plan = getDefaultPlan(planCode === "starter" || planCode === "pro" ? planCode : "free");
+  const plan = await getPlanConfig(planCode === "starter" || planCode === "pro" ? planCode : "free");
 
   if (plan.dailyGenerationLimit === null) {
     return;
@@ -24,7 +24,7 @@ export async function assertCanUseGeneration(workspaceId: string, planCode: stri
 
   const usedCount = used._sum.quantity ?? 0;
   if (usedCount >= plan.dailyGenerationLimit) {
-    throw new Error(`当前套餐每天最多生成 ${plan.dailyGenerationLimit} 次。`);
+    throw new Error(`Current plan allows ${plan.dailyGenerationLimit} generations per day.`);
   }
 }
 
@@ -37,4 +37,3 @@ export async function recordGenerationUsage(workspaceId: string, quantity = 1) {
     },
   });
 }
-

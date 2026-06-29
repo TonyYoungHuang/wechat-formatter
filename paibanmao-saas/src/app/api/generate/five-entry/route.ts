@@ -32,6 +32,16 @@ export async function POST(request: Request) {
       return errorResponse("Create an account profile first.");
     }
 
+    if (parsed.data.topicId) {
+      await prisma.topic.findFirstOrThrow({
+        where: {
+          id: parsed.data.topicId,
+          workspaceId: current.workspace.id,
+          accountProfileId: accountProfile.id,
+        },
+      });
+    }
+
     const variants = buildFallbackFiveEntry({
       topic: parsed.data.topic,
       goal: parsed.data.goal,
@@ -54,6 +64,7 @@ export async function POST(request: Request) {
         data: {
           workspaceId: current.workspace.id,
           accountProfileId: accountProfile.id,
+          topicId: parsed.data.topicId,
           title: parsed.data.topic,
           variants: {
             create: variants.map((variant) => ({
@@ -74,6 +85,13 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       });
+
+      if (parsed.data.topicId) {
+        await tx.topic.update({
+          where: { id: parsed.data.topicId },
+          data: { status: "generated" },
+        });
+      }
 
       return { job, project };
     });
