@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Save } from "lucide-react";
+import { AlertCircle, CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -116,6 +116,12 @@ export function SettingsWorkbench() {
 
   async function saveProvider() {
     try {
+      const validModels = models.filter((model) => model.name.trim() && model.modelId.trim() && model.purpose.trim());
+      if (!validModels.length) {
+        setMessage("至少保留一个有效模型配置。");
+        return;
+      }
+
       await readJson(
         await fetch("/api/admin/ai-providers", {
           method: "PATCH",
@@ -126,7 +132,7 @@ export function SettingsWorkbench() {
             baseUrl,
             apiKeyRef,
             active: true,
-            models: models.filter((model) => model.name.trim() && model.modelId.trim() && model.purpose.trim()),
+            models: validModels,
           }),
         }),
       );
@@ -143,6 +149,22 @@ export function SettingsWorkbench() {
 
   function updateModel(index: number, patch: Partial<ProviderModelConfig>) {
     setModels((items) => items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  }
+
+  function addModel() {
+    setModels((items) => [
+      ...items,
+      {
+        name: "备用模型",
+        modelId: "",
+        purpose: "content",
+        active: true,
+      },
+    ]);
+  }
+
+  function removeModel(index: number) {
+    setModels((items) => (items.length <= 1 ? items : items.filter((_, itemIndex) => itemIndex !== index)));
   }
 
   async function savePrompt(prompt: PromptConfig) {
@@ -196,12 +218,18 @@ export function SettingsWorkbench() {
               <input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
             </label>
             <div className="space-y-3 md:col-span-2">
-              <div>
-                <h2 className="text-sm font-medium text-slate-800">模型用途</h2>
-                <p className="mt-1 text-xs text-slate-500">同一个中转站可以给内容生成、选题生成和图片提示词配置不同模型。</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-medium text-slate-800">模型用途</h2>
+                  <p className="mt-1 text-xs text-slate-500">同一个中转站可以给内容生成、选题生成和图片提示词配置不同模型。</p>
+                </div>
+                <Button type="button" size="sm" variant="secondary" onClick={addModel}>
+                  <Plus className="size-4" />
+                  新增模型
+                </Button>
               </div>
               {models.map((model, index) => (
-                <div key={`${model.purpose}-${index}`} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 md:grid-cols-[150px_1fr_1fr_90px] md:items-center">
+                <div key={`${model.purpose}-${index}`} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 md:grid-cols-[150px_1fr_1fr_90px_44px] md:items-center">
                   <input
                     value={model.purpose}
                     onChange={(event) => updateModel(index, { purpose: event.target.value })}
@@ -224,6 +252,17 @@ export function SettingsWorkbench() {
                     <input type="checkbox" checked={model.active} onChange={(event) => updateModel(index, { active: event.target.checked })} />
                     启用
                   </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-10 w-10 px-0"
+                    onClick={() => removeModel(index)}
+                    disabled={models.length <= 1}
+                    aria-label="删除模型"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
               ))}
             </div>
