@@ -186,6 +186,69 @@ async function checkComplianceReport(generated) {
   assert(report.payload?.report?.project?.id === generated.project.id, "fetched compliance report project mismatch");
 }
 
+async function checkProjectEditingSave(generated) {
+  const marker = `SMOKE_EDIT_${timestamp}`;
+  const variants = generated.project.variants.map((variant) => {
+    if (variant.entry === "wechat_article") {
+      return {
+        entry: variant.entry,
+        title: variant.title,
+        body: `${variant.body}\n\n${marker}`,
+        metadata: {
+          ...(variant.metadata || {}),
+          html: `<h1>${variant.title}</h1><p>${marker}</p>`,
+          editedAt: new Date().toISOString(),
+        },
+      };
+    }
+
+    if (variant.entry === "green_note") {
+      return {
+        entry: variant.entry,
+        title: variant.title,
+        body: variant.body,
+        metadata: {
+          ...(variant.metadata || {}),
+          pages: 3,
+          imagePrompts: [`${marker} green note image prompt`],
+          editedAt: new Date().toISOString(),
+        },
+      };
+    }
+
+    return {
+      entry: variant.entry,
+      title: variant.title,
+      body: variant.body,
+      metadata: variant.metadata || undefined,
+    };
+  });
+
+  const saved = await jsonRequest(
+    `/api/projects/${generated.project.id}`,
+    {
+      title: generated.project.title,
+      status: "editing",
+      variants,
+    },
+    { method: "PATCH" },
+  );
+
+  assert(saved.response.ok, `/api/projects/:id PATCH returned ${saved.response.status}: ${saved.text}`);
+  assert(saved.payload?.project?.status === "editing", "project status was not saved as editing");
+
+  const fetched = await request(`/api/projects/${generated.project.id}`);
+  assert(fetched.response.ok, `/api/projects/:id GET after save returned ${fetched.response.status}: ${fetched.text}`);
+
+  const wechat = fetched.payload?.project?.variants?.find((variant) => variant.entry === "wechat_article");
+  const greenNote = fetched.payload?.project?.variants?.find((variant) => variant.entry === "green_note");
+
+  assert(wechat?.body?.includes(marker), "saved wechat article body marker missing");
+  assert(wechat?.metadata?.html?.includes(marker), "saved wechat article html metadata missing");
+  assert(Array.isArray(greenNote?.metadata?.imagePrompts), "saved green note image prompts missing");
+  assert(greenNote.metadata.imagePrompts.some((prompt) => String(prompt).includes(marker)), "saved green note image prompt marker missing");
+}
+
 async function checkRewrite(profile, generated) {
   const source =
     generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
@@ -383,6 +446,7 @@ async function main() {
   await checkFreeAccountProfileLimit();
   const generated = await checkFiveEntryGeneration(profile);
   await checkComplianceReport(generated);
+  await checkProjectEditingSave(generated);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
