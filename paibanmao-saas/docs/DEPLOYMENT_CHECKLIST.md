@@ -72,6 +72,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Confirm failed or mismatched callback changes unpaid order status to `failed`.
 - Confirm paid callback updates workspace plan and subscription.
 - Confirm paid order can be selected for invoice request.
+- Confirm duplicate active invoice requests for the same paid order are rejected.
 
 ## 6. Public Growth Pages
 

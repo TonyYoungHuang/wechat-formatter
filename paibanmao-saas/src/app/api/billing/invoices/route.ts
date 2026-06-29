@@ -60,6 +60,19 @@ export async function POST(request: Request) {
       return errorResponse("Only paid orders can request an invoice.");
     }
 
+    const existingInvoice = await prisma.invoiceRequest.findFirst({
+      where: {
+        workspaceId: current.workspace.id,
+        paymentOrderId: order.id,
+        status: { in: ["requested", "issued"] },
+      },
+      select: { id: true, status: true },
+    });
+
+    if (existingInvoice) {
+      return errorResponse("This paid order already has an active invoice request.", 409);
+    }
+
     const invoice = await prisma.invoiceRequest.create({
       data: {
         workspaceId: current.workspace.id,

@@ -218,6 +218,18 @@ async function checkPaymentFlow() {
 
   const me = await request("/api/auth/me");
   assert(me.payload?.workspace?.planCode === "starter", "workspace plan was not upgraded after payment callback");
+
+  const invoicePayload = {
+    paymentOrderId: order.payload.order.id,
+    title: "\u6392\u7248\u732b\u6d4b\u8bd5\u53d1\u7968",
+    email,
+  };
+  const invoice = await jsonRequest("/api/billing/invoices", invoicePayload);
+  assert(invoice.response.status === 201, `/api/billing/invoices returned ${invoice.response.status}: ${invoice.text}`);
+  assert(invoice.payload?.invoice?.paymentOrderId === order.payload.order.id, "invoice request payment order mismatch");
+
+  const duplicateInvoice = await jsonRequest("/api/billing/invoices", invoicePayload);
+  assert(duplicateInvoice.response.status === 409, `/api/billing/invoices duplicate returned ${duplicateInvoice.response.status}, expected 409`);
 }
 
 async function checkPaymentFailureFlow() {
