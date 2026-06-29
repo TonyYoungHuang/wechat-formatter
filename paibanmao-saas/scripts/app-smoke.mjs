@@ -327,6 +327,36 @@ async function checkCalendarProjectSync(generated) {
   assert(publishedProject.payload?.project?.publishedAt, "project publishedAt missing after calendar publish");
 }
 
+async function checkProjectMetricsReview(generated) {
+  const reviewNote = `SMOKE_REVIEW_${timestamp}`;
+  const metric = await jsonRequest(`/api/projects/${generated.project.id}/metrics`, {
+    entry: "wechat_article",
+    readCount: 1280,
+    likeCount: 36,
+    watchCount: 12,
+    favoriteCount: 18,
+    commentCount: 9,
+    followerGain: 7,
+    consultationCount: 3,
+    dealCount: 1,
+    note: "\u624b\u52a8\u8bb0\u5f55\u516c\u4f17\u53f7\u53d1\u5e03\u540e\u6570\u636e\u3002",
+    reviewNote,
+    recordedAt: new Date().toISOString(),
+  });
+
+  assert(metric.response.status === 201, `/api/projects/:id/metrics returned ${metric.response.status}: ${metric.text}`);
+  assert(metric.payload?.metric?.readCount === 1280, "project metric read count mismatch");
+
+  const metrics = await request(`/api/projects/${generated.project.id}/metrics`);
+  assert(metrics.response.ok, `/api/projects/:id/metrics GET returned ${metrics.response.status}: ${metrics.text}`);
+  assert(Array.isArray(metrics.payload?.metrics) && metrics.payload.metrics.some((item) => item.id === metric.payload.metric.id), "project metric missing from list");
+
+  const project = await request(`/api/projects/${generated.project.id}`);
+  assert(project.response.ok, `/api/projects/:id after review returned ${project.response.status}: ${project.text}`);
+  assert(project.payload?.project?.status === "reviewed", "project status was not reviewed after metric creation");
+  assert(project.payload?.project?.reviewNote === reviewNote, "project review note was not saved");
+}
+
 async function checkRewrite(profile, generated) {
   const source =
     generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
@@ -555,6 +585,7 @@ async function main() {
   await checkComplianceReport(generated);
   await checkProjectEditingSave(generated);
   await checkCalendarProjectSync(generated);
+  await checkProjectMetricsReview(generated);
   const canCheckPayment = await configurePricingIfAdmin(current);
 
   if (canCheckPayment) {
