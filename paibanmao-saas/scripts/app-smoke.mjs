@@ -357,6 +357,69 @@ async function checkProjectMetricsReview(generated) {
   assert(project.payload?.project?.reviewNote === reviewNote, "project review note was not saved");
 }
 
+async function checkTemplateAndCtaLibraries(profile) {
+  const marker = `SMOKE_LIBRARY_${timestamp}`;
+  const template = await jsonRequest("/api/content-templates", {
+    accountProfileId: profile.id,
+    title: `${marker} template`,
+    category: "wechat_structure",
+    entry: "wechat_article",
+    content: "# Hook\n\n## Pain point\n\n## Solution\n\n## CTA",
+    tags: [marker, "wechat"],
+    active: true,
+  });
+
+  assert(template.response.status === 201, `/api/content-templates returned ${template.response.status}: ${template.text}`);
+  assert(template.payload?.template?.id, "content template id missing");
+
+  const foundTemplates = await request(`/api/content-templates?q=${encodeURIComponent(marker)}`);
+  assert(foundTemplates.response.ok, `/api/content-templates search returned ${foundTemplates.response.status}: ${foundTemplates.text}`);
+  assert(foundTemplates.payload?.templates?.some((item) => item.id === template.payload.template.id), "created template missing from search");
+
+  const updatedTemplate = await jsonRequest(
+    `/api/content-templates/${template.payload.template.id}`,
+    { title: `${marker} template updated` },
+    { method: "PATCH" },
+  );
+  assert(updatedTemplate.response.ok, `/api/content-templates/:id PATCH returned ${updatedTemplate.response.status}: ${updatedTemplate.text}`);
+  assert(updatedTemplate.payload?.template?.title?.includes("updated"), "template update was not saved");
+
+  const deletedTemplate = await request(`/api/content-templates/${template.payload.template.id}`, { method: "DELETE" });
+  assert(deletedTemplate.response.status === 204, `/api/content-templates/:id DELETE returned ${deletedTemplate.response.status}`);
+  const afterTemplateDelete = await request(`/api/content-templates?q=${encodeURIComponent(marker)}`);
+  assert(!afterTemplateDelete.payload?.templates?.some((item) => item.id === template.payload.template.id), "deleted template is still visible");
+
+  const cta = await jsonRequest("/api/cta-snippets", {
+    accountProfileId: profile.id,
+    title: `${marker} cta`,
+    category: "lead_magnet",
+    entry: "moments",
+    content: "Reply with START and I will send you the checklist.",
+    tags: [marker, "conversion"],
+    active: true,
+  });
+
+  assert(cta.response.status === 201, `/api/cta-snippets returned ${cta.response.status}: ${cta.text}`);
+  assert(cta.payload?.snippet?.id, "cta snippet id missing");
+
+  const foundCtas = await request(`/api/cta-snippets?q=${encodeURIComponent(marker)}`);
+  assert(foundCtas.response.ok, `/api/cta-snippets search returned ${foundCtas.response.status}: ${foundCtas.text}`);
+  assert(foundCtas.payload?.snippets?.some((item) => item.id === cta.payload.snippet.id), "created CTA missing from search");
+
+  const updatedCta = await jsonRequest(
+    `/api/cta-snippets/${cta.payload.snippet.id}`,
+    { content: "Reply with START and I will send you the updated checklist." },
+    { method: "PATCH" },
+  );
+  assert(updatedCta.response.ok, `/api/cta-snippets/:id PATCH returned ${updatedCta.response.status}: ${updatedCta.text}`);
+  assert(updatedCta.payload?.snippet?.content?.includes("updated checklist"), "CTA update was not saved");
+
+  const deletedCta = await request(`/api/cta-snippets/${cta.payload.snippet.id}`, { method: "DELETE" });
+  assert(deletedCta.response.status === 204, `/api/cta-snippets/:id DELETE returned ${deletedCta.response.status}`);
+  const afterCtaDelete = await request(`/api/cta-snippets?q=${encodeURIComponent(marker)}`);
+  assert(!afterCtaDelete.payload?.snippets?.some((item) => item.id === cta.payload.snippet.id), "deleted CTA is still visible");
+}
+
 async function checkRewrite(profile, generated) {
   const source =
     generated.project.variants.find((variant) => variant.entry === "wechat_article")?.body ||
@@ -581,6 +644,7 @@ async function main() {
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);
   const generated = await checkFiveEntryGeneration(profile, savedTopic);
+  await checkTemplateAndCtaLibraries(profile);
   await checkFreeGenerationLimit(profile);
   await checkComplianceReport(generated);
   await checkProjectEditingSave(generated);
