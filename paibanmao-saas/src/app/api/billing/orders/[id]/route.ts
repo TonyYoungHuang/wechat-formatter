@@ -16,6 +16,20 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const order = await prisma.paymentOrder.findFirstOrThrow({
       where: { id, workspaceId: current.workspace.id },
+      include: {
+        callbacks: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            status: true,
+            eventType: true,
+            providerTradeNo: true,
+            message: true,
+            createdAt: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ order });

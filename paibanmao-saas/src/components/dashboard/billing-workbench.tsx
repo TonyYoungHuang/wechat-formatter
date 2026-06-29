@@ -49,6 +49,15 @@ type Checkout = {
   paymentUrl?: string;
 };
 
+type PaymentCallback = {
+  id: string;
+  status: string;
+  eventType?: string | null;
+  providerTradeNo?: string | null;
+  message?: string | null;
+  createdAt: string;
+};
+
 type PaymentOrder = {
   id: string;
   planCode: PlanCode;
@@ -59,6 +68,7 @@ type PaymentOrder = {
   expiresAt: string;
   createdAt: string;
   checkout?: Checkout | null;
+  callbacks?: PaymentCallback[];
 };
 
 type InvoiceRequest = {
@@ -110,6 +120,14 @@ function formatMoney(priceCents: number | null | undefined) {
   }
 
   return `¥${(priceCents / 100).toFixed(2)}`;
+}
+
+function latestCallback(order?: PaymentOrder | null) {
+  return order?.callbacks?.[0] ?? null;
+}
+
+function providerName(provider: string) {
+  return provider === "wechat" ? "微信支付" : provider === "alipay" ? "支付宝" : provider;
 }
 
 function getInitialPlan(): PlanCode {
@@ -291,6 +309,8 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
   const activeSelectedPlan = payablePlans.some((plan) => plan.code === selectedPlan) ? selectedPlan : payablePlans[0]?.code ?? "starter";
   const selectedPlanConfig = plans.find((plan) => plan.code === activeSelectedPlan);
   const canCreateOrder = Boolean(selectedPlanConfig && selectedPlanConfig.code !== "free" && typeof selectedPlanConfig.priceCents === "number" && selectedPlanConfig.priceCents > 0);
+  const currentOrderCallback = latestCallback(currentOrder);
+  const recentOrders = orders.slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -482,10 +502,65 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
               </a>
             ) : null}
             {checkout.instructions ? <p className="leading-6">{checkout.instructions}</p> : null}
+            {currentOrderCallback ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-xs text-slate-500">最近回调</div>
+                    <div className="mt-1 font-medium text-slate-950">
+                      {currentOrderCallback.status}
+                      {currentOrderCallback.eventType ? ` · ${currentOrderCallback.eventType}` : ""}
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-500">{new Date(currentOrderCallback.createdAt).toLocaleString()}</div>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                  <div>渠道交易号：{currentOrderCallback.providerTradeNo || "未返回"}</div>
+                  <div>回调说明：{currentOrderCallback.message || "已记录，暂无异常说明"}</div>
+                </div>
+              </div>
+            ) : currentOrder ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">当前订单暂未收到支付回调。若用户已付款，请稍后检查，或确认支付平台回调地址配置。</div>
+            ) : null}
             <Button variant="secondary" onClick={refreshCurrentOrder}>
               <RefreshCcw className="size-4" />
               检查支付状态
             </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {recentOrders.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>最近订单</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentOrders.map((order) => {
+              const callback = latestCallback(order);
+              return (
+                <div key={order.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm md:grid-cols-[1fr_120px_140px_1fr] md:items-center">
+                  <div>
+                    <div className="break-all font-medium text-slate-950">{order.id}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {providerName(order.provider)} · {order.planCode} · {new Date(order.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-slate-600">¥{(order.amountCents / 100).toFixed(2)}</div>
+                  <div className="rounded-full bg-white px-2 py-1 text-center text-xs text-slate-600">{order.status}</div>
+                  <div className="text-xs text-slate-500">
+                    {callback ? (
+                      <>
+                        <div className="font-medium text-slate-700">回调：{callback.status}</div>
+                        <div className="mt-1 truncate">{callback.message || callback.providerTradeNo || "已收到平台通知"}</div>
+                      </>
+                    ) : (
+                      "暂无回调"
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       ) : null}

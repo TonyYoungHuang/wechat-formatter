@@ -15,6 +15,20 @@ export async function GET() {
       where: { workspaceId: current.workspace.id },
       orderBy: { createdAt: "desc" },
       take: 50,
+      include: {
+        callbacks: {
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          select: {
+            id: true,
+            status: true,
+            eventType: true,
+            providerTradeNo: true,
+            message: true,
+            createdAt: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ orders });
