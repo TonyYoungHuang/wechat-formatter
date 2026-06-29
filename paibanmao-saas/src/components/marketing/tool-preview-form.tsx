@@ -90,7 +90,7 @@ export function ToolPreviewForm({
 }
 
 function buildContinuation(kind: PublicToolKind, input: string) {
-  const nextPath = kind === "compliance" ? "/dashboard/checks" : `/dashboard/generate?topic=${encodeURIComponent(input)}`;
+  const nextPath = kind === "compliance" ? `/dashboard/checks?content=${encodeURIComponent(input)}` : `/dashboard/generate?topic=${encodeURIComponent(input)}`;
   const params = new URLSearchParams({ next: nextPath });
 
   return {

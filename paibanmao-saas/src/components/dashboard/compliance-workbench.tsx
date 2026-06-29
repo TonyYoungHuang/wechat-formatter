@@ -60,12 +60,19 @@ function getInitialProjectId() {
   return new URLSearchParams(window.location.search).get("projectId") || "";
 }
 
+function getInitialSearchParam(key: string) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return new URLSearchParams(window.location.search).get(key) || "";
+}
+
 export function ComplianceWorkbench() {
   const [projectId, setProjectId] = useState(getInitialProjectId);
   const [project, setProject] = useState<Project | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(() => getInitialSearchParam("title"));
+  const [content, setContent] = useState(() => getInitialSearchParam("content"));
   const [result, setResult] = useState<CheckResult | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
