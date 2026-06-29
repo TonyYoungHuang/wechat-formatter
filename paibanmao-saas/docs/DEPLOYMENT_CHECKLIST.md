@@ -99,10 +99,13 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 Run before deployment:
 
 ```bash
+pnpm check:env
 pnpm lint
 pnpm build
 pnpm prisma validate
 ```
+
+`pnpm check:env` verifies required deployment variables without printing secret values. In production it requires HTTPS `APP_URL`, Redis, AI provider credentials, admin email, and complete WeChat Pay / Alipay checkout and callback configuration.
 
 Run after the app is started:
 

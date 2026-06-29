@@ -25,6 +25,7 @@ pnpm db:up
 4. 初始化数据库：
 
 ```bash
+pnpm check:env
 pnpm db:deploy
 pnpm prisma:seed
 ```
@@ -36,6 +37,18 @@ pnpm dev
 ```
 
 默认访问地址是 `http://localhost:3000`。
+
+## 上线前检查
+
+```bash
+pnpm check:env
+pnpm lint
+pnpm build
+pnpm smoke:public
+pnpm smoke:app
+```
+
+`pnpm check:env` 只检查环境变量是否配置，不输出任何密钥值。复制 `.env.example` 后，需要把 `AUTH_SECRET`、AI 中转站、管理员邮箱和支付变量替换成真实值；生产环境还会要求 `APP_URL` 使用 HTTPS。
 
 ## 关键能力
 
