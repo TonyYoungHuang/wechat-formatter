@@ -634,6 +634,9 @@ async function checkImagePrompts() {
   assert(imagePrompts.response.ok, `/api/generate/image-prompts returned ${imagePrompts.response.status}: ${imagePrompts.text}`);
   assert(Array.isArray(imagePrompts.payload?.output?.prompts) && imagePrompts.payload.output.prompts.length === 3, "image prompt output missing");
   assert(imagePrompts.payload?.job?.type === "image_prompt_generation", "image prompt generation job type mismatch");
+  assert(imagePrompts.payload?.output?.source, "image prompt output source missing");
+  assert(imagePrompts.payload?.output?.provider, "image prompt output provider missing");
+  assert(imagePrompts.payload?.output?.model, "image prompt output model missing");
   assert(imagePrompts.payload.output.imageGenerationReady === false, "image prompt output should reserve but not enable image generation");
   assert(imagePrompts.payload.output.nextStep, "image prompt output missing future image-generation handoff note");
   for (const [index, prompt] of imagePrompts.payload.output.prompts.entries()) {
