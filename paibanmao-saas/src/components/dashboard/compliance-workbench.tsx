@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, SearchCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileText, Loader2, SearchCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,27 @@ type CheckResult = {
   report?: { id: string };
 };
 
+type ProjectVariant = {
+  id: string;
+  entry: string;
+  title: string;
+  body: string;
+};
+
+type Project = {
+  id: string;
+  title: string;
+  variants: ProjectVariant[];
+};
+
+const entryLabels: Record<string, string> = {
+  wechat_article: "公众号",
+  green_note: "小绿书",
+  search: "搜一搜",
+  question: "问一问",
+  moments: "朋友圈",
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -39,11 +60,70 @@ function getInitialProjectId() {
 
 export function ComplianceWorkbench() {
   const [projectId, setProjectId] = useState(getInitialProjectId);
+  const [project, setProject] = useState<Project | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [result, setResult] = useState<CheckResult | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [projectLoading, setProjectLoading] = useState(false);
+
+  useEffect(() => {
+    if (projectId) {
+      void loadProject(projectId);
+    }
+    // Load only the project carried by the initial URL. Manual project ID edits use the button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyVariant(nextProject: Project, variant: ProjectVariant) {
+    setSelectedVariantId(variant.id);
+    setTitle(variant.title || nextProject.title);
+    setContent(variant.body);
+    setResult(null);
+  }
+
+  async function loadProject(id = projectId) {
+    if (!id.trim()) {
+      setMessage("请输入项目 ID。");
+      return;
+    }
+
+    setProjectLoading(true);
+    setMessage("");
+    try {
+      const data = await readJson<{ project: Project }>(await fetch(`/api/projects/${id.trim()}`));
+      const preferred =
+        data.project.variants.find((variant) => variant.entry === "wechat_article") ||
+        data.project.variants[0];
+
+      setProject(data.project);
+      setProjectId(data.project.id);
+
+      if (preferred) {
+        applyVariant(data.project, preferred);
+        setMessage(`已载入项目：${data.project.title}`);
+      } else {
+        setTitle(data.project.title);
+        setContent("");
+        setSelectedVariantId("");
+        setMessage("项目已载入，但还没有可检查的入口内容。");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "载入项目失败。");
+    } finally {
+      setProjectLoading(false);
+    }
+  }
+
+  function changeVariant(variantId: string) {
+    const variant = project?.variants.find((item) => item.id === variantId);
+    if (project && variant) {
+      applyVariant(project, variant);
+      setMessage(`已切换到${entryLabels[variant.entry] || variant.entry}内容。`);
+    }
+  }
 
   async function runCheck() {
     setLoading(true);
@@ -88,9 +168,36 @@ export function ComplianceWorkbench() {
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-600">项目 ID（可选）</span>
-              <input value={projectId} onChange={(event) => setProjectId(event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+              <div className="flex gap-2">
+                <input value={projectId} onChange={(event) => setProjectId(event.target.value)} className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                <Button size="sm" variant="secondary" onClick={() => loadProject()} disabled={projectLoading || !projectId.trim()}>
+                  {projectLoading ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
+                  载入
+                </Button>
+              </div>
             </label>
           </div>
+          {project?.variants.length ? (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+              <div className="grid gap-3 md:grid-cols-[1fr_260px] md:items-center">
+                <p className="text-sm text-emerald-900">正在检查项目：{project.title}</p>
+                <label className="space-y-1 text-sm">
+                  <span className="text-emerald-900">检查入口</span>
+                  <select
+                    className="h-10 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-400"
+                    value={selectedVariantId}
+                    onChange={(event) => changeVariant(event.target.value)}
+                  >
+                    {project.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {entryLabels[variant.entry] || variant.entry} · {variant.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          ) : null}
           <textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
