@@ -102,6 +102,11 @@ export function ensureGenerationWorker() {
       const dbJob = await prisma.generationJob.findUniqueOrThrow({
         where: { id: job.data.generationJobId },
       });
+
+      if (dbJob.status === "succeeded" || dbJob.status === "failed") {
+        return dbJob;
+      }
+
       const workspace = await prisma.workspace.findUniqueOrThrow({
         where: { id: dbJob.workspaceId },
       });
