@@ -162,6 +162,16 @@ async function checkFiveEntryGeneration(profile) {
   return generation.payload;
 }
 
+async function checkFreeGenerationLimit(profile) {
+  const blocked = await jsonRequest("/api/generate/five-entry", {
+    accountProfileId: profile.id,
+    topic: `${topic}\uff1a\u514d\u8d39\u989d\u5ea6\u56de\u5f52`,
+    goal: "growth",
+  });
+
+  assert(blocked.response.status === 409, `/api/generate/five-entry second free generation returned ${blocked.response.status}, expected 409`);
+}
+
 async function checkComplianceReport(generated) {
   const variant =
     generated.project.variants.find((item) => item.entry === "wechat_article") ||
@@ -445,6 +455,7 @@ async function main() {
   const profile = await checkAccountProfiles();
   await checkFreeAccountProfileLimit();
   const generated = await checkFiveEntryGeneration(profile);
+  await checkFreeGenerationLimit(profile);
   await checkComplianceReport(generated);
   await checkProjectEditingSave(generated);
   const canCheckPayment = await configurePricingIfAdmin(current);
