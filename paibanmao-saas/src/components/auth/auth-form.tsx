@@ -30,6 +30,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const isRegister = mode === "register";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +42,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         await fetch(`/api/auth/${mode}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(mode === "register" ? { name, email, password } : { email, password }),
+          body: JSON.stringify(isRegister ? { name, email, password } : { email, password }),
         }),
       );
       router.replace(next);
@@ -52,8 +53,6 @@ export function AuthForm({ mode }: AuthFormProps) {
       setLoading(false);
     }
   }
-
-  const isRegister = mode === "register";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f6faf7] px-4">

@@ -130,6 +130,21 @@ async function checkDashboardRequiresValidSession() {
   assert(location.includes("/login"), "dashboard invalid-session redirect does not point to login");
 }
 
+async function checkAuthPagesIgnoreInvalidSessionCookie() {
+  for (const path of ["/login", "/register"]) {
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: {
+        Cookie: "paibanmao_session=invalid-smoke-session",
+      },
+      redirect: "manual",
+    });
+    const text = await response.text();
+
+    assert(response.status === 200, `${path} with invalid session returned ${response.status}, expected 200`);
+    assert(text.includes(path === "/login" ? "登录排版猫" : "注册排版猫"), `${path} did not render the auth form with invalid session`);
+  }
+}
+
 async function registerAndCheckSession() {
   const registration = await jsonRequest("/api/auth/register", {
     name: "Smoke User",
@@ -867,6 +882,7 @@ async function checkPaymentAmountMismatchFlow() {
 async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   await checkDashboardRequiresValidSession();
+  await checkAuthPagesIgnoreInvalidSessionCookie();
   const current = await registerAndCheckSession();
   await checkAuthRejections();
   const profile = await checkAccountProfiles();
