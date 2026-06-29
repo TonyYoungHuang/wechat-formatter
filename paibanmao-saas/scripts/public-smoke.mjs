@@ -32,6 +32,12 @@ const sitemapPaths = [
 
 const protectedGetPaths = [
   "/api/account-profiles",
+  "/api/admin/ai-providers",
+  "/api/admin/entitlements",
+  "/api/admin/payment-settings",
+  "/api/admin/pricing",
+  "/api/admin/prompts",
+  "/api/billing/invoices",
   "/api/billing/orders",
   "/api/calendar-items",
   "/api/content-templates",
@@ -43,6 +49,26 @@ const protectedGetPaths = [
 ];
 
 const protectedPostChecks = [
+  {
+    path: "/api/admin/ai-providers",
+    method: "PATCH",
+    body: {},
+  },
+  {
+    path: "/api/admin/entitlements",
+    method: "PATCH",
+    body: {},
+  },
+  {
+    path: "/api/admin/pricing",
+    method: "PATCH",
+    body: {},
+  },
+  {
+    path: "/api/admin/prompts",
+    method: "PATCH",
+    body: {},
+  },
   {
     path: "/api/generate/five-entry",
     body: {
@@ -122,7 +148,7 @@ async function checkProtectedApiAuth() {
 
   for (const check of protectedPostChecks) {
     const { response, text } = await request(check.path, {
-      method: "POST",
+      method: check.method ?? "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(check.body),
     });
