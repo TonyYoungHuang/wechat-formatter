@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ToolPage } from "@/components/marketing/tool-page";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "朋友圈转发文案生成器",
   description: "为公众号文章和小绿书内容生成自然的朋友圈转发理由、互动话术和私域 CTA。",
-};
+  path: "/tools/moments-copy-generator",
+  keywords: ["朋友圈文案生成器", "朋友圈转发文案", "私域 CTA", "公众号朋友圈", "微信朋友圈文案"],
+});
 
 export default function MomentsCopyGeneratorPage() {
   return (

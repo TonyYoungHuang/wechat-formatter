@@ -4,6 +4,14 @@ import { ArrowRight, CheckCircle2, CircleDollarSign, Search, Sparkles } from "lu
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contentEntries } from "@/lib/content/entries";
+import { createPublicMetadata } from "@/lib/seo/metadata";
+
+export const metadata = createPublicMetadata({
+  title: "微信内容增长工作台",
+  description: "排版猫把一个选题拆成公众号、小绿书、搜一搜、问一问和朋友圈五个微信入口，适合公众号副业号主和个人 IP 做内容矩阵。",
+  path: "/",
+  keywords: ["微信内容增长", "公众号副业", "公众号矩阵", "小绿书生成", "搜一搜关键词", "问一问回答"],
+});
 
 const freeTools = [
   { href: "/tools/wechat-title-generator", label: "公众号标题生成器", desc: "从一个选题拆出 12 个标题角度。" },

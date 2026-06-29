@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ToolPage } from "@/components/marketing/tool-page";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "小绿书文案生成器",
   description: "把公众号选题改写成适合微信小绿书图文形态的短文案、封面文案和图片提示词。",
-};
+  path: "/tools/green-note-generator",
+  keywords: ["小绿书文案生成器", "微信小绿书", "图文文案生成", "图片提示词", "公众号改小绿书"],
+});
 
 export default function GreenNoteGeneratorPage() {
   return (

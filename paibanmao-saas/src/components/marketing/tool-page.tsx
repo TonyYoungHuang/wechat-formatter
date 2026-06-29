@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToolPreviewForm } from "@/components/marketing/tool-preview-form";
 import type { PublicToolKind } from "@/lib/tools/public-tool-preview";
+import { absoluteUrl, jsonLdScript, siteUrl } from "@/lib/seo/metadata";
 
 const relatedTools = [
   { href: "/templates", label: "微信内容模板库" },
@@ -26,14 +27,6 @@ const toolPaths: Record<PublicToolKind, string> = {
   compliance: "/tools/compliance-checker",
 };
 
-function appUrl() {
-  return (process.env.APP_URL || "https://paibanmao.cn").replace(/\/$/, "");
-}
-
-function jsonLdScript(value: unknown) {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
 export function ToolPage({
   title,
   description,
@@ -47,7 +40,7 @@ export function ToolPage({
   unlocks: string[];
   toolKind: PublicToolKind;
 }) {
-  const canonicalUrl = `${appUrl()}${toolPaths[toolKind]}`;
+  const canonicalUrl = absoluteUrl(toolPaths[toolKind]);
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -65,7 +58,7 @@ export function ToolPage({
       provider: {
         "@type": "Organization",
         name: "排版猫",
-        url: appUrl(),
+        url: siteUrl(),
       },
       featureList: unlocks,
     },
@@ -77,7 +70,7 @@ export function ToolPage({
           "@type": "ListItem",
           position: 1,
           name: "首页",
-          item: appUrl(),
+          item: siteUrl(),
         },
         {
           "@type": "ListItem",

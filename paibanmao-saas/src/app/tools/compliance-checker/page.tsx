@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ToolPage } from "@/components/marketing/tool-page";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "公众号发布前检查工具",
   description: "检查公众号、小绿书和问一问内容中的极限词、夸大承诺、AI 味、搜索优化和 CTA 风险。",
-};
+  path: "/tools/compliance-checker",
+  keywords: ["公众号发布检查", "公众号合规检查", "极限词检查", "AI 味检查", "微信内容审核"],
+});
 
 export default function ComplianceCheckerPage() {
   return (

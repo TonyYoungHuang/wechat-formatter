@@ -3,13 +3,16 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Layers3 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 import { publicTemplates, templateEntryLabels } from "@/lib/seo/public-templates";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "公众号内容模板库",
   description:
     "排版猫公开模板库，提供公众号长文、小绿书图文、微信搜一搜、问一问和朋友圈转发模板，适合微信副业创作者搭建内容矩阵。",
-};
+  path: "/templates",
+  keywords: ["公众号模板", "微信内容模板", "小绿书模板", "搜一搜内容模板", "朋友圈文案模板"],
+});
 
 const scenarios = ["公众号副业新手", "个人 IP 创作者", "本地服务商家", "知识付费和咨询账号"];
 

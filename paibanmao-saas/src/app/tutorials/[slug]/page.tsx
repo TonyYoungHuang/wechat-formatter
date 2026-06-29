@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { absoluteUrl, createPublicMetadata, jsonLdScript, siteUrl } from "@/lib/seo/metadata";
 import { getRelatedTutorials, getTutorialBySlug, tutorialArticles } from "@/lib/seo/tutorials";
 
 type PageProps = {
@@ -22,13 +23,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {};
   }
 
-  return {
+  return createPublicMetadata({
     title: article.title,
     description: article.description,
-    alternates: {
-      canonical: `/tutorials/${article.slug}`,
-    },
-  };
+    path: `/tutorials/${article.slug}`,
+    keywords: [article.category, "公众号教程", "微信内容增长", "排版猫"],
+    type: "article",
+  });
 }
 
 export default async function TutorialDetailPage({ params }: PageProps) {
@@ -40,9 +41,56 @@ export default async function TutorialDetailPage({ params }: PageProps) {
   }
 
   const related = getRelatedTutorials(article);
+  const canonicalUrl = absoluteUrl(`/tutorials/${article.slug}`);
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: article.title,
+      description: article.description,
+      articleSection: article.category,
+      inLanguage: "zh-CN",
+      mainEntityOfPage: canonicalUrl,
+      author: {
+        "@type": "Organization",
+        name: "排版猫",
+        url: siteUrl(),
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "排版猫",
+        url: siteUrl(),
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "首页",
+          item: siteUrl(),
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "教程",
+          item: absoluteUrl("/tutorials"),
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: article.title,
+          item: canonicalUrl,
+        },
+      ],
+    },
+  ];
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-12 sm:px-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData) }} />
       <Link className="text-sm text-emerald-700" href="/tutorials">
         返回教程列表
       </Link>

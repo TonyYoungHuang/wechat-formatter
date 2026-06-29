@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { defaultPlans } from "@/lib/entitlements/plans";
 import { getPlanConfigs } from "@/lib/entitlements/service";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "价格",
   description: "排版猫会员套餐价格入口，支持免费版、入门版和专业版，价格和额度可在后台配置。",
-};
+  path: "/pricing",
+  keywords: ["排版猫价格", "公众号写作 SaaS 价格", "微信内容工具套餐", "公众号矩阵工具"],
+});
 
 export const dynamic = "force-dynamic";
 

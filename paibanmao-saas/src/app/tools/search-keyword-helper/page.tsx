@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ToolPage } from "@/components/marketing/tool-page";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "微信搜一搜关键词助手",
   description: "为公众号文章生成搜一搜关键词、搜索型标题、摘要优化建议和长尾问题结构。",
-};
+  path: "/tools/search-keyword-helper",
+  keywords: ["微信搜一搜", "搜一搜关键词", "公众号 SEO", "微信搜索优化", "公众号关键词助手"],
+});
 
 export default function SearchKeywordHelperPage() {
   return (

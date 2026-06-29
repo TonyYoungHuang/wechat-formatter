@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { ToolPage } from "@/components/marketing/tool-page";
+import { createPublicMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "公众号选题生成器",
   description: "输入领域、读者和变现目标，生成适合公众号、小绿书、搜一搜、问一问和朋友圈的一组内容选题。",
-};
+  path: "/tools/topic-generator",
+  keywords: ["公众号选题生成器", "公众号选题", "微信内容选题", "公众号副业选题", "内容矩阵选题"],
+});
 
 export default function TopicGeneratorToolPage() {
   return (

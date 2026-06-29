@@ -2,16 +2,33 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen } from "lucide-react";
 
+import { absoluteUrl, createPublicMetadata, jsonLdScript } from "@/lib/seo/metadata";
 import { tutorialArticles } from "@/lib/seo/tutorials";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
   title: "微信内容增长教程",
   description: "面向公众号副业创作者的微信内容增长教程，覆盖公众号、小绿书、搜一搜、问一问和朋友圈五个入口。",
-};
+  path: "/tutorials",
+  keywords: ["公众号教程", "微信内容增长", "小绿书教程", "搜一搜优化", "问一问运营"],
+});
 
 export default function TutorialsPage() {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "微信内容增长教程",
+    itemListElement: tutorialArticles.map((article, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: absoluteUrl(`/tutorials/${article.slug}`),
+      name: article.title,
+      description: article.description,
+    })),
+  };
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-4 py-12 sm:px-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData) }} />
       <Link className="text-sm text-emerald-700" href="/">
         返回首页
       </Link>
