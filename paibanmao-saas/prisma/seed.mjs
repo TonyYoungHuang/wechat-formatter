@@ -11,8 +11,8 @@ const prisma = new PrismaClient({
 const plans = [
   {
     code: "free",
-    name: "Free",
-    description: "For trying the five-entry WeChat content workflow.",
+    name: "免费版",
+    description: "适合体验排版猫的五入口生成能力。",
     priceCents: 0,
     sortOrder: 0,
     entitlements: {
@@ -24,8 +24,8 @@ const plans = [
   },
   {
     code: "starter",
-    name: "Starter",
-    description: "For individual creators operating several WeChat side-project accounts.",
+    name: "入门版",
+    description: "适合一个人运营多个微信副业账号。",
     priceCents: null,
     sortOrder: 1,
     entitlements: {
@@ -37,8 +37,8 @@ const plans = [
   },
   {
     code: "pro",
-    name: "Pro",
-    description: "For high-frequency creators and small WeChat content teams.",
+    name: "专业版",
+    description: "适合高频创作者和小团队做微信内容矩阵。",
     priceCents: null,
     sortOrder: 2,
     entitlements: {
