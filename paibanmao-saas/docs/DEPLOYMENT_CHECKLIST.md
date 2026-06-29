@@ -125,7 +125,7 @@ pnpm smoke:app
 
 When testing payment callbacks against a local production server (`APP_URL` on `localhost` or `127.0.0.1`), set the same `PAYMENT_CALLBACK_SMOKE_SECRET` on the server and `pnpm smoke:app` process so smoke callbacks are signed without using real payment platform certificates.
 
-The app smoke also checks invalid dashboard sessions, duplicate registration rejection, wrong-password rejection, logout session revocation, admin AI/prompt/payment settings, topic-to-generation status sync, free generation quota, account-profile plan limits, queued generation scope rejection, queued generation fallback, editor project save, calendar project sync, project metrics review, template/CTA libraries, compliance report save/fetch, failed callbacks, failed-order recovery rejection, amount-mismatch callbacks, and duplicate invoice prevention.
+The app smoke also checks invalid dashboard sessions, duplicate registration rejection, wrong-password rejection, logout session revocation, admin AI/prompt/payment settings, topic-to-generation status sync, free generation quota, account-profile plan limits, default account-profile switching, queued generation scope rejection, queued generation fallback, editor project save, calendar project sync, project metrics review, template/CTA libraries, compliance report save/fetch, failed callbacks, failed-order recovery rejection, amount-mismatch callbacks, and duplicate invoice prevention.
 
 Run during deployment:
 

@@ -241,6 +241,14 @@ async function checkStarterAccountProfileLimit() {
   const third = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile three"));
   assert(third.response.status === 201, `/api/account-profiles starter third returned ${third.response.status}: ${third.text}`);
 
+  const defaultSwitch = await request(`/api/account-profiles/${third.payload.profile.id}/set-default`, { method: "POST" });
+  assert(defaultSwitch.response.ok, `/api/account-profiles/:id/set-default returned ${defaultSwitch.response.status}: ${defaultSwitch.text}`);
+
+  const profiles = await request("/api/account-profiles");
+  assert(profiles.response.ok, `/api/account-profiles after default switch returned ${profiles.response.status}: ${profiles.text}`);
+  const defaultProfile = profiles.payload?.profiles?.find((profile) => profile.isDefault);
+  assert(defaultProfile?.id === third.payload.profile.id, "default account profile was not switched");
+
   const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile four"));
   assert(blocked.response.status === 409, `/api/account-profiles starter fourth returned ${blocked.response.status}, expected 409`);
 }
