@@ -6,7 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import LinkExtension from "@tiptap/extension-link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Copy, FileCode2, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Copy, Download, FileCode2, Loader2, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -67,6 +67,101 @@ function htmlToText(value: string) {
     .replace(/<[^>]+>/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function htmlToMarkdown(value: string) {
+  if (typeof window === "undefined") {
+    return htmlToText(value);
+  }
+
+  const document = new DOMParser().parseFromString(value, "text/html");
+
+  function walk(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent || "";
+    }
+
+    if (!(node instanceof HTMLElement)) {
+      return Array.from(node.childNodes).map(walk).join("");
+    }
+
+    const children = Array.from(node.childNodes).map(walk).join("").trim();
+
+    switch (node.tagName.toLowerCase()) {
+      case "h1":
+        return `# ${children}\n\n`;
+      case "h2":
+        return `## ${children}\n\n`;
+      case "h3":
+        return `### ${children}\n\n`;
+      case "p":
+        return children ? `${children}\n\n` : "";
+      case "br":
+        return "\n";
+      case "strong":
+      case "b":
+        return `**${children}**`;
+      case "em":
+      case "i":
+        return `*${children}*`;
+      case "blockquote":
+        return children
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => `> ${line}`)
+          .join("\n")
+          .concat("\n\n");
+      case "li":
+        return `- ${children}\n`;
+      case "ul":
+        return `${children}\n`;
+      case "ol":
+        return Array.from(node.children)
+          .map((child, index) => `${index + 1}. ${walk(child).replace(/^- /, "").trim()}`)
+          .join("\n")
+          .concat("\n\n");
+      case "a": {
+        const href = node.getAttribute("href");
+        return href ? `[${children}](${href})` : children;
+      }
+      default:
+        return children;
+    }
+  }
+
+  return Array.from(document.body.childNodes)
+    .map(walk)
+    .join("")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function buildDownloadHtml(title: string, bodyHtml: string) {
+  return [
+    "<!doctype html>",
+    '<html lang="zh-CN">',
+    "<head>",
+    '<meta charset="utf-8" />',
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+    `<title>${escapeHtml(title)}</title>`,
+    "</head>",
+    '<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; line-height: 1.8; color: #0f172a;">',
+    bodyHtml,
+    "</body>",
+    "</html>",
+  ].join("\n");
+}
+
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function getImagePrompts(variant?: Variant) {
@@ -145,6 +240,19 @@ export function WechatEditor() {
     if (!editor) return;
     await navigator.clipboard.writeText(editor.getText());
     setNotice("纯文本已复制。");
+  }
+
+  async function copyMarkdown() {
+    if (!editor) return;
+    await navigator.clipboard.writeText(htmlToMarkdown(editor.getHTML()));
+    setNotice("Markdown 已复制。");
+  }
+
+  function downloadHtml() {
+    if (!editor) return;
+    const title = wechatVariant?.title || project?.title || "排版猫公众号文章";
+    downloadTextFile(`${title}.html`, buildDownloadHtml(title, editor.getHTML()), "text/html;charset=utf-8");
+    setNotice("HTML 文件已下载。");
   }
 
   async function copyImagePrompts() {
@@ -242,6 +350,14 @@ export function WechatEditor() {
         <Button className="w-full" onClick={copyText} variant="secondary">
           <Copy className="size-4" />
           复制纯文本
+        </Button>
+        <Button className="w-full" onClick={copyMarkdown} variant="secondary">
+          <Copy className="size-4" />
+          复制 Markdown
+        </Button>
+        <Button className="w-full" onClick={downloadHtml} variant="secondary">
+          <Download className="size-4" />
+          下载 HTML
         </Button>
         <Button className="w-full" onClick={runCheck} variant="secondary">
           <CheckCircle2 className="size-4" />
