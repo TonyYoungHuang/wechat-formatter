@@ -89,6 +89,12 @@ pnpm build
 pnpm prisma validate
 ```
 
+Run after the app is started:
+
+```bash
+pnpm smoke:public
+```
+
 Run during deployment:
 
 ```bash
