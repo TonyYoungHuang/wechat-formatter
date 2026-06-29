@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contentEntries } from "@/lib/content/entries";
 
+const freeTools = [
+  { href: "/tools/wechat-title-generator", label: "公众号标题生成器", desc: "从一个选题拆出 12 个标题角度。" },
+  { href: "/tools/topic-generator", label: "公众号选题生成器", desc: "生成适合五个微信入口的选题。" },
+  { href: "/tools/green-note-generator", label: "小绿书文案生成器", desc: "生成图文脚本和图片提示词。" },
+  { href: "/tools/search-keyword-helper", label: "搜一搜关键词助手", desc: "整理主关键词、长尾词和摘要建议。" },
+  { href: "/tools/question-answer-generator", label: "问一问回答生成器", desc: "把选题改写成问答型内容。" },
+  { href: "/tools/moments-copy-generator", label: "朋友圈文案生成器", desc: "生成更自然的私域转发文案。" },
+  { href: "/tools/compliance-checker", label: "发布前检查", desc: "检查标题风险、AI 味和 CTA 突兀感。" },
+];
+
 const sampleOutputs = [
   "公众号长文：普通人做公众号副业，真正的机会在哪里？",
   "小绿书：3 张图讲清普通人做号的第一步",
@@ -104,6 +114,27 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent className="text-sm leading-6 text-slate-600">{entry.summary}</CardContent>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-slate-50 py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mb-8 flex flex-col gap-2">
+            <h2 className="text-2xl font-semibold text-slate-950">先用免费工具试一个入口</h2>
+            <p className="text-slate-600">标题、选题、小绿书、搜一搜、问一问、朋友圈和发布检查都可以先从轻量工具开始。</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {freeTools.map((tool) => (
+              <Link
+                key={tool.href}
+                className="rounded-lg border border-slate-100 bg-white p-4 transition hover:border-emerald-200 hover:shadow-sm"
+                href={tool.href}
+              >
+                <h3 className="font-semibold text-slate-950">{tool.label}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{tool.desc}</p>
+              </Link>
             ))}
           </div>
         </div>

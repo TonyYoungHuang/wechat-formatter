@@ -4,6 +4,16 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+const relatedTools = [
+  { href: "/tools/wechat-title-generator", label: "公众号标题生成器" },
+  { href: "/tools/topic-generator", label: "公众号选题生成器" },
+  { href: "/tools/green-note-generator", label: "小绿书文案生成器" },
+  { href: "/tools/search-keyword-helper", label: "微信搜一搜关键词助手" },
+  { href: "/tools/question-answer-generator", label: "微信问一问回答生成器" },
+  { href: "/tools/moments-copy-generator", label: "朋友圈转发文案生成器" },
+  { href: "/tools/compliance-checker", label: "公众号发布前检查" },
+];
+
 export function ToolPage({
   title,
   description,
@@ -54,6 +64,20 @@ export function ToolPage({
           </CardContent>
         </Card>
       </div>
+      <section className="mt-10 border-t border-slate-100 pt-8">
+        <h2 className="text-xl font-semibold text-slate-950">相关免费工具</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {relatedTools.map((tool) => (
+            <Link
+              key={tool.href}
+              className="rounded-lg border border-slate-100 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+              href={tool.href}
+            >
+              {tool.label}
+            </Link>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

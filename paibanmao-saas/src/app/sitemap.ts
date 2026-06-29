@@ -6,6 +6,7 @@ const publicPaths = [
   "",
   "/pricing",
   "/tutorials",
+  "/tools/wechat-title-generator",
   "/tools/topic-generator",
   "/tools/green-note-generator",
   "/tools/search-keyword-helper",
