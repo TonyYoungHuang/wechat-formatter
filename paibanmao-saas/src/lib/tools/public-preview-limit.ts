@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { createHash } from "node:crypto";
 
 import { getCurrentUser } from "@/lib/auth/session";
-import { getRedis } from "@/lib/redis/client";
+import { ensureRedisConnected, getRedis } from "@/lib/redis/client";
 
 export const PUBLIC_PREVIEW_COOKIE = "paibanmao_public_preview_used";
 export const PUBLIC_PREVIEW_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
@@ -43,6 +43,7 @@ async function hasUsedPublicPreview(redisKey: string) {
   }
 
   try {
+    await ensureRedisConnected(redis);
     return (await redis.get(redisKey)) === "1";
   } catch {
     return false;
@@ -56,6 +57,7 @@ async function markRedisPreviewUsed(redisKey: string) {
   }
 
   try {
+    await ensureRedisConnected(redis);
     await redis.set(redisKey, "1", "EX", PUBLIC_PREVIEW_COOKIE_MAX_AGE);
   } catch {
     return;

@@ -24,6 +24,49 @@ export function getRedis() {
   return globalForRedis.redis;
 }
 
+export async function ensureRedisConnected(redis: Redis) {
+  if (redis.status === "ready") {
+    return redis;
+  }
+
+  if (redis.status === "wait" || redis.status === "end") {
+    await redis.connect();
+    return redis;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Timed out while waiting for Redis connection."));
+    }, 5000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      redis.off("ready", handleReady);
+      redis.off("error", handleError);
+    };
+
+    const handleReady = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+
+    redis.once("ready", handleReady);
+    redis.once("error", handleError);
+
+    if (redis.status === "ready") {
+      handleReady();
+    }
+  });
+
+  return redis;
+}
+
 export function createBullMqConnection(): ConnectionOptions | null {
   if (!process.env.REDIS_URL) {
     return null;

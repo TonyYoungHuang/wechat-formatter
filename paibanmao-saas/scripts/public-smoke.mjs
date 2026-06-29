@@ -1,4 +1,5 @@
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+const smokeRunId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const brandText = "\u6392\u7248\u732b";
 const previewInput = "\u666e\u901a\u4eba\u505a\u516c\u4f17\u53f7\u526f\u4e1a\u8fd8\u6709\u673a\u4f1a\u5417";
 
@@ -163,9 +164,10 @@ async function request(path, options = {}) {
 }
 
 function visitorHeaders(name, headers = {}) {
+  const identity = `${smokeRunId}-${name}`;
   return {
-    "User-Agent": `paibanmao-public-smoke/${name}`,
-    "X-Forwarded-For": `203.0.113.${name.length}`,
+    "User-Agent": `paibanmao-public-smoke/${identity}`,
+    "X-Forwarded-For": `203.0.113.${Math.max(1, Math.min(254, identity.length % 254))}`,
     ...headers,
   };
 }
@@ -195,6 +197,16 @@ async function checkSitemapAndRobots() {
   assert(robots.response.ok, `/robots.txt returned ${robots.response.status}`);
   assert(robots.text.includes("Disallow: /dashboard"), "/robots.txt does not disallow dashboard");
   assert(robots.text.includes("Sitemap:"), "/robots.txt missing sitemap reference");
+}
+
+async function checkHealth() {
+  const { response, text } = await request("/api/health");
+  assert(response.ok, `/api/health returned ${response.status}: ${text}`);
+  const payload = JSON.parse(text);
+  assert(payload.status === "ok", `/api/health status was ${payload.status}`);
+  assert(payload.service === "paibanmao-saas", "/api/health service name mismatch");
+  assert(payload.checks?.database?.status === "ok", "/api/health database check not ok");
+  assert(payload.checks?.redis?.status === "ok", "/api/health redis check not ok");
 }
 
 async function checkToolSeoSections() {
@@ -299,6 +311,7 @@ async function checkPublicPreviewLimit() {
 
 async function main() {
   console.log(`Running public smoke checks against ${baseUrl}`);
+  await checkHealth();
   await checkPublicPages();
   await checkSitemapAndRobots();
   await checkToolSeoSections();

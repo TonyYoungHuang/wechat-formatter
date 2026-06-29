@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db/prisma";
-import { getRedis } from "@/lib/redis/client";
+import { ensureRedisConnected, getRedis } from "@/lib/redis/client";
 
 function safeHealthMessage(error: unknown, fallback: string) {
   if (process.env.NODE_ENV === "production") {
@@ -31,6 +31,7 @@ async function checkRedis() {
   }
 
   try {
+    await ensureRedisConnected(redis);
     const pong = await redis.ping();
     return { status: pong === "PONG" ? "ok" : "error", message: pong };
   } catch (error) {
