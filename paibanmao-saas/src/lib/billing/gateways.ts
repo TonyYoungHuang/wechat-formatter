@@ -80,7 +80,7 @@ async function createWechatNativeCheckout(input: CheckoutInput) {
   const message = `POST\n${path}\n${timestamp}\n${nonce}\n${body}\n`;
   const signature = signWithRsaSha256(message, privateKey);
   const authorization = [
-    'WECHATPAY2-SHA256-RSA2048',
+    "WECHATPAY2-SHA256-RSA2048",
     `mchid="${mchid}"`,
     `nonce_str="${nonce}"`,
     `signature="${signature}"`,

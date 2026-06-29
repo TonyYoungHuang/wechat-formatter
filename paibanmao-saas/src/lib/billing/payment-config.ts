@@ -36,7 +36,7 @@ function allConfigured(items: EnvVarStatus[]) {
 export function getPaymentConfigurationStatus() {
   const baseUrl = appUrl();
   const wechatRequired = [
-    envStatus("WECHAT_PAY_APP_ID", "公众号/小程序 AppID"),
+    envStatus("WECHAT_PAY_APP_ID", "公众号/小程序/AppID"),
     envStatus("WECHAT_PAY_MCH_ID", "微信支付商户号"),
     envStatus("WECHAT_PAY_MCH_SERIAL_NO", "商户证书序列号"),
     envStatus("WECHAT_PAY_PRIVATE_KEY_PEM", "商户 API 私钥 PEM"),
@@ -62,7 +62,7 @@ export function getPaymentConfigurationStatus() {
       callbackUrl: `${baseUrl}/api/billing/callback/wechat`,
       required: wechatRequired,
       callbackRequired: wechatCallbackRequired,
-      optional: [envStatus("APP_URL", "生成支付回调 URL，未配置时本地使用 localhost")],
+      optional: [envStatus("APP_URL", "生成支付回调 URL；未配置时本地使用 localhost")],
     },
     {
       provider: "alipay",
@@ -75,8 +75,8 @@ export function getPaymentConfigurationStatus() {
       required: alipayRequired,
       callbackRequired: alipayCallbackRequired,
       optional: [
-        envStatus("ALIPAY_GATEWAY_URL", "支付宝网关，未配置时使用正式网关"),
-        envStatus("APP_URL", "生成支付回调和返回 URL，未配置时本地使用 localhost"),
+        envStatus("ALIPAY_GATEWAY_URL", "支付宝网关；未配置时使用正式网关"),
+        envStatus("APP_URL", "生成支付回调和返回 URL；未配置时本地使用 localhost"),
       ],
     },
   ];

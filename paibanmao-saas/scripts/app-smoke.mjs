@@ -787,6 +787,14 @@ async function checkAdminSettingsFlow() {
   assert(Array.isArray(paymentSettings.payload?.providers) && paymentSettings.payload.providers.length === 2, "payment settings provider status missing");
   assert(paymentSettings.payload.providers.some((item) => item.provider === "wechat"), "wechat payment status missing");
   assert(paymentSettings.payload.providers.some((item) => item.provider === "alipay"), "alipay payment status missing");
+  assertNoMojibake(paymentSettings.payload?.message, "payment settings message");
+  for (const provider of paymentSettings.payload.providers) {
+    assertNoMojibake(provider.label, `${provider.provider} payment label`);
+    assertNoMojibake(provider.checkoutMode, `${provider.provider} payment checkout mode`);
+    for (const item of [...(provider.required || []), ...(provider.callbackRequired || []), ...(provider.optional || [])]) {
+      assertNoMojibake(item.purpose, `${provider.provider} payment env purpose ${item.key}`);
+    }
+  }
 }
 
 async function checkPaymentFlow() {
@@ -798,6 +806,7 @@ async function checkPaymentFlow() {
   assert(order.response.ok, `/api/billing/orders returned ${order.response.status}: ${order.text}`);
   assert(order.payload?.order?.id, "payment order id missing");
   assert(order.payload.order.amountCents === 9900, "payment order amount mismatch");
+  assertNoMojibake(order.payload?.order?.checkout?.instructions, "wechat checkout instructions");
 
   const callback = await paymentCallbackRequest("/api/billing/callback/wechat", "wechat", {
     orderId: order.payload.order.id,
@@ -840,6 +849,7 @@ async function checkAlipayPaymentFlow() {
   assert(order.response.ok, `/api/billing/orders alipay returned ${order.response.status}: ${order.text}`);
   assert(order.payload?.order?.id, "alipay payment order id missing");
   assert(order.payload.order.amountCents === 9900, "alipay payment order amount mismatch");
+  assertNoMojibake(order.payload?.order?.checkout?.instructions, "alipay checkout instructions");
 
   const callback = await paymentCallbackRequest("/api/billing/callback/alipay", "alipay", {
     orderId: order.payload.order.id,
