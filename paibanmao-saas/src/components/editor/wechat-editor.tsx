@@ -6,7 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import LinkExtension from "@tiptap/extension-link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Copy, Download, FileCode2, Images, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Copy, Download, FileCode2, Images, Loader2, Save, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -176,6 +176,12 @@ function splitPromptDraft(value: string) {
     .filter(Boolean);
 }
 
+type ImagePromptResult = {
+  output: {
+    prompts: string[];
+  };
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -194,8 +200,11 @@ export function WechatEditor() {
   const [greenTitle, setGreenTitle] = useState("");
   const [greenBody, setGreenBody] = useState("");
   const [imagePromptDraft, setImagePromptDraft] = useState("");
+  const [imageScene, setImageScene] = useState("green_note_pages");
+  const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
+  const [generatingPrompts, setGeneratingPrompts] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -272,6 +281,41 @@ export function WechatEditor() {
   async function copyImagePrompts() {
     await navigator.clipboard.writeText(imagePrompts.join("\n\n"));
     setNotice("小绿书图片提示词已复制。");
+  }
+
+  async function copyImagePrompt(prompt: string, index: number) {
+    await navigator.clipboard.writeText(prompt);
+    setNotice(`第 ${index + 1} 条图片提示词已复制。`);
+  }
+
+  async function generateImagePrompts() {
+    const topic = (greenTitle || project?.title || "").trim();
+
+    if (topic.length < 2) {
+      setNotice("请先填写小绿书标题，或者从内容项目进入编辑器。");
+      return;
+    }
+
+    setGeneratingPrompts(true);
+    try {
+      const data = await readJson<ImagePromptResult>(
+        await fetch("/api/generate/image-prompts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic,
+            scene: imageScene,
+            style: imageStyle,
+          }),
+        }),
+      );
+      setImagePromptDraft(data.output.prompts.join("\n\n"));
+      setNotice("图片提示词已生成，可继续编辑或逐条复制。");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "图片提示词生成失败。");
+    } finally {
+      setGeneratingPrompts(false);
+    }
   }
 
   async function copyGreenNote() {
@@ -409,6 +453,30 @@ export function WechatEditor() {
                 <h2 className="font-semibold text-slate-950">图片提示词</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">每条提示词之间空一行，后续接入图片模型时可逐条发送。</p>
               </div>
+              <label className="block space-y-1 text-xs">
+                <span className="text-slate-500">生成场景</span>
+                <select
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 outline-none focus:border-emerald-400"
+                  onChange={(event) => setImageScene(event.target.value)}
+                  value={imageScene}
+                >
+                  <option value="green_note_pages">小绿书多页图文</option>
+                  <option value="green_note_cover">小绿书封面</option>
+                  <option value="wechat_cover">公众号封面</option>
+                </select>
+              </label>
+              <label className="block space-y-1 text-xs">
+                <span className="text-slate-500">视觉风格</span>
+                <input
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 outline-none focus:border-emerald-400"
+                  onChange={(event) => setImageStyle(event.target.value)}
+                  value={imageStyle}
+                />
+              </label>
+              <Button className="w-full" onClick={generateImagePrompts} variant="secondary" disabled={generatingPrompts}>
+                {generatingPrompts ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+                生成图片提示词
+              </Button>
               <textarea
                 className="min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 outline-none focus:border-emerald-400"
                 onChange={(event) => setImagePromptDraft(event.target.value)}
@@ -463,8 +531,14 @@ export function WechatEditor() {
             </div>
             <div className="space-y-2">
               {imagePrompts.map((prompt, index) => (
-                <div key={`${prompt}-${index}`} className="rounded-md bg-white p-2 text-xs leading-5 text-slate-600">
-                  {prompt}
+                <div key={`${prompt}-${index}`} className="space-y-2 rounded-md bg-white p-2 text-xs leading-5 text-slate-600">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium text-slate-800">第 {index + 1} 条</span>
+                    <button className="shrink-0 text-emerald-700" onClick={() => copyImagePrompt(prompt, index)} type="button">
+                      复制
+                    </button>
+                  </div>
+                  <p>{prompt}</p>
                 </div>
               ))}
             </div>
