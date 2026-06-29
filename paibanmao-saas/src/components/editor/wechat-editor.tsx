@@ -1,18 +1,19 @@
 "use client";
 
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import LinkExtension from "@tiptap/extension-link";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Copy, Download, FileCode2, Images, Loader2, Save, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 
 type Variant = {
   id?: string;
-  entry: "wechat_article" | "green_note" | "search" | "question" | "moments";
+  entry: ContentEntry;
   title: string;
   body: string;
   metadata?: Record<string, unknown> | null;
@@ -25,12 +26,36 @@ type Project = {
   variants: Variant[];
 };
 
+type EntryDraft = {
+  title: string;
+  body: string;
+};
+
+type ImagePromptResult = {
+  output: {
+    prompts: string[];
+  };
+};
+
+type RewriteResult = {
+  output: {
+    title: string;
+    body: string;
+    provider: string;
+    model: string;
+  };
+  fallback?: boolean;
+  aiError?: string | null;
+};
+
 const starterContent = `
 <h1>普通人做公众号副业还有机会吗？</h1>
 <p>这是一篇公众号文章草稿。你可以在这里编辑正文，然后复制公众号 HTML 到微信公众平台。</p>
-<h2>为什么这个选题值得写</h2>
-<p>它同时适合公众号长文、小绿书短图文、搜一搜关键词和问一问回答。</p>
+<h2>为什么这个选题值得写？</h2>
+<p>它同时适合公众号长文、小绿书短图文、搜一搜关键词、问一问回答和朋友圈转发。</p>
 `;
+
+const editableEntries = contentEntries.filter((entry) => !["wechat_article", "green_note"].includes(entry.id));
 
 function escapeHtml(value: string) {
   return value
@@ -169,6 +194,11 @@ function getImagePrompts(variant?: Variant) {
   return Array.isArray(prompts) ? prompts.filter((item): item is string => typeof item === "string") : [];
 }
 
+function getKeywords(variant?: Variant) {
+  const keywords = variant?.metadata?.keywords;
+  return Array.isArray(keywords) ? keywords.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+}
+
 function getGreenNotePageCount(variant?: Variant) {
   const pages = variant?.metadata?.pages;
   if (pages === 3 || pages === 6 || pages === 9) {
@@ -179,6 +209,11 @@ function getGreenNotePageCount(variant?: Variant) {
   return promptCount === 6 || promptCount === 9 ? promptCount : 3;
 }
 
+function getStoredHtml(variant?: Variant) {
+  const html = variant?.metadata?.html;
+  return typeof html === "string" && html.trim() ? html : null;
+}
+
 function splitPromptDraft(value: string) {
   return value
     .split(/\n{2,}/)
@@ -186,22 +221,24 @@ function splitPromptDraft(value: string) {
     .filter(Boolean);
 }
 
-type ImagePromptResult = {
-  output: {
-    prompts: string[];
-  };
-};
+function getEntryLabel(entry: ContentEntry) {
+  return contentEntries.find((item) => item.id === entry)?.label || entry;
+}
 
-type RewriteResult = {
-  output: {
-    title: string;
-    body: string;
-    provider: string;
-    model: string;
-  };
-  fallback?: boolean;
-  aiError?: string | null;
-};
+function getEntrySummary(entry: ContentEntry) {
+  return contentEntries.find((item) => item.id === entry)?.summary || "";
+}
+
+function getDefaultDrafts(project?: Project | null) {
+  return editableEntries.reduce<Record<string, EntryDraft>>((drafts, entry) => {
+    const variant = project?.variants.find((item) => item.entry === entry.id);
+    drafts[entry.id] = {
+      title: variant?.title || "",
+      body: variant?.body || "",
+    };
+    return drafts;
+  }, {});
+}
 
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
@@ -217,13 +254,14 @@ export function WechatEditor() {
   const [project, setProject] = useState<Project | null>(null);
   const [notice, setNotice] = useState("");
   const [html, setHtml] = useState(starterContent);
-  const [mode, setMode] = useState<"wechat" | "green_note">("wechat");
+  const [mode, setMode] = useState<ContentEntry>("wechat_article");
   const [greenTitle, setGreenTitle] = useState("");
   const [greenBody, setGreenBody] = useState("");
   const [greenPageCount, setGreenPageCount] = useState<3 | 6 | 9>(3);
   const [imagePromptDraft, setImagePromptDraft] = useState("");
   const [imageScene, setImageScene] = useState("green_note_pages");
   const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
+  const [entryDrafts, setEntryDrafts] = useState<Record<string, EntryDraft>>(() => getDefaultDrafts());
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
   const [generatingPrompts, setGeneratingPrompts] = useState(false);
@@ -260,8 +298,9 @@ export function WechatEditor() {
       .then((data) => {
         const wechat = data.project.variants.find((variant) => variant.entry === "wechat_article");
         const greenNote = data.project.variants.find((variant) => variant.entry === "green_note");
-        const content = wechat ? textToHtml(wechat.body) : starterContent;
+        const content = getStoredHtml(wechat) || (wechat ? textToHtml(wechat.body) : starterContent);
         setProject(data.project);
+        setEntryDrafts(getDefaultDrafts(data.project));
         setGreenTitle(greenNote?.title || "");
         setGreenBody(greenNote?.body || "");
         setGreenPageCount(getGreenNotePageCount(greenNote));
@@ -275,7 +314,48 @@ export function WechatEditor() {
   }, [editor, projectId]);
 
   const wechatVariant = useMemo(() => project?.variants.find((variant) => variant.entry === "wechat_article"), [project]);
+  const greenNoteVariant = useMemo(() => project?.variants.find((variant) => variant.entry === "green_note"), [project]);
+  const currentGenericDraft = entryDrafts[mode] || { title: "", body: "" };
   const imagePrompts = useMemo(() => splitPromptDraft(imagePromptDraft), [imagePromptDraft]);
+  const searchKeywords = useMemo(() => getKeywords(project?.variants.find((variant) => variant.entry === "search")), [project]);
+
+  function updateEntryDraft(entry: ContentEntry, patch: Partial<EntryDraft>) {
+    setEntryDrafts((current) => ({
+      ...current,
+      [entry]: {
+        ...(current[entry] || { title: "", body: "" }),
+        ...patch,
+      },
+    }));
+  }
+
+  function getCurrentPlainText() {
+    if (!editor) {
+      return "";
+    }
+
+    if (mode === "wechat_article") {
+      return editor.getText();
+    }
+
+    if (mode === "green_note") {
+      return greenBody;
+    }
+
+    return currentGenericDraft.body;
+  }
+
+  function getCurrentTitle() {
+    if (mode === "wechat_article") {
+      return wechatVariant?.title || project?.title || "公众号文章";
+    }
+
+    if (mode === "green_note") {
+      return greenTitle || greenNoteVariant?.title || project?.title || "小绿书图文";
+    }
+
+    return currentGenericDraft.title || `${project?.title || "内容项目"} - ${getEntryLabel(mode)}`;
+  }
 
   async function copyHtml() {
     if (!editor) return;
@@ -284,9 +364,9 @@ export function WechatEditor() {
   }
 
   async function copyText() {
-    if (!editor) return;
-    await navigator.clipboard.writeText(editor.getText());
-    setNotice("纯文本已复制。");
+    const text = getCurrentPlainText();
+    await navigator.clipboard.writeText(text);
+    setNotice(`${getEntryLabel(mode)}纯文本已复制。`);
   }
 
   async function copyMarkdown() {
@@ -297,7 +377,7 @@ export function WechatEditor() {
 
   function downloadHtml() {
     if (!editor) return;
-    const title = wechatVariant?.title || project?.title || "排版猫公众号文章";
+    const title = getCurrentTitle();
     downloadTextFile(`${title}.html`, buildDownloadHtml(title, editor.getHTML()), "text/html;charset=utf-8");
     setNotice("HTML 文件已下载。");
   }
@@ -351,9 +431,16 @@ export function WechatEditor() {
     setNotice("小绿书文案已复制。");
   }
 
+  async function copyCurrentEntryPackage() {
+    const title = getCurrentTitle();
+    const body = getCurrentPlainText();
+    await navigator.clipboard.writeText(`${title}\n\n${body}`.trim());
+    setNotice(`${getEntryLabel(mode)}内容包已复制。`);
+  }
+
   async function saveProject() {
     if (!editor || !project) {
-      setNotice("当前没有关联内容项目，可直接复制 HTML 使用。");
+      setNotice("当前没有关联内容项目，可直接复制内容使用。");
       return;
     }
 
@@ -383,11 +470,12 @@ export function WechatEditor() {
           };
         }
 
+        const draft = entryDrafts[variant.entry] || { title: variant.title, body: variant.body };
         return {
           entry: variant.entry,
-          title: variant.title,
-          body: variant.body,
-          metadata: variant.metadata || undefined,
+          title: draft.title || variant.title,
+          body: draft.body || variant.body,
+          metadata: { ...(variant.metadata || {}), editedAt: new Date().toISOString() },
         };
       });
 
@@ -403,6 +491,7 @@ export function WechatEditor() {
         }),
       );
       setProject(data.project);
+      setEntryDrafts(getDefaultDrafts(data.project));
       setNotice("内容项目已保存。");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "保存失败。");
@@ -445,16 +534,16 @@ export function WechatEditor() {
   }
 
   async function runCheck() {
-    if (!editor) return;
+    const content = getCurrentPlainText();
     const response = await fetch("/api/compliance/check", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId: project?.id || undefined,
-        entry: "wechat_article",
-        title: wechatVariant?.title || project?.title || "公众号文章",
-        content: editor.getText(),
-        html: editor.getHTML(),
+        entry: mode,
+        title: getCurrentTitle(),
+        content,
+        html: mode === "wechat_article" ? editor?.getHTML() : undefined,
       }),
     });
     const data = (await response.json()) as { score?: number; report?: { id: string }; message?: string };
@@ -474,24 +563,20 @@ export function WechatEditor() {
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2 rounded-lg border border-slate-100 bg-white p-2">
-          <button
-            className={`rounded-lg px-3 py-2 text-sm ${mode === "wechat" ? "bg-emerald-500 text-white" : "text-slate-600 hover:bg-slate-50"}`}
-            onClick={() => setMode("wechat")}
-            type="button"
-          >
-            公众号 HTML
-          </button>
-          <button
-            className={`rounded-lg px-3 py-2 text-sm ${mode === "green_note" ? "bg-emerald-500 text-white" : "text-slate-600 hover:bg-slate-50"}`}
-            onClick={() => setMode("green_note")}
-            type="button"
-          >
-            小绿书图文
-          </button>
+          {contentEntries.map((entry) => (
+            <button
+              className={`rounded-lg px-3 py-2 text-sm ${mode === entry.id ? "bg-emerald-500 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+              key={entry.id}
+              onClick={() => setMode(entry.id)}
+              type="button"
+            >
+              {entry.label}
+            </button>
+          ))}
         </div>
-        {mode === "wechat" ? (
+        {mode === "wechat_article" ? (
           <EditorContent editor={editor} />
-        ) : (
+        ) : mode === "green_note" ? (
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
             <div className="space-y-3">
               <label className="block space-y-1 text-sm">
@@ -559,34 +644,80 @@ export function WechatEditor() {
               />
             </div>
           </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+            <div className="space-y-3">
+              <label className="block space-y-1 text-sm">
+                <span className="text-slate-600">{getEntryLabel(mode)}标题</span>
+                <input
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400"
+                  onChange={(event) => updateEntryDraft(mode, { title: event.target.value })}
+                  value={currentGenericDraft.title}
+                />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span className="text-slate-600">{getEntryLabel(mode)}正文</span>
+                <textarea
+                  className="min-h-[560px] w-full rounded-lg border border-slate-200 bg-white p-4 text-sm leading-7 outline-none focus:border-emerald-400"
+                  onChange={(event) => updateEntryDraft(mode, { body: event.target.value })}
+                  value={currentGenericDraft.body}
+                />
+              </label>
+            </div>
+            <div className="space-y-3 rounded-lg border border-emerald-100 bg-white p-4">
+              <h2 className="font-semibold text-slate-950">{getEntryLabel(mode)}发布要点</h2>
+              <p className="text-sm leading-6 text-slate-600">{getEntrySummary(mode)}</p>
+              {mode === "search" && searchKeywords.length ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-slate-500">关键词</div>
+                  <div className="flex flex-wrap gap-2">
+                    {searchKeywords.map((keyword) => (
+                      <button
+                        className="rounded-full bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-700"
+                        key={keyword}
+                        onClick={() => navigator.clipboard.writeText(keyword)}
+                        type="button"
+                      >
+                        {keyword}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <Button className="w-full" onClick={copyCurrentEntryPackage} variant="secondary" disabled={!currentGenericDraft.body.trim()}>
+                <Copy className="size-4" />
+                复制{getEntryLabel(mode)}内容包
+              </Button>
+            </div>
+          </div>
         )}
       </div>
       <aside className="space-y-3 rounded-lg border border-emerald-100 bg-white p-4">
         <div>
           <h2 className="font-semibold text-slate-950">编辑器工具</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">首版做轻量排版和公众号 HTML 复制，微信公众平台本身负责更复杂的样式调整。</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">一个项目内统一编辑公众号、小绿书、搜一搜、问一问和朋友圈内容，保存后回到内容项目继续排期和复盘。</p>
         </div>
         <Button className="w-full" onClick={saveProject} disabled={saving || loading}>
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           保存到项目
         </Button>
-        <Button className="w-full" onClick={copyHtml} variant="secondary" disabled={mode !== "wechat"}>
+        <Button className="w-full" onClick={copyHtml} variant="secondary" disabled={mode !== "wechat_article"}>
           <FileCode2 className="size-4" />
           复制公众号 HTML
         </Button>
-        <Button className="w-full" onClick={copyText} variant="secondary" disabled={mode !== "wechat"}>
+        <Button className="w-full" onClick={copyText} variant="secondary" disabled={!getCurrentPlainText().trim()}>
           <Copy className="size-4" />
-          复制纯文本
+          复制当前纯文本
         </Button>
-        <Button className="w-full" onClick={copyMarkdown} variant="secondary" disabled={mode !== "wechat"}>
+        <Button className="w-full" onClick={copyMarkdown} variant="secondary" disabled={mode !== "wechat_article"}>
           <Copy className="size-4" />
           复制 Markdown
         </Button>
-        <Button className="w-full" onClick={rewriteCurrentContent} variant="secondary" disabled={mode !== "wechat" || rewriting || loading}>
+        <Button className="w-full" onClick={rewriteCurrentContent} variant="secondary" disabled={mode !== "wechat_article" || rewriting || loading}>
           {rewriting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
           降低 AI 味
         </Button>
-        <Button className="w-full" onClick={downloadHtml} variant="secondary" disabled={mode !== "wechat"}>
+        <Button className="w-full" onClick={downloadHtml} variant="secondary" disabled={mode !== "wechat_article"}>
           <Download className="size-4" />
           下载 HTML
         </Button>
@@ -594,18 +725,21 @@ export function WechatEditor() {
           <Images className="size-4" />
           复制小绿书文案
         </Button>
-        <Button className="w-full" onClick={runCheck} variant="secondary">
+        <Button className="w-full" onClick={runCheck} variant="secondary" disabled={!getCurrentPlainText().trim()}>
           <CheckCircle2 className="size-4" />
           发布前检查
         </Button>
         {notice ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p> : null}
-        <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">当前 HTML 长度：{html.length}</div>
+        <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">
+          当前入口：{getEntryLabel(mode)}
+          {mode === "wechat_article" ? ` · HTML 长度：${html.length}` : ` · 正文字数：${getCurrentPlainText().length}`}
+        </div>
         {mode === "green_note" ? (
           <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">
             小绿书结构：{greenPageCount} 页，当前有 {imagePrompts.length} 条图片提示词。
           </div>
         ) : null}
-        {imagePrompts.length ? (
+        {imagePrompts.length && mode === "green_note" ? (
           <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-medium text-slate-900">小绿书图片提示词</h3>

@@ -200,6 +200,15 @@ async function checkDashboardOperatingView() {
   assert(dashboard.text.includes("账号档案完整度"), "dashboard account profile completeness section missing");
 }
 
+async function checkEditorFiveEntryView() {
+  const editor = await request("/dashboard/editor");
+  assert(editor.response.ok, `/dashboard/editor returned ${editor.response.status}: ${editor.text.slice(0, 200)}`);
+  assert(editor.text.includes("五入口内容编辑器"), "editor page title missing");
+  for (const label of ["公众号", "小绿书", "搜一搜", "问一问", "朋友圈"]) {
+    assert(editor.text.includes(label), `editor entry label missing: ${label}`);
+  }
+}
+
 async function checkFreeAccountProfileLimit() {
   const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Free extra profile"));
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
@@ -342,7 +351,7 @@ async function checkProjectEditingSave(generated) {
       return {
         entry: variant.entry,
         title: variant.title,
-        body: variant.body,
+        body: `${variant.body}\n\n${marker} green note body`,
         metadata: {
           ...(variant.metadata || {}),
           pages: 3,
@@ -355,8 +364,11 @@ async function checkProjectEditingSave(generated) {
     return {
       entry: variant.entry,
       title: variant.title,
-      body: variant.body,
-      metadata: variant.metadata || undefined,
+      body: `${variant.body}\n\n${marker} ${variant.entry}`,
+      metadata: {
+        ...(variant.metadata || {}),
+        editedAt: new Date().toISOString(),
+      },
     };
   });
 
@@ -378,11 +390,18 @@ async function checkProjectEditingSave(generated) {
 
   const wechat = fetched.payload?.project?.variants?.find((variant) => variant.entry === "wechat_article");
   const greenNote = fetched.payload?.project?.variants?.find((variant) => variant.entry === "green_note");
+  const search = fetched.payload?.project?.variants?.find((variant) => variant.entry === "search");
+  const question = fetched.payload?.project?.variants?.find((variant) => variant.entry === "question");
+  const moments = fetched.payload?.project?.variants?.find((variant) => variant.entry === "moments");
 
   assert(wechat?.body?.includes(marker), "saved wechat article body marker missing");
   assert(wechat?.metadata?.html?.includes(marker), "saved wechat article html metadata missing");
+  assert(greenNote?.body?.includes(`${marker} green note body`), "saved green note body marker missing");
   assert(Array.isArray(greenNote?.metadata?.imagePrompts), "saved green note image prompts missing");
   assert(greenNote.metadata.imagePrompts.some((prompt) => String(prompt).includes(marker)), "saved green note image prompt marker missing");
+  assert(search?.body?.includes(`${marker} search`), "saved search entry body marker missing");
+  assert(question?.body?.includes(`${marker} question`), "saved question entry body marker missing");
+  assert(moments?.body?.includes(`${marker} moments`), "saved moments entry body marker missing");
 }
 
 async function checkCalendarProjectSync(generated) {
@@ -852,6 +871,7 @@ async function main() {
   await checkAuthRejections();
   const profile = await checkAccountProfiles();
   await checkDashboardOperatingView();
+  await checkEditorFiveEntryView();
   await checkQueuedGenerationScopeRejection();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);

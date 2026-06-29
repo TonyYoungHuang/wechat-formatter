@@ -1,9 +1,4 @@
-export type ContentEntry =
-  | "wechat_article"
-  | "green_note"
-  | "search"
-  | "question"
-  | "moments";
+export type ContentEntry = "wechat_article" | "green_note" | "search" | "question" | "moments";
 
 export const contentEntries: Array<{
   id: ContentEntry;
