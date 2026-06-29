@@ -83,6 +83,14 @@ function defaultScheduledFor() {
   return toDatetimeLocal(date);
 }
 
+function getInitialProjectId() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URLSearchParams(window.location.search).get("projectId") || "";
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     month: "2-digit",
@@ -113,7 +121,7 @@ export function CalendarWorkbench() {
   const [form, setForm] = useState({
     accountProfileId: "",
     topicId: "",
-    projectId: "",
+    projectId: getInitialProjectId(),
     entry: "wechat_article" as ContentEntry,
     title: "",
     scheduledFor: defaultScheduledFor(),
@@ -169,10 +177,16 @@ export function CalendarWorkbench() {
       setTopics(topicData.topics);
       setProjects(projectData.projects);
       setItems(calendarData.items);
-      setForm((current) => ({
-        ...current,
-        accountProfileId: current.accountProfileId || profileData.profiles[0]?.id || "",
-      }));
+      setForm((current) => {
+        const initialProject = current.projectId ? projectData.projects.find((project) => project.id === current.projectId) : null;
+
+        return {
+          ...current,
+          title: current.title || initialProject?.title || "",
+          accountProfileId: initialProject?.accountProfileId || current.accountProfileId || profileData.profiles[0]?.id || "",
+          topicId: initialProject?.topicId || current.topicId || "",
+        };
+      });
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载内容日历失败。");

@@ -215,6 +215,9 @@ export function ProjectsWorkbench() {
                   <Button asChild size="sm" variant="secondary">
                     <Link href={`/dashboard/checks?projectId=${project.id}`}>发布检查</Link>
                   </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/dashboard/calendar?projectId=${project.id}`}>加入日历</Link>
+                  </Button>
                   <Button asChild size="sm">
                     <Link href={`/dashboard/editor?projectId=${project.id}`}>去编辑</Link>
                   </Button>
