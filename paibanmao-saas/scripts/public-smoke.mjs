@@ -8,6 +8,7 @@ const publicPages = [
   "/templates",
   "/tutorials",
   "/tools/topic-generator",
+  "/tools/wechat-title-generator",
   "/tools/green-note-generator",
   "/tools/search-keyword-helper",
   "/tools/question-answer-generator",
@@ -79,12 +80,46 @@ async function checkToolPreview() {
   assert(Array.isArray(payload.preview?.blocks) && payload.preview.blocks.length > 0, "preview blocks missing");
 }
 
+async function checkPublicPreviewLimit() {
+  const title = await request("/api/tools/wechat-title-generator", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      topic: previewInput,
+      audience: "\u516c\u4f17\u53f7\u526f\u4e1a\u65b0\u624b",
+      goal: "growth",
+      tone: "\u6e05\u6670\u3001\u5177\u4f53\u3001\u6709\u70b9\u51fb\u6b32\u671b",
+    }),
+  });
+  assert(title.response.ok, `/api/tools/wechat-title-generator returned ${title.response.status}: ${title.text}`);
+  const titlePayload = JSON.parse(title.text);
+  assert(Array.isArray(titlePayload.suggestions) && titlePayload.suggestions.length === 12, "title suggestions missing");
+
+  const setCookie = title.response.headers.get("set-cookie") || "";
+  const cookieHeader = setCookie.split(";")[0];
+  assert(cookieHeader.includes("paibanmao_public_preview_used=1"), "title preview did not set public preview cookie");
+
+  const blocked = await request("/api/tools/preview", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookieHeader,
+    },
+    body: JSON.stringify({
+      kind: "topic",
+      input: previewInput,
+    }),
+  });
+  assert(blocked.response.status === 429, `/api/tools/preview with used cookie returned ${blocked.response.status}, expected 429`);
+}
+
 async function main() {
   console.log(`Running public smoke checks against ${baseUrl}`);
   await checkPublicPages();
   await checkSitemapAndRobots();
   await checkDashboardRedirect();
   await checkToolPreview();
+  await checkPublicPreviewLimit();
   console.log("Public smoke checks passed.");
 }
 

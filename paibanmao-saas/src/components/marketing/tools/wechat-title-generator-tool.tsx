@@ -46,7 +46,7 @@ export function WechatTitleGeneratorTool() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "生成失败，请稍后再试。");
+        throw new Error(data.message || data.error || "生成失败，请稍后再试。");
       }
 
       setSuggestions(data.suggestions);
