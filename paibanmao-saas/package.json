@@ -1,0 +1,51 @@
+{
+  "name": "paibanmao-saas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.2",
+    "@prisma/client": "^7.8.0",
+    "@tanstack/react-query": "^5.90.12",
+    "@tiptap/extension-image": "^3.27.1",
+    "@tiptap/extension-link": "^3.27.1",
+    "@tiptap/extension-placeholder": "^3.27.1",
+    "@tiptap/react": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "ai": "^7.0.4",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.66.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "ioredis": "^5.8.2",
+    "jose": "^6.1.3",
+    "lucide-react": "^0.561.0",
+    "next": "16.2.9",
+    "qrcode": "^1.5.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.2.1",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*cert*
+temp-cookie.txt
+
+# Logs and local runtime files
+*.log
+*.err.log
+*.out.log
+*.pid
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Archives and generated packages
+*.zip
+*.tar
+*.tgz
+*.7z
+
+# Root-level legacy scratch/export files
+/*.html
+/*.png
+/*.jpg
+/*.jpeg
+/*.txt
+
+# Legacy project snapshots and sensitive local materials
+1110253882_20260402_cert/
+alipay/
+paibanmao-release-current/
+stitch/
+wechat-formatter-main/
+_remote_repo_probe/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

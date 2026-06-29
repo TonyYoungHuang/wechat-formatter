@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanCode {
+  free
+  starter
+  pro
+}
+
+enum AccountProfileType {
+  wechat_official
+  green_note
+  question_host
+  personal_ip
+  local_business
+}
+
+enum TopicStatus {
+  idea
+  generated
+  editing
+  ready
+  published
+  reviewed
+}
+
+enum ContentGoal {
+  growth
+  search
+  conversion
+  trust
+  interaction
+}
+
+enum ContentEntry {
+  wechat_article
+  green_note
+  search
+  question
+  moments
+}
+
+enum GenerationStatus {
+  pending
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  cancelled
+  expired
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships WorkspaceMember[]
+  sessions    Session[]
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  planCode  PlanCode @default(free)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members         WorkspaceMember[]
+  accountProfiles AccountProfile[]
+  topics          Topic[]
+  projects        ContentProject[]
+  usageLogs       UsageLog[]
+  subscriptions   Subscription[]
+  paymentOrders   PaymentOrder[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String   @default("owner")
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model PricingPlan {
+  id          String   @id @default(cuid())
+  code        PlanCode @unique
+  name        String
+  description String
+  priceCents  Int      @default(0)
+  currency    String   @default("CNY")
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entitlements PlanEntitlement[]
+}
+
+model PlanEntitlement {
+  id        String   @id @default(cuid())
+  planCode  PlanCode
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan PricingPlan @relation(fields: [planCode], references: [code], onDelete: Cascade)
+
+  @@unique([planCode, key])
+}
+
+model Subscription {
+  id          String    @id @default(cuid())
+  workspaceId String
+  planCode    PlanCode
+  status      String    @default("active")
+  startsAt    DateTime  @default(now())
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model AccountProfile {
+  id                  String             @id @default(cuid())
+  workspaceId          String
+  name                String
+  type                AccountProfileType
+  niche               String
+  persona             String
+  audience            String
+  audiencePainPoints  String
+  productOrService    String
+  monetizationMethods String[]
+  tone                String
+  commonCta           String
+  forbiddenWords      String[]
+  sampleText          String?
+  isDefault           Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  topics    Topic[]
+  projects  ContentProject[]
+}
+
+model Topic {
+  id               String        @id @default(cuid())
+  workspaceId      String
+  accountProfileId String
+  title            String
+  reason           String
+  goals            ContentGoal[]
+  entries          ContentEntry[]
+  status           TopicStatus   @default(idea)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
+  projects       ContentProject[]
+}
+
+model ContentProject {
+  id               String      @id @default(cuid())
+  workspaceId      String
+  accountProfileId String
+  topicId          String?
+  title            String
+  status           TopicStatus @default(generated)
+  publishedAt      DateTime?
+  reviewNote       String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile   @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
+  topic          Topic?           @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  variants       ContentVariant[]
+  reports        ComplianceReport[]
+}
+
+model ContentVariant {
+  id        String       @id @default(cuid())
+  projectId String
+  entry     ContentEntry
+  title     String
+  body      String
+  metadata  Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  project ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, entry])
+}
+
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("openai-compatible")
+  baseUrl   String
+  apiKeyRef String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  models AiModel[]
+}
+
+model AiModel {
+  id         String   @id @default(cuid())
+  providerId String
+  name       String
+  modelId    String
+  purpose    String   @default("content")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  provider AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model PromptTemplate {
+  id        String   @id @default(cuid())
+  key       String
+  version   Int
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs GenerationJob[]
+
+  @@unique([key, version])
+}
+
+model GenerationJob {
+  id               String           @id @default(cuid())
+  workspaceId      String
+  accountProfileId String?
+  promptTemplateId String?
+  type             String
+  status           GenerationStatus @default(pending)
+  input            Json
+  output           Json?
+  error            String?
+  tokenInput       Int              @default(0)
+  tokenOutput      Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  promptTemplate PromptTemplate? @relation(fields: [promptTemplateId], references: [id], onDelete: SetNull)
+}
+
+model ComplianceReport {
+  id        String   @id @default(cuid())
+  projectId String
+  score     Int
+  level     String
+  summary   String
+  createdAt DateTime @default(now())
+
+  project ContentProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues  ComplianceIssue[]
+}
+
+model ComplianceIssue {
+  id        String   @id @default(cuid())
+  reportId  String
+  category  String
+  severity  String
+  excerpt   String
+  message   String
+  suggestion String
+  createdAt DateTime @default(now())
+
+  report ComplianceReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model UsageLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  key         String
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model PaymentOrder {
+  id              String        @id @default(cuid())
+  workspaceId     String
+  planCode        PlanCode
+  provider        String
+  amountCents     Int
+  currency        String        @default("CNY")
+  status          PaymentStatus @default(pending)
+  providerOrderId String?
+  providerTradeNo String?
+  checkout        Json?
+  paidAt          DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
