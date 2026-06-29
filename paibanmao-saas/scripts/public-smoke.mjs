@@ -147,6 +147,15 @@ const protectedPostChecks = [
   },
 ];
 
+const toolPreviewChecks = [
+  { kind: "topic", expectedTitle: "\u9009\u9898\u9884\u89c8" },
+  { kind: "green_note", expectedTitle: "\u5c0f\u7eff\u4e66\u56fe\u6587\u9884\u89c8" },
+  { kind: "search", expectedTitle: "\u641c\u4e00\u641c\u5173\u952e\u8bcd\u9884\u89c8" },
+  { kind: "question", expectedTitle: "\u95ee\u4e00\u95ee\u56de\u7b54\u9884\u89c8" },
+  { kind: "moments", expectedTitle: "\u670b\u53cb\u5708\u6587\u6848\u9884\u89c8" },
+  { kind: "compliance", expectedTitle: "\u53d1\u5e03\u524d\u68c0\u67e5\u9884\u89c8" },
+];
+
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, options);
   const text = await response.text();
@@ -237,18 +246,22 @@ async function checkProtectedApiAuth() {
 }
 
 async function checkToolPreview() {
-  const { response, text } = await request("/api/tools/preview", {
-    method: "POST",
-    headers: visitorHeaders("tool-preview", { "Content-Type": "application/json" }),
-    body: JSON.stringify({
-      kind: "topic",
-      input: previewInput,
-    }),
-  });
-  assert(response.ok, `/api/tools/preview returned ${response.status}: ${text}`);
-  const payload = JSON.parse(text);
-  assert(payload.preview?.title, "preview title missing");
-  assert(Array.isArray(payload.preview?.blocks) && payload.preview.blocks.length > 0, "preview blocks missing");
+  for (const check of toolPreviewChecks) {
+    const { response, text } = await request("/api/tools/preview", {
+      method: "POST",
+      headers: visitorHeaders(`tool-preview-${check.kind}`, { "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        kind: check.kind,
+        input: previewInput,
+      }),
+    });
+    assert(response.ok, `/api/tools/preview ${check.kind} returned ${response.status}: ${text}`);
+    const payload = JSON.parse(text);
+    assert(payload.preview?.title === check.expectedTitle, `preview title mismatch for ${check.kind}`);
+    assert(payload.preview?.summary, `preview summary missing for ${check.kind}`);
+    assert(Array.isArray(payload.preview?.blocks) && payload.preview.blocks.length > 0, `preview blocks missing for ${check.kind}`);
+    assert(payload.preview?.loginHint, `preview login hint missing for ${check.kind}`);
+  }
 }
 
 async function checkPublicPreviewLimit() {
