@@ -475,7 +475,7 @@ export function FiveEntryGenerator() {
                 <div className="flex gap-2 lg:justify-end">
                   {projectId ? (
                     <Button asChild size="sm" variant="secondary">
-                      <Link href={`/dashboard/projects`}>查看项目</Link>
+                      <Link href={`/dashboard/editor?projectId=${projectId}`}>去编辑</Link>
                     </Button>
                   ) : null}
                   <Button asChild size="sm" variant="ghost">
