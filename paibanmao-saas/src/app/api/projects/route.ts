@@ -30,8 +30,12 @@ export async function GET(request: Request) {
           select: { id: true, entry: true, title: true, updatedAt: true },
           orderBy: { updatedAt: "desc" },
         },
+        metrics: {
+          orderBy: { recordedAt: "desc" },
+          take: 1,
+        },
         _count: {
-          select: { reports: true },
+          select: { reports: true, metrics: true },
         },
       },
       orderBy: { updatedAt: "desc" },
