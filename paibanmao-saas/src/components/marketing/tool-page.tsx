@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const relatedTools = [
+  { href: "/templates", label: "微信内容模板库" },
   { href: "/tools/wechat-title-generator", label: "公众号标题生成器" },
   { href: "/tools/topic-generator", label: "公众号选题生成器" },
   { href: "/tools/green-note-generator", label: "小绿书文案生成器" },

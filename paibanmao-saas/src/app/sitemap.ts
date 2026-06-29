@@ -5,6 +5,7 @@ import { tutorialArticles } from "@/lib/seo/tutorials";
 const publicPaths = [
   "",
   "/pricing",
+  "/templates",
   "/tutorials",
   "/tools/wechat-title-generator",
   "/tools/topic-generator",

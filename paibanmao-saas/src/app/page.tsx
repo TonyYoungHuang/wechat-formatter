@@ -34,6 +34,7 @@ export default function HomePage() {
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <Link href="/tools/topic-generator">免费工具</Link>
+            <Link href="/templates">模板库</Link>
             <Link href="/pricing">价格</Link>
             <Link href="/tutorials">教程</Link>
             <Link href="/login">登录</Link>
@@ -135,6 +136,31 @@ export default function HomePage() {
                 <h3 className="font-semibold text-slate-950">{tool.label}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{tool.desc}</p>
               </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-emerald-100 bg-white py-14">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-950">从模板开始，少在空白页前耗着</h2>
+            <p className="mt-3 leading-7 text-slate-600">
+              排版猫模板库把公众号长文、小绿书图文、搜一搜关键词、问一问回答和朋友圈转发拆成可复用结构。登录后可以沉淀成自己的账号模板。
+            </p>
+            <Button asChild className="mt-5">
+              <Link href="/templates">
+                查看模板库
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {["公众号痛点解决型长文", "小绿书 6 页图文脚本", "一个选题五入口发布"].map((item) => (
+              <div key={item} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                <h3 className="font-semibold text-slate-950">{item}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">适合微信副业创作者快速搭建可发布内容结构。</p>
+              </div>
             ))}
           </div>
         </div>
