@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Settings2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,32 @@ type PromptConfig = {
   source: string;
 };
 
+type PaymentEnvVar = {
+  key: string;
+  configured: boolean;
+  purpose: string;
+};
+
+type PaymentProviderConfig = {
+  provider: "wechat" | "alipay";
+  label: string;
+  checkoutMode: string;
+  ready: boolean;
+  callbackReady: boolean;
+  checkoutUrl: string;
+  callbackUrl: string;
+  required: PaymentEnvVar[];
+  callbackRequired: PaymentEnvVar[];
+  optional: PaymentEnvVar[];
+};
+
+type PaymentConfigStatus = {
+  appUrl: string;
+  productionReady: boolean;
+  message: string;
+  providers: PaymentProviderConfig[];
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -34,6 +60,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export function SettingsWorkbench() {
   const [status, setStatus] = useState<ProviderStatus | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentConfigStatus | null>(null);
   const [prompts, setPrompts] = useState<PromptConfig[]>([]);
   const [name, setName] = useState("default-router");
   const [baseUrl, setBaseUrl] = useState("https://example-model-router.com/v1");
@@ -44,14 +71,16 @@ export function SettingsWorkbench() {
 
   async function load() {
     try {
-      const [providerData, promptData] = await Promise.all([
+      const [providerData, promptData, paymentData] = await Promise.all([
         fetch("/api/admin/ai-providers").then((response) => readJson<ProviderStatus>(response)),
         fetch("/api/admin/prompts").then((response) => readJson<{ prompts: PromptConfig[] }>(response)),
+        fetch("/api/admin/payment-settings").then((response) => readJson<PaymentConfigStatus>(response)),
       ]);
       setStatus(providerData);
       setName(providerData.provider.name || "default-router");
       setModelId(providerData.provider.model || "gpt-4.1-mini");
       setPrompts(promptData.prompts);
+      setPaymentStatus(paymentData);
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载配置失败。");
@@ -120,7 +149,7 @@ export function SettingsWorkbench() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">设置</h1>
-        <p className="mt-1 text-sm text-slate-600">管理模型中转站、Prompt 模板、价格额度入口和支付参数占位。</p>
+        <p className="mt-1 text-sm text-slate-600">管理模型中转站、Prompt 模板、价格额度入口和支付配置状态。</p>
       </div>
 
       {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
@@ -191,15 +220,80 @@ export function SettingsWorkbench() {
         <CardHeader>
           <CardTitle>支付与商业化参数</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
-          {["WECHAT_PAY_APP_ID", "WECHAT_PAY_MCH_ID", "WECHAT_PAY_API_V3_KEY", "ALIPAY_APP_ID", "ALIPAY_PRIVATE_KEY_PEM", "ALIPAY_PUBLIC_KEY_PEM"].map((key) => (
-            <div key={key} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-              <Settings2 className="size-4 text-emerald-600" />
-              <span>{key}</span>
+        <CardContent className="space-y-4 text-sm text-slate-600">
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-slate-950">当前站点地址：{paymentStatus?.appUrl || "加载中"}</p>
+                <p className="mt-1 text-xs text-slate-500">{paymentStatus?.message || "正在读取支付环境变量状态。"}</p>
+              </div>
+              <StatusPill ready={Boolean(paymentStatus?.productionReady)} label={paymentStatus?.productionReady ? "生产配置已就绪" : "仍有缺失项"} />
             </div>
-          ))}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            {paymentStatus?.providers.map((provider) => (
+              <div key={provider.provider} className="rounded-lg border border-slate-200 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold text-slate-950">{provider.label}</h2>
+                    <p className="mt-1 text-xs text-slate-500">{provider.checkoutMode}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <StatusPill ready={provider.ready} label={provider.ready ? "下单就绪" : "下单缺配置"} />
+                    <StatusPill ready={provider.callbackReady} label={provider.callbackReady ? "回调就绪" : "回调缺配置"} />
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <ConfigGroup title="下单必填" items={provider.required} />
+                  <ConfigGroup title="回调验签" items={provider.callbackRequired} />
+                  <ConfigGroup title="可选配置" items={provider.optional} />
+                </div>
+
+                <div className="mt-4 space-y-2 rounded-lg bg-slate-50 p-3 text-xs">
+                  <p className="break-all">
+                    <span className="font-medium text-slate-700">下单接口：</span>
+                    {provider.checkoutUrl}
+                  </p>
+                  <p className="break-all">
+                    <span className="font-medium text-slate-700">回调地址：</span>
+                    {provider.callbackUrl}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function StatusPill({ ready, label }: { ready: boolean; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs ${ready ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+      {ready ? <CheckCircle2 className="size-3.5" /> : <AlertCircle className="size-3.5" />}
+      {label}
+    </span>
+  );
+}
+
+function ConfigGroup({ title, items }: { title: string; items: PaymentEnvVar[] }) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-slate-500">{title}</p>
+      <div className="grid gap-2">
+        {items.map((item) => (
+          <div key={`${title}-${item.key}`} className="flex items-start gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+            {item.configured ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />}
+            <div className="min-w-0">
+              <p className="font-medium text-slate-800">{item.key}</p>
+              <p className="mt-0.5 leading-5 text-slate-500">{item.purpose}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
