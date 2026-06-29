@@ -52,7 +52,7 @@ export function buildTopicSuggestions(input: {
       `围绕 ${profile.audience} 的真实问题展开`,
       `目标是 ${monetizationGoal}`,
       "可拆成多入口复用",
-      avoid ? `已避开方向：${avoid}` : "",
+      avoid ? `已避开方向: ${avoid}` : "",
     ]
       .filter(Boolean)
       .join("；") + "。",

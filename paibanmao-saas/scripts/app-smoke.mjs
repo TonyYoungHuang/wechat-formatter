@@ -17,6 +17,13 @@ function assert(condition, message) {
   }
 }
 
+const mojibakePattern = /[�]|鎺|鐢|閫|鈥|俙|歿|绂|鍥|绠/;
+
+function assertNoMojibake(value, label) {
+  const text = String(value ?? "");
+  assert(!mojibakePattern.test(text), `${label} contains mojibake: ${text.slice(0, 120)}`);
+}
+
 function readSetCookies(response) {
   if (typeof response.headers.getSetCookie === "function") {
     return response.headers.getSetCookie();
@@ -320,6 +327,15 @@ async function checkFiveEntryGeneration(profile, savedTopic) {
   assert(generation.response.ok, `/api/generate/five-entry returned ${generation.response.status}: ${generation.text}`);
   assert(generation.payload?.project?.id, "generated project id missing");
   assert(Array.isArray(generation.payload.project.variants) && generation.payload.project.variants.length === 5, "five-entry variants missing");
+  for (const variant of generation.payload.project.variants) {
+    assertNoMojibake(variant.title, `${variant.entry} title`);
+    assertNoMojibake(variant.body, `${variant.entry} body`);
+    if (Array.isArray(variant.metadata?.imagePrompts)) {
+      for (const [index, prompt] of variant.metadata.imagePrompts.entries()) {
+        assertNoMojibake(prompt, `${variant.entry} image prompt ${index + 1}`);
+      }
+    }
+  }
 
   const jobs = await request("/api/generation-jobs");
   assert(jobs.response.ok, `/api/generation-jobs returned ${jobs.response.status}: ${jobs.text}`);
@@ -618,6 +634,11 @@ async function checkImagePrompts() {
   assert(imagePrompts.response.ok, `/api/generate/image-prompts returned ${imagePrompts.response.status}: ${imagePrompts.text}`);
   assert(Array.isArray(imagePrompts.payload?.output?.prompts) && imagePrompts.payload.output.prompts.length === 3, "image prompt output missing");
   assert(imagePrompts.payload?.job?.type === "image_prompt_generation", "image prompt generation job type mismatch");
+  assert(imagePrompts.payload.output.imageGenerationReady === false, "image prompt output should reserve but not enable image generation");
+  assert(imagePrompts.payload.output.nextStep, "image prompt output missing future image-generation handoff note");
+  for (const [index, prompt] of imagePrompts.payload.output.prompts.entries()) {
+    assertNoMojibake(prompt, `image prompt output ${index + 1}`);
+  }
 }
 
 async function checkQueuedGeneration(profile) {

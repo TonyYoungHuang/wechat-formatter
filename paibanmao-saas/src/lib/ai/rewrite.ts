@@ -27,12 +27,12 @@ export function buildFallbackRewrite(input: {
   commonCta?: string | null;
 }) {
   const replacements: Array<[RegExp, string]> = [
-    [/首先[，,、]?/g, "先说结论，"],
-    [/其次[，,、]?/g, "再看一个关键点，"],
-    [/最后[，,、]?/g, "收个尾，"],
-    [/综上所述[，,、]?/g, "简单总结一下，"],
-    [/不难发现[，,、]?/g, "我自己的感受是，"],
-    [/总而言之[，,、]?/g, "说到底，"],
+    [/首先[，。:：]?/g, "先说结论: "],
+    [/其次[，。:：]?/g, "再看一个关键点: "],
+    [/最后[，。:：]?/g, "收个尾，"],
+    [/综上所述[，。:：]?/g, "简单总结一下，"],
+    [/不难发现[，。:：]?/g, "我自己的感受是，"],
+    [/总而言之[，。:：]?/g, "说到底，"],
   ];
   let body = input.content.trim();
 
@@ -47,6 +47,10 @@ export function buildFallbackRewrite(input: {
       .filter(Boolean)
       .slice(0, 12)
       .join("\n\n");
+  }
+
+  if (input.goal === "more_wechat") {
+    body = body.replaceAll("用户", "读者").replaceAll("内容平台", "微信生态");
   }
 
   if (input.goal === "stronger_cta" && input.commonCta && !body.includes(input.commonCta)) {

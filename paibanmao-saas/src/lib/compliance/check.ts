@@ -23,7 +23,7 @@ const entryLabels: Record<ContentEntry, string> = {
 
 const basePatterns = [
   {
-    pattern: /全网最|唯一|第一|最强|最佳|稳赚|暴富|保证|躺赚|百分百|100%/g,
+    pattern: /全网最|唯一|第一|最强|最稳|稳赚|暴富|保证|躺赚|百分百|100%/g,
     category: "夸大承诺",
     severity: "medium" as const,
     suggestion: "改成更克制、可验证的表达，例如“更适合”“有机会”“可以尝试”。",
@@ -64,7 +64,7 @@ function pushPatternIssues(issues: ComplianceIssue[], text: string) {
         category: item.category,
         severity: item.severity,
         excerpt: match,
-        message: `发现可能存在风险的表达：“${match}”。`,
+        message: `发现可能存在风险的表达: “${match}”。`,
         suggestion: item.suggestion,
       });
     }
@@ -93,7 +93,7 @@ function pushAdvancedIssues(issues: ComplianceIssue[], input: { title?: string; 
         category: "AI 味",
         severity: "low",
         excerpt: match,
-        message: `这类表达容易显得模板化：“${match}”。`,
+        message: `这类表达容易显得模板化: “${match}”。`,
         suggestion: "替换成更具体的场景、真实经历、数据或读者问题。",
       });
     }
@@ -201,11 +201,11 @@ function pushEntryRuleIssues(issues: ComplianceIssue[], input: { title?: string;
         severity: "medium",
         excerpt: content.slice(0, 40),
         message: "朋友圈文案过长，容易不像自然转发。",
-        suggestion: "压缩为 80-200 字，用个人观察开头，再自然说明为什么推荐这篇内容。",
+        suggestion: "压缩到 80-200 字，用个人观察开头，再自然说明为什么推荐这篇内容。",
       });
     }
 
-    if (/(本文|本篇文章|读者朋友|综上所述|首先其次最后)/.test(content)) {
+    if (/(本文|本篇文章|读者朋友|综上所述|首先|其次|最后)/.test(content)) {
       issues.push({
         category: "入口规则检查",
         severity: "low",

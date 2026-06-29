@@ -54,21 +54,21 @@ export async function generateTopicSuggestionsWithAi(input: {
   const prompt =
     input.prompt ??
     [
-      `账号名称：${profile.name}`,
-      `领域：${profile.niche}`,
-      `人设：${profile.persona}`,
-      `目标读者：${profile.audience}`,
-      `读者痛点：${profile.audiencePainPoints}`,
-      `产品或服务：${profile.productOrService || "未填写"}`,
-      `变现方式：${profile.monetizationMethods.join(", ") || "未填写"}`,
-      `语气：${profile.tone}`,
-      `常用 CTA：${profile.commonCta || "自然关注或私信引导"}`,
-      `禁用表达：${profile.forbiddenWords.join(", ") || "无"}`,
-      `参考样文：${profile.sampleText || "无"}`,
-      `本次主题：${input.theme}`,
-      `变现目标：${input.monetizationGoal}`,
-      `避免方向：${input.avoid || "无"}`,
-      `生成数量：${input.count}`,
+      `账号名称: ${profile.name}`,
+      `领域: ${profile.niche}`,
+      `人设: ${profile.persona}`,
+      `目标读者: ${profile.audience}`,
+      `读者痛点: ${profile.audiencePainPoints}`,
+      `产品或服务: ${profile.productOrService || "未填写"}`,
+      `变现方式: ${profile.monetizationMethods.join(", ") || "未填写"}`,
+      `语气: ${profile.tone}`,
+      `常用 CTA: ${profile.commonCta || "自然关注或私信引导"}`,
+      `禁用表达: ${profile.forbiddenWords.join(", ") || "无"}`,
+      `参考样文: ${profile.sampleText || "无"}`,
+      `本次主题: ${input.theme}`,
+      `变现目标: ${input.monetizationGoal}`,
+      `避免方向: ${input.avoid || "无"}`,
+      `生成数量: ${input.count}`,
     ].join("\n");
 
   const candidates = (await getAiProviderCandidates("topic")).filter((config) => config.baseUrl && config.apiKey && config.model);
