@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock3, Copy, Loader2, Save, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Clock3, Copy, FolderOpen, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
 
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
 import { Button } from "@/components/ui/button";
@@ -274,12 +275,36 @@ export function FiveEntryGenerator() {
               <CardTitle>{activeVariant?.title || contentEntries.find((item) => item.id === activeEntry)?.label}</CardTitle>
               <p className="mt-1 text-sm text-slate-500">{contentEntries.find((item) => item.id === activeEntry)?.summary}</p>
             </div>
-            {activeVariant ? (
-              <Button variant="secondary" onClick={() => copyText(`${activeVariant.title}\n\n${activeVariant.body}`)}>
-                <Copy className="size-4" />
-                复制
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap justify-end gap-2">
+              {result ? (
+                <>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/dashboard/editor?projectId=${result.project.id}`}>
+                      <PencilLine className="size-4" />
+                      去编辑
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/dashboard/checks?projectId=${result.project.id}`}>
+                      <CheckCircle2 className="size-4" />
+                      发布检查
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href="/dashboard/projects">
+                      <FolderOpen className="size-4" />
+                      项目
+                    </Link>
+                  </Button>
+                </>
+              ) : null}
+              {activeVariant ? (
+                <Button size="sm" variant="secondary" onClick={() => copyText(`${activeVariant.title}\n\n${activeVariant.body}`)}>
+                  <Copy className="size-4" />
+                  复制
+                </Button>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent>
             {activeVariant ? (
