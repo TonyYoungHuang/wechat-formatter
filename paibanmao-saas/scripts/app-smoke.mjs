@@ -235,6 +235,19 @@ async function checkFiveEntryGeneratorView() {
   }
 }
 
+async function checkBillingWorkbenchView() {
+  const billing = await request("/dashboard/billing");
+  assert(billing.response.ok, `/dashboard/billing returned ${billing.response.status}: ${billing.text.slice(0, 200)}`);
+
+  const plans = await request("/api/billing/plans");
+  assert(plans.response.ok, `/api/billing/plans for billing page returned ${plans.response.status}: ${plans.text}`);
+  assert(Array.isArray(plans.payload?.plans) && plans.payload.plans.some((plan) => plan.code === "starter"), "billing plans missing starter plan");
+
+  const usage = await request("/api/usage/summary");
+  assert(usage.response.ok, `/api/usage/summary for billing page returned ${usage.response.status}: ${usage.text}`);
+  assert(usage.payload?.generation?.plan?.code, "billing usage summary missing current plan");
+}
+
 async function checkFreeAccountProfileLimit() {
   const blocked = await jsonRequest("/api/account-profiles", accountProfilePayload("Free extra profile"));
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
@@ -900,6 +913,7 @@ async function main() {
   await checkDashboardOperatingView();
   await checkEditorFiveEntryView();
   await checkFiveEntryGeneratorView();
+  await checkBillingWorkbenchView();
   await checkQueuedGenerationScopeRejection();
   await checkFreeAccountProfileLimit();
   const savedTopic = await checkManualTopicCreation(profile);
