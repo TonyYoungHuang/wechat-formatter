@@ -13,3 +13,10 @@ export const imagePromptSchema = z.object({
   pageCount: z.number().int().refine((value) => [3, 6, 9].includes(value)).default(3),
   style: z.string().trim().max(80).default("清爽微信绿色工作台风格"),
 });
+
+export const rewriteContentSchema = z.object({
+  accountProfileId: z.string().optional(),
+  title: z.string().trim().max(160).optional(),
+  content: z.string().trim().min(20).max(20000),
+  goal: z.enum(["lower_ai_tone", "more_concise", "more_wechat", "stronger_cta"]).default("lower_ai_tone"),
+});

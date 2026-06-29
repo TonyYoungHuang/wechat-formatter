@@ -55,6 +55,24 @@ export const defaultPromptTemplates: Record<string, string> = {
     "请生成适合微信图文、小绿书或公众号封面的中文图片提示词。",
     "只输出提示词建议，不要调用真实图片生成。",
   ].join("\n"),
+  ai_tone_rewrite: [
+    "标题：{{title}}",
+    "改写目标：{{goal}}",
+    "账号名称：{{accountName}}",
+    "领域：{{niche}}",
+    "人设：{{persona}}",
+    "目标读者：{{audience}}",
+    "语气风格：{{tone}}",
+    "常用 CTA：{{commonCta}}",
+    "禁用表达：{{forbiddenWords}}",
+    "",
+    "原文：",
+    "{{content}}",
+    "",
+    "请把原文改写成更像真实创作者写给微信读者的表达，降低模板感和 AI 味。",
+    "保留事实、结构和核心观点，不要编造数据，不要承诺收益、流量、排名或平台审核结果。",
+    "如果 CTA 生硬，请改成更自然的微信生态引导。",
+  ].join("\n"),
 };
 
 function renderTemplate(content: string, context: PromptContext) {

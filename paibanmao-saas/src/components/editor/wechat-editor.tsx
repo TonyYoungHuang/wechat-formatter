@@ -192,6 +192,17 @@ type ImagePromptResult = {
   };
 };
 
+type RewriteResult = {
+  output: {
+    title: string;
+    body: string;
+    provider: string;
+    model: string;
+  };
+  fallback?: boolean;
+  aiError?: string | null;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -216,6 +227,7 @@ export function WechatEditor() {
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
   const [generatingPrompts, setGeneratingPrompts] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -399,6 +411,39 @@ export function WechatEditor() {
     }
   }
 
+  async function rewriteCurrentContent() {
+    if (!editor) return;
+    const content = editor.getText().trim();
+
+    if (content.length < 20) {
+      setNotice("正文至少需要 20 个字，才能进行自然改写。");
+      return;
+    }
+
+    setRewriting(true);
+    try {
+      const data = await readJson<RewriteResult>(
+        await fetch("/api/generate/rewrite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: wechatVariant?.title || project?.title || undefined,
+            content,
+            goal: "lower_ai_tone",
+          }),
+        }),
+      );
+      const nextHtml = textToHtml(data.output.body);
+      editor.commands.setContent(nextHtml);
+      setHtml(nextHtml);
+      setNotice(data.fallback ? "已用本地规则降低 AI 味；配置模型后可获得更自然的改写。" : `已使用 ${data.output.model} 完成自然改写。`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "自然改写失败。");
+    } finally {
+      setRewriting(false);
+    }
+  }
+
   async function runCheck() {
     if (!editor) return;
     const response = await fetch("/api/compliance/check", {
@@ -536,6 +581,10 @@ export function WechatEditor() {
         <Button className="w-full" onClick={copyMarkdown} variant="secondary" disabled={mode !== "wechat"}>
           <Copy className="size-4" />
           复制 Markdown
+        </Button>
+        <Button className="w-full" onClick={rewriteCurrentContent} variant="secondary" disabled={mode !== "wechat" || rewriting || loading}>
+          {rewriting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+          降低 AI 味
         </Button>
         <Button className="w-full" onClick={downloadHtml} variant="secondary" disabled={mode !== "wechat"}>
           <Download className="size-4" />
