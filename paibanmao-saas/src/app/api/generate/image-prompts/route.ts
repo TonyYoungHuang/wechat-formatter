@@ -20,9 +20,10 @@ export async function POST(request: Request) {
     const promptTemplate = await getActivePromptTemplate("image_prompt_generation", {
       topic: parsed.data.topic,
       scene: parsed.data.scene,
+      pageCount: String(parsed.data.pageCount),
       style: parsed.data.style,
     });
-    const output = buildImagePrompts(parsed.data.topic, parsed.data.scene, parsed.data.style);
+    const output = buildImagePrompts(parsed.data.topic, parsed.data.scene, parsed.data.style, parsed.data.pageCount);
     const job = await prisma.generationJob.create({
       data: {
         workspaceId: current.workspace.id,

@@ -10,5 +10,6 @@ export const generateFiveEntrySchema = z.object({
 export const imagePromptSchema = z.object({
   topic: z.string().trim().min(2).max(160),
   scene: z.enum(["wechat_cover", "green_note_cover", "green_note_pages"]).default("green_note_cover"),
+  pageCount: z.number().int().refine((value) => [3, 6, 9].includes(value)).default(3),
   style: z.string().trim().max(80).default("清爽微信绿色工作台风格"),
 });

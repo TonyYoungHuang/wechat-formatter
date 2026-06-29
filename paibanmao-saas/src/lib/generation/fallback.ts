@@ -112,15 +112,27 @@ export function buildFallbackFiveEntry(input: {
   ];
 }
 
-export function buildImagePrompts(topic: string, scene: string, style: string) {
+export function buildImagePrompts(topic: string, scene: string, style: string, pageCount = 3) {
+  const greenNotePagePrompts = Array.from({ length: pageCount }, (_, index) => {
+    const pageNumber = index + 1;
+    const pageRole = pageNumber === 1 ? "封面钩子页" : pageNumber === pageCount ? "结尾行动页" : `第 ${pageNumber} 页观点拆解`;
+
+    return `${style}，微信小绿书 3:4 竖版图文，主题“${topic}”，${pageRole}，中文标题醒目，正文留白充足，信息层级清晰，适合手机阅读`;
+  });
+  const prompts =
+    scene === "green_note_pages"
+      ? greenNotePagePrompts
+      : [
+          `${style}，中文封面图，主题“${topic}”，主体清晰，浅绿色留白，适合微信公众号和小绿书`,
+          `${style}，步骤说明页，3 个信息层级，适合 3:4 手机图文比例`,
+          `${style}，结尾行动页，预留中文标题和 CTA 位置，不要复杂背景`,
+        ];
+
   return {
     topic,
     scene,
+    pageCount: scene === "green_note_pages" ? pageCount : undefined,
     style,
-    prompts: [
-      `${style}，中文封面图，主题“${topic}”，主体清晰，浅绿色留白，适合微信公众号和小绿书`,
-      `${style}，步骤说明页，3 个信息层级，适合 3:4 手机图文比例`,
-      `${style}，结尾行动页，预留中文标题和 CTA 位置，不要复杂背景`,
-    ],
+    prompts,
   };
 }

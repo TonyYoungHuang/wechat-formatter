@@ -169,6 +169,16 @@ function getImagePrompts(variant?: Variant) {
   return Array.isArray(prompts) ? prompts.filter((item): item is string => typeof item === "string") : [];
 }
 
+function getGreenNotePageCount(variant?: Variant) {
+  const pages = variant?.metadata?.pages;
+  if (pages === 3 || pages === 6 || pages === 9) {
+    return pages;
+  }
+
+  const promptCount = getImagePrompts(variant).length;
+  return promptCount === 6 || promptCount === 9 ? promptCount : 3;
+}
+
 function splitPromptDraft(value: string) {
   return value
     .split(/\n{2,}/)
@@ -199,6 +209,7 @@ export function WechatEditor() {
   const [mode, setMode] = useState<"wechat" | "green_note">("wechat");
   const [greenTitle, setGreenTitle] = useState("");
   const [greenBody, setGreenBody] = useState("");
+  const [greenPageCount, setGreenPageCount] = useState<3 | 6 | 9>(3);
   const [imagePromptDraft, setImagePromptDraft] = useState("");
   const [imageScene, setImageScene] = useState("green_note_pages");
   const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
@@ -241,6 +252,7 @@ export function WechatEditor() {
         setProject(data.project);
         setGreenTitle(greenNote?.title || "");
         setGreenBody(greenNote?.body || "");
+        setGreenPageCount(getGreenNotePageCount(greenNote));
         setImagePromptDraft(getImagePrompts(greenNote).join("\n\n"));
         editor.commands.setContent(content);
         setHtml(content);
@@ -305,6 +317,7 @@ export function WechatEditor() {
           body: JSON.stringify({
             topic,
             scene: imageScene,
+            pageCount: greenPageCount,
             style: imageStyle,
           }),
         }),
@@ -319,7 +332,10 @@ export function WechatEditor() {
   }
 
   async function copyGreenNote() {
-    await navigator.clipboard.writeText(`${greenTitle}\n\n${greenBody}`.trim());
+    const promptSection = imagePrompts.length
+      ? ["", `图片页提示词（${greenPageCount} 页结构）`, ...imagePrompts.map((prompt, index) => `第 ${index + 1} 页：${prompt}`)].join("\n")
+      : "";
+    await navigator.clipboard.writeText(`${greenTitle}\n\n${greenBody}${promptSection}`.trim());
     setNotice("小绿书文案已复制。");
   }
 
@@ -348,6 +364,7 @@ export function WechatEditor() {
             body: greenBody || variant.body,
             metadata: {
               ...(variant.metadata || {}),
+              pages: greenPageCount,
               imagePrompts,
               editedAt: new Date().toISOString(),
             },
@@ -466,6 +483,18 @@ export function WechatEditor() {
                 </select>
               </label>
               <label className="block space-y-1 text-xs">
+                <span className="text-slate-500">小绿书页数</span>
+                <select
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 outline-none focus:border-emerald-400"
+                  onChange={(event) => setGreenPageCount(Number(event.target.value) as 3 | 6 | 9)}
+                  value={greenPageCount}
+                >
+                  <option value={3}>3 页快读</option>
+                  <option value={6}>6 页标准</option>
+                  <option value={9}>9 页完整</option>
+                </select>
+              </label>
+              <label className="block space-y-1 text-xs">
                 <span className="text-slate-500">视觉风格</span>
                 <input
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 outline-none focus:border-emerald-400"
@@ -521,6 +550,11 @@ export function WechatEditor() {
         </Button>
         {notice ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p> : null}
         <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">当前 HTML 长度：{html.length}</div>
+        {mode === "green_note" ? (
+          <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">
+            小绿书结构：{greenPageCount} 页，当前有 {imagePrompts.length} 条图片提示词。
+          </div>
+        ) : null}
         {imagePrompts.length ? (
           <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-3">
