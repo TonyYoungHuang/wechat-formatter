@@ -133,6 +133,25 @@ async function checkFreeAccountProfileLimit() {
   assert(blocked.response.status === 409, `/api/account-profiles free extra returned ${blocked.response.status}, expected 409`);
 }
 
+async function checkManualTopicCreation(profile) {
+  const created = await jsonRequest("/api/topics", {
+    accountProfileId: profile.id,
+    title: `${topic}\uff1a\u624b\u52a8\u9009\u9898\u56de\u5f52`,
+    reason: "\u9a8c\u8bc1\u9009\u9898\u53ef\u4ee5\u4fdd\u5b58\u5e76\u8fdb\u5165\u4e94\u5165\u53e3\u751f\u6210\u3002",
+    goals: ["growth", "search"],
+    entries: ["wechat_article", "green_note", "search", "question", "moments"],
+  });
+
+  assert(created.response.status === 201, `/api/topics returned ${created.response.status}: ${created.text}`);
+  assert(created.payload?.topic?.id, "created topic id missing");
+
+  const topics = await request("/api/topics");
+  assert(topics.response.ok, `/api/topics list returned ${topics.response.status}: ${topics.text}`);
+  assert(topics.payload?.topics?.some((item) => item.id === created.payload.topic.id), "created topic missing from topic list");
+
+  return created.payload.topic;
+}
+
 async function checkStarterAccountProfileLimit() {
   const second = await jsonRequest("/api/account-profiles", accountProfilePayload("Starter profile two"));
   assert(second.response.status === 201, `/api/account-profiles starter second returned ${second.response.status}: ${second.text}`);
@@ -144,9 +163,10 @@ async function checkStarterAccountProfileLimit() {
   assert(blocked.response.status === 409, `/api/account-profiles starter fourth returned ${blocked.response.status}, expected 409`);
 }
 
-async function checkFiveEntryGeneration(profile) {
+async function checkFiveEntryGeneration(profile, savedTopic) {
   const generation = await jsonRequest("/api/generate/five-entry", {
     accountProfileId: profile.id,
+    topicId: savedTopic?.id,
     topic,
     goal: "growth",
   });
@@ -158,6 +178,14 @@ async function checkFiveEntryGeneration(profile) {
   const jobs = await request("/api/generation-jobs");
   assert(jobs.response.ok, `/api/generation-jobs returned ${jobs.response.status}: ${jobs.text}`);
   assert(Array.isArray(jobs.payload?.jobs) && jobs.payload.jobs.length >= 1, "generation job log missing");
+
+  if (savedTopic?.id) {
+    const topics = await request("/api/topics");
+    assert(topics.response.ok, `/api/topics after generation returned ${topics.response.status}: ${topics.text}`);
+    const refreshedTopic = topics.payload?.topics?.find((item) => item.id === savedTopic.id);
+    assert(refreshedTopic?.status === "generated", "topic status was not updated after generation");
+    assert((refreshedTopic?._count?.projects ?? 0) >= 1, "topic project count was not updated after generation");
+  }
 
   return generation.payload;
 }
@@ -481,7 +509,8 @@ async function main() {
   const current = await registerAndCheckSession();
   const profile = await checkAccountProfiles();
   await checkFreeAccountProfileLimit();
-  const generated = await checkFiveEntryGeneration(profile);
+  const savedTopic = await checkManualTopicCreation(profile);
+  const generated = await checkFiveEntryGeneration(profile, savedTopic);
   await checkFreeGenerationLimit(profile);
   await checkComplianceReport(generated);
   await checkProjectEditingSave(generated);
