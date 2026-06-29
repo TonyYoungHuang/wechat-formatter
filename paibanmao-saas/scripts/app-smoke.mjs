@@ -131,6 +131,33 @@ async function checkRewrite(profile, generated) {
   assert(rewrite.payload?.output?.content, "rewrite output content missing");
 }
 
+async function checkTopicSuggestions(profile) {
+  const topics = await jsonRequest("/api/topics/generate", {
+    accountProfileId: profile.id,
+    theme: "\u516c\u4f17\u53f7\u526f\u4e1a\u51b7\u542f\u52a8",
+    monetizationGoal: "\u8d44\u6599\u5305\u548c\u54a8\u8be2\u8f6c\u5316",
+    avoid: "\u5938\u5927\u6536\u76ca\u627f\u8bfa",
+    count: 3,
+  });
+
+  assert(topics.response.ok, `/api/topics/generate returned ${topics.response.status}: ${topics.text}`);
+  assert(Array.isArray(topics.payload?.suggestions) && topics.payload.suggestions.length >= 3, "topic suggestions missing");
+  assert(topics.payload?.job?.type === "topic_generation", "topic generation job type mismatch");
+}
+
+async function checkImagePrompts() {
+  const imagePrompts = await jsonRequest("/api/generate/image-prompts", {
+    topic,
+    scene: "green_note_pages",
+    pageCount: 3,
+    style: "\u6e05\u723d\u5fae\u4fe1\u7eff\u8272\u5de5\u4f5c\u53f0\u98ce\u683c",
+  });
+
+  assert(imagePrompts.response.ok, `/api/generate/image-prompts returned ${imagePrompts.response.status}: ${imagePrompts.text}`);
+  assert(Array.isArray(imagePrompts.payload?.output?.prompts) && imagePrompts.payload.output.prompts.length === 3, "image prompt output missing");
+  assert(imagePrompts.payload?.job?.type === "image_prompt_generation", "image prompt generation job type mismatch");
+}
+
 async function configurePricingIfAdmin(currentUser) {
   if (!currentUser?.user?.isSiteAdmin) {
     const message = `Smoke user ${email} is not a site admin. Set SITE_ADMIN_EMAIL to this email before starting the server to test pricing and payment.`;
@@ -202,6 +229,8 @@ async function main() {
 
   if (canCheckPayment) {
     await checkPaymentFlow();
+    await checkTopicSuggestions(profile);
+    await checkImagePrompts();
     await checkRewrite(profile, generated);
   }
 
