@@ -19,15 +19,21 @@ type Topic = {
   accountProfileId: string;
 };
 
+type ContentEntry = "wechat_article" | "green_note" | "search" | "question" | "moments";
+
 type Project = {
   id: string;
   title: string;
   status: string;
   accountProfileId: string;
   topicId?: string | null;
+  variants?: Array<{
+    id: string;
+    entry: ContentEntry;
+    title: string;
+  }>;
 };
 
-type ContentEntry = "wechat_article" | "green_note" | "search" | "question" | "moments";
 type CalendarStatus = "idea" | "generated" | "editing" | "ready" | "published" | "reviewed";
 
 type CalendarItem = {
@@ -62,6 +68,35 @@ const statusLabels: Record<CalendarStatus, string> = {
 
 const entries = Object.entries(entryLabels) as Array<[ContentEntry, string]>;
 const statuses = Object.entries(statusLabels) as Array<[CalendarStatus, string]>;
+
+function pickProjectEntry(project: Project | null | undefined, currentEntry: ContentEntry): ContentEntry {
+  if (!project?.variants?.length) {
+    return currentEntry;
+  }
+
+  return project.variants.some((variant) => variant.entry === currentEntry) ? currentEntry : project.variants[0].entry;
+}
+
+function canReplaceTitle(currentTitle: string, project: Project | null | undefined) {
+  const title = currentTitle.trim();
+  if (!title || title === project?.title) {
+    return true;
+  }
+
+  return Boolean(project?.variants?.some((variant) => variant.title === title));
+}
+
+function projectTitleForEntry(project: Project | null | undefined, entry: ContentEntry, currentTitle: string) {
+  if (!project || !canReplaceTitle(currentTitle, project)) {
+    return currentTitle;
+  }
+
+  return project.variants?.find((variant) => variant.entry === entry)?.title || project.title || currentTitle;
+}
+
+function projectEntrySummary(project: Project | null | undefined) {
+  return project?.variants?.map((variant) => entryLabels[variant.entry]).join("、") || "";
+}
 
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
@@ -136,6 +171,8 @@ export function CalendarWorkbench() {
     });
   }, [filterEntry, filterStatus, items]);
 
+  const selectedProject = useMemo(() => projects.find((project) => project.id === form.projectId), [form.projectId, projects]);
+
   const groupedItems = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
     for (const item of filteredItems) {
@@ -179,10 +216,12 @@ export function CalendarWorkbench() {
       setItems(calendarData.items);
       setForm((current) => {
         const initialProject = current.projectId ? projectData.projects.find((project) => project.id === current.projectId) : null;
+        const nextEntry = pickProjectEntry(initialProject, current.entry);
 
         return {
           ...current,
-          title: current.title || initialProject?.title || "",
+          entry: nextEntry,
+          title: projectTitleForEntry(initialProject, nextEntry, current.title),
           accountProfileId: initialProject?.accountProfileId || current.accountProfileId || profileData.profiles[0]?.id || "",
           topicId: initialProject?.topicId || current.topicId || "",
         };
@@ -206,12 +245,26 @@ export function CalendarWorkbench() {
   function updateForm(key: keyof typeof form, value: string) {
     if (key === "projectId") {
       const project = projects.find((item) => item.id === value);
+      setForm((current) => {
+        const nextEntry = pickProjectEntry(project, current.entry);
+        return {
+          ...current,
+          projectId: value,
+          entry: nextEntry,
+          title: projectTitleForEntry(project, nextEntry, current.title),
+          accountProfileId: project?.accountProfileId || current.accountProfileId,
+          topicId: project?.topicId || current.topicId,
+        };
+      });
+      return;
+    }
+
+    if (key === "entry") {
+      const nextEntry = value as ContentEntry;
       setForm((current) => ({
         ...current,
-        projectId: value,
-        title: project && !current.title ? project.title : current.title,
-        accountProfileId: project?.accountProfileId || current.accountProfileId,
-        topicId: project?.topicId || current.topicId,
+        entry: nextEntry,
+        title: projectTitleForEntry(projects.find((project) => project.id === current.projectId), nextEntry, current.title),
       }));
       return;
     }
@@ -356,6 +409,11 @@ export function CalendarWorkbench() {
               ))}
             </select>
           </label>
+          {selectedProject ? (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 lg:col-span-3">
+              已关联项目「{selectedProject.title}」，可排期入口：{projectEntrySummary(selectedProject) || "暂无生成入口"}。
+            </div>
+          ) : null}
           <label className="space-y-1 text-sm lg:col-span-2">
             <span className="text-slate-600">排期标题</span>
             <input value={form.title} onChange={(event) => updateForm("title", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
