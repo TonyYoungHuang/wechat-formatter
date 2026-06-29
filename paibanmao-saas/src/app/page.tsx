@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, CircleDollarSign, Search, Sparkles } from "lucide-react";
 
-import { contentEntries } from "@/lib/content/entries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { contentEntries } from "@/lib/content/entries";
 
 const sampleOutputs = [
-  "公众号长文：普通人做公众号副业，还有哪些真实机会？",
-  "小绿书：3 图讲清普通人做号的第一步",
+  "公众号长文：普通人做公众号副业，真正的机会在哪里？",
+  "小绿书：3 张图讲清普通人做号的第一步",
   "搜一搜：公众号副业怎么赚钱、公众号新手怎么起步",
   "问一问：现在做公众号还来得及吗？",
   "朋友圈：我把这个问题拆成了一套微信内容打法",
@@ -16,12 +16,10 @@ const sampleOutputs = [
 export default function HomePage() {
   return (
     <main className="min-h-screen">
-      <header className="border-b border-emerald-100 bg-white/80 backdrop-blur">
+      <header className="border-b border-emerald-100 bg-white/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold text-slate-950">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-white">
-              排
-            </span>
+            <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-white">排</span>
             <span>排版猫</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
@@ -45,18 +43,15 @@ export default function HomePage() {
             <Sparkles className="size-4" />
             微信副业创作者的内容增长工作台
           </div>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">
-            一个选题，布局微信五个入口
-          </h1>
+          <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">一个选题，布局微信五个入口</h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            用排版猫把公众号文章、小绿书、搜一搜、问一问、朋友圈一次性生成出来，
-            适合副业号主、个人 IP 和小团队做微信内容矩阵。
+            用排版猫把公众号文章、小绿书、搜一搜、问一问和朋友圈一次性生成出来，适合副业号主、个人 IP 和小团队做微信内容矩阵。
           </p>
 
-          <div className="mt-8 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+          <div className="mt-8 rounded-lg border border-emerald-100 bg-white p-3 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row">
               <input
-                className="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 text-base outline-none transition focus:border-emerald-400"
+                className="min-h-12 flex-1 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-emerald-400"
                 placeholder="输入一个选题，例如：普通人做公众号副业还有机会吗"
               />
               <Button size="lg" asChild>
@@ -87,7 +82,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {sampleOutputs.map((item) => (
-              <div key={item} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <div key={item} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 {item}
               </div>
             ))}
@@ -116,4 +111,3 @@ export default function HomePage() {
     </main>
   );
 }
-

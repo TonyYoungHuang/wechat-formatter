@@ -13,7 +13,7 @@ export const contentEntries: Array<{
   {
     id: "wechat_article",
     label: "公众号",
-    summary: "长文框架、正文草稿、标题摘要和公众号 HTML。",
+    summary: "长文框架、正文草稿、标题摘要、结尾 CTA 和公众号 HTML。",
   },
   {
     id: "green_note",

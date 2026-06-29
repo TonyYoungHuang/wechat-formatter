@@ -47,4 +47,3 @@ export const defaultPlans: PlanConfig[] = [
 export function getDefaultPlan(code: PlanCode) {
   return defaultPlans.find((plan) => plan.code === code) ?? defaultPlans[0];
 }
-
