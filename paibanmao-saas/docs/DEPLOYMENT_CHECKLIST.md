@@ -94,6 +94,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - `/pricing` shows current backend pricing.
 - `/tools/topic-generator` allows one anonymous preview.
 - `/tools/compliance-checker` carries preview content into signup.
+- Public tool pages include usage steps, FAQ content, and FAQPage structured data.
 - `/tutorials` and tutorial detail pages are indexed in `/sitemap.xml`.
 - `/robots.txt` allows public pages and disallows `/dashboard`.
 
