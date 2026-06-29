@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 
-import { markOrderPaid, parseCallbackJson, parseCallbackPayload, recordPaymentCallback, verifyAlipayCallback } from "@/lib/billing/callbacks";
+import { markOrderPaid, parseAlipayCallbackBody, parseAlipayCallbackPayload, recordPaymentCallback, verifyAlipayCallback } from "@/lib/billing/callbacks";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
-  const signature = request.headers.get("alipay-signature") || request.headers.get("x-paibanmao-signature");
+  const json = parseAlipayCallbackBody(rawBody);
+  const signature =
+    request.headers.get("alipay-signature") ||
+    request.headers.get("x-paibanmao-signature") ||
+    (typeof json?.sign === "string" ? json.sign : null);
   const verified = verifyAlipayCallback({
     rawBody,
     signature,
   });
-  const json = parseCallbackJson(rawBody);
 
   if (!verified) {
     await recordPaymentCallback({
@@ -23,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "invalid signature" }, { status: 401 });
   }
 
-  const payload = parseCallbackPayload(json);
+  const payload = parseAlipayCallbackPayload(json);
 
   if (!payload) {
     await recordPaymentCallback({

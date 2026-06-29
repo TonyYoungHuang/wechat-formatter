@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { CreditCard, RefreshCcw, Save } from "lucide-react";
 
@@ -25,6 +26,18 @@ type UsageSummary = {
     daily: { used: number; limit: number | null; remaining: number | null };
     monthly: { used: number; limit: number | null; remaining: number | null };
   };
+};
+
+type Checkout = {
+  mode: string;
+  provider: string;
+  orderId: string;
+  amountCents: number;
+  expiresAt: string;
+  instructions?: string;
+  codeUrl?: string;
+  qrCodeDataUrl?: string;
+  paymentUrl?: string;
 };
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -53,6 +66,7 @@ export function BillingWorkbench() {
   const [message, setMessage] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>("starter");
   const [provider, setProvider] = useState("wechat");
+  const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -109,13 +123,14 @@ export function BillingWorkbench() {
 
   async function createOrder() {
     try {
-      const data = await readJson<{ order: { id: string; status: string } }>(
+      const data = await readJson<{ order: { id: string; status: string; checkout?: Checkout } }>(
         await fetch("/api/billing/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ planCode: selectedPlan, provider }),
         }),
       );
+      setCheckout(data.order.checkout || null);
       setMessage(`已创建订单 ${data.order.id}，状态：${data.order.status}。`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "创建订单失败。");
@@ -238,6 +253,37 @@ export function BillingWorkbench() {
           </Button>
         </CardContent>
       </Card>
+
+      {checkout ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>支付参数</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-slate-600">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">模式</div>
+                <div className="mt-1 font-medium text-slate-950">{checkout.mode}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">订单</div>
+                <div className="mt-1 break-all font-medium text-slate-950">{checkout.orderId}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">金额</div>
+                <div className="mt-1 font-medium text-slate-950">¥{(checkout.amountCents / 100).toFixed(2)}</div>
+              </div>
+            </div>
+            {checkout.qrCodeDataUrl ? <Image alt="微信支付二维码" className="rounded-lg border border-slate-200 bg-white p-2" height={160} src={checkout.qrCodeDataUrl} unoptimized width={160} /> : null}
+            {checkout.paymentUrl ? (
+              <a className="inline-flex rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700" href={checkout.paymentUrl} rel="noreferrer" target="_blank">
+                打开支付宝支付
+              </a>
+            ) : null}
+            {checkout.instructions ? <p className="leading-6">{checkout.instructions}</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

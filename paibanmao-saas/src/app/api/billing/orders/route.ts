@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
-import { buildPlaceholderCheckout, getPlanPriceCents } from "@/lib/billing/orders";
+import { createPaymentCheckout } from "@/lib/billing/gateways";
+import { getPlanPriceCents } from "@/lib/billing/orders";
 import { createPaymentOrderSchema } from "@/lib/billing/schemas";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -24,11 +25,16 @@ export async function POST(request: Request) {
         provider: parsed.data.provider,
         amountCents,
         expiresAt,
-        checkout: buildPlaceholderCheckout("pending", parsed.data.provider),
       },
     });
 
-    const checkout = buildPlaceholderCheckout(order.id, parsed.data.provider);
+    const checkout = await createPaymentCheckout({
+      orderId: order.id,
+      provider: parsed.data.provider,
+      amountCents,
+      expiresAt,
+      description: `排版猫 ${parsed.data.planCode} 会员`,
+    });
     const updated = await prisma.paymentOrder.update({
       where: { id: order.id },
       data: { checkout },

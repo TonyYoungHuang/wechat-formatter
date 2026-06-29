@@ -1,4 +1,4 @@
-import { createHmac, createVerify, timingSafeEqual } from "node:crypto";
+import { createDecipheriv, createHmac, createVerify, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
@@ -25,6 +25,92 @@ export function parseCallbackPayload(value: unknown): CallbackPayload | null {
     orderId,
     tradeNo: typeof payload.tradeNo === "string" ? payload.tradeNo : undefined,
     providerOrderId: typeof payload.providerOrderId === "string" ? payload.providerOrderId : undefined,
+  };
+}
+
+function decryptWechatResource(resource: unknown): Record<string, unknown> | null {
+  if (!resource || typeof resource !== "object" || !process.env.WECHAT_PAY_API_V3_KEY) {
+    return null;
+  }
+
+  const payload = resource as Record<string, unknown>;
+  const ciphertext = typeof payload.ciphertext === "string" ? payload.ciphertext : "";
+  const nonce = typeof payload.nonce === "string" ? payload.nonce : "";
+  const associatedData = typeof payload.associated_data === "string" ? payload.associated_data : "";
+
+  if (!ciphertext || !nonce) {
+    return null;
+  }
+
+  try {
+    const encrypted = Buffer.from(ciphertext, "base64");
+    const authTag = encrypted.subarray(encrypted.length - 16);
+    const data = encrypted.subarray(0, encrypted.length - 16);
+    const decipher = createDecipheriv("aes-256-gcm", Buffer.from(process.env.WECHAT_PAY_API_V3_KEY), nonce);
+    decipher.setAuthTag(authTag);
+    decipher.setAAD(Buffer.from(associatedData));
+    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+    return JSON.parse(decrypted) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function parseWechatCallbackPayload(value: Record<string, unknown> | null): CallbackPayload | null {
+  const simple = parseCallbackPayload(value);
+  if (simple) {
+    return simple;
+  }
+
+  const decrypted = decryptWechatResource(value?.resource);
+  if (!decrypted) {
+    return null;
+  }
+
+  const orderId = typeof decrypted.out_trade_no === "string" ? decrypted.out_trade_no : "";
+  if (!orderId) {
+    return null;
+  }
+
+  return {
+    orderId,
+    tradeNo: typeof decrypted.transaction_id === "string" ? decrypted.transaction_id : undefined,
+    providerOrderId: typeof decrypted.transaction_id === "string" ? decrypted.transaction_id : undefined,
+  };
+}
+
+function parseUrlEncodedBody(rawBody: string) {
+  const params = new URLSearchParams(rawBody);
+  const result: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    result[key] = value;
+  }
+  return Object.keys(result).length ? result : null;
+}
+
+export function parseAlipayCallbackBody(rawBody: string) {
+  const json = parseCallbackJson(rawBody);
+  if (json) {
+    return json;
+  }
+  return parseUrlEncodedBody(rawBody);
+}
+
+export function parseAlipayCallbackPayload(value: Record<string, unknown> | null): CallbackPayload | null {
+  const simple = parseCallbackPayload(value);
+  if (simple) {
+    return simple;
+  }
+
+  const orderId = typeof value?.out_trade_no === "string" ? value.out_trade_no : "";
+  if (!orderId) {
+    return null;
+  }
+
+  return {
+    orderId,
+    tradeNo: typeof value?.trade_no === "string" ? value.trade_no : undefined,
+    providerOrderId: typeof value?.trade_no === "string" ? value.trade_no : undefined,
   };
 }
 
@@ -81,6 +167,15 @@ export function verifyWechatCallback(options: {
   timestamp: string | null;
   nonce: string | null;
 }) {
+  const platformCert = process.env.WECHAT_PAY_PLATFORM_CERT_PEM?.replace(/\\n/g, "\n");
+
+  if (platformCert && options.signature && options.timestamp && options.nonce) {
+    const verifier = createVerify("RSA-SHA256");
+    verifier.update(`${options.timestamp}\n${options.nonce}\n${options.rawBody}\n`);
+    verifier.end();
+    return verifier.verify(platformCert, options.signature, "base64");
+  }
+
   const apiV3Key = process.env.WECHAT_PAY_API_V3_KEY;
 
   if (!apiV3Key) {
@@ -110,8 +205,18 @@ export function verifyAlipayCallback(options: {
     return false;
   }
 
+  const payload = parseAlipayCallbackBody(options.rawBody);
+  const content =
+    payload && "sign" in payload
+      ? Object.keys(payload)
+          .filter((key) => key !== "sign" && key !== "sign_type" && payload[key] !== "")
+          .sort()
+          .map((key) => `${key}=${payload[key]}`)
+          .join("&")
+      : options.rawBody;
+
   const verifier = createVerify("RSA-SHA256");
-  verifier.update(options.rawBody);
+  verifier.update(content);
   verifier.end();
   return verifier.verify(publicKey, options.signature, "base64");
 }

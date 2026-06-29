@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { markOrderPaid, parseCallbackJson, parseCallbackPayload, recordPaymentCallback, verifyWechatCallback } from "@/lib/billing/callbacks";
+import { markOrderPaid, parseCallbackJson, parseWechatCallbackPayload, recordPaymentCallback, verifyWechatCallback } from "@/lib/billing/callbacks";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "invalid signature" }, { status: 401 });
   }
 
-  const payload = parseCallbackPayload(json);
+  const payload = parseWechatCallbackPayload(json);
 
   if (!payload) {
     await recordPaymentCallback({
