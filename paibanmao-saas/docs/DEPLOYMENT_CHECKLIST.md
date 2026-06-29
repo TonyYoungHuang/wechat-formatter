@@ -73,7 +73,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Create a WeChat order from `/dashboard/billing`.
 - Create an Alipay order from `/dashboard/billing`.
 - Confirm callback records are created.
-- Confirm paid callback changes order status to `paid`.
+- Confirm WeChat paid callback changes order status to `paid`.
+- Confirm Alipay paid callback changes order status to `paid`.
 - Confirm failed or mismatched callback changes unpaid order status to `failed`.
 - Confirm paid callback with the wrong amount is rejected and does not mark the order paid.
 - Confirm paid callback updates workspace plan and subscription.
