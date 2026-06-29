@@ -1,67 +1,49 @@
 # 排版猫 SaaS
 
-排版猫新版是面向微信副业创作者的内容增长工作台。
+排版猫是面向微信副业创作者的内容增长工作台：一个选题，布局公众号、小绿书、搜一搜、问一问、朋友圈五个入口。
 
-核心定位：
+## 本地启动
 
-> 一个选题，帮你布局公众号、小绿书、搜一搜、问一问、朋友圈五个入口。
+1. 安装依赖：
 
-## 技术栈
+```bash
+pnpm install
+```
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- shadcn/ui 风格组件
-- Tiptap
-- PostgreSQL
-- Prisma
-- Redis
-- Vercel AI SDK
-- OpenAI-compatible AI provider adapter
-- 微信支付 + 支付宝
-
-## 当前阶段
-
-Phase 0 / Phase 1 基础骨架：
-
-- Next.js 项目结构
-- 轻微信绿色工作台视觉
-- 公开首页
-- 登录/注册页面骨架
-- Dashboard 布局
-- 多账号档案页面骨架
-- 五入口生成器页面骨架
-- Prisma 数据模型初稿
-- AI provider 配置入口
-- 套餐权益默认配置
-
-## 本地运行
-
-复制环境变量：
+2. 复制环境变量：
 
 ```bash
 cp .env.example .env
 ```
 
-安装依赖：
+3. 启动 PostgreSQL 和 Redis：
 
 ```bash
-npm install
+pnpm db:up
 ```
 
-生成 Prisma Client：
+4. 初始化数据库：
 
 ```bash
-npm run prisma:generate
+pnpm db:deploy
+pnpm prisma:seed
 ```
 
-启动开发服务：
+5. 启动开发服务：
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-## 注意
+默认访问地址是 `http://localhost:3000`。
 
-当前 Windows/npm 环境中完整依赖安装曾出现长时间卡住的问题；`package-lock.json` 已通过 `npm install --package-lock-only --ignore-scripts` 固定依赖树。若本机安装仍卡住，优先检查 npm 残留 node 进程、网络代理和 npm registry。
+## 关键能力
 
+- 注册登录和工作台登录态保护
+- 多账号档案
+- 选题库和 AI 选题建议
+- 一题生成公众号、小绿书、搜一搜、问一问、朋友圈
+- Tiptap 公众号编辑器和 HTML 复制
+- 发布前检查
+- 套餐、额度、支付订单和模型中转站配置入口
+- SEO 首页、价格页、免费工具页、sitemap、robots

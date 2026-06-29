@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CalendarDays, CreditCard, FileText, Home, Layers3, SearchCheck, Settings, Sparkles, UserRoundCog } from "lucide-react";
 
+import { LogoutButton } from "@/components/app/logout-button";
+
 const navItems = [
   { href: "/dashboard", label: "工作台", icon: Home },
   { href: "/dashboard/account-profiles", label: "账号档案", icon: UserRoundCog },
@@ -48,9 +50,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="text-sm font-medium text-slate-950">默认账号档案</div>
             <div className="text-xs text-slate-500">免费版 · 今日剩余 1 次生成</div>
           </div>
-          <Link href="/dashboard/generate" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
-            新建内容
-          </Link>
+          <div className="flex items-center gap-2">
+            <LogoutButton />
+            <Link href="/dashboard/generate" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
+              新建内容
+            </Link>
+          </div>
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
       </div>

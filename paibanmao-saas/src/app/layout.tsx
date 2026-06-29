@@ -10,8 +10,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "排版猫 - 微信内容增长工作台",
-  description:
-    "排版猫帮助公众号副业创作者用一个选题布局公众号、小绿书、搜一搜、问一问和朋友圈五个微信入口。",
+  description: "排版猫帮助公众号副业创作者用一个选题布局公众号、小绿书、搜一搜、问一问和朋友圈五个微信入口。",
 };
 
 export default function RootLayout({
