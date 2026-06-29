@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const planCodeSchema = z.enum(["free", "starter", "pro"]);
+import { planCodes } from "@/lib/entitlements/plans";
+
+export const planCodeSchema = z.enum(planCodes);
 
 export const planConfigPatchSchema = z.object({
   name: z.string().trim().min(1).max(40).optional(),
@@ -13,5 +15,5 @@ export const planConfigPatchSchema = z.object({
 });
 
 export const adminPlansPatchSchema = z.object({
-  plans: z.record(planCodeSchema, planConfigPatchSchema).optional(),
+  plans: z.partialRecord(planCodeSchema, planConfigPatchSchema).optional(),
 });

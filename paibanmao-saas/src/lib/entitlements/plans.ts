@@ -1,4 +1,10 @@
-export type PlanCode = "free" | "starter" | "pro";
+export const planCodes = ["free", "starter", "pro"] as const;
+
+export type PlanCode = (typeof planCodes)[number];
+
+export function isPlanCode(value: string): value is PlanCode {
+  return planCodes.includes(value as PlanCode);
+}
 
 export type PlanConfig = {
   code: PlanCode;

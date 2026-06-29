@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSiteAdmin } from "@/lib/auth/session";
 import { adminPlansPatchSchema } from "@/lib/entitlements/schemas";
+import { isPlanCode } from "@/lib/entitlements/plans";
 import { getPlanConfigs, getPricingVersions, upsertPlanConfig } from "@/lib/entitlements/service";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
@@ -30,12 +31,16 @@ export async function PATCH(request: Request) {
     }
 
     const updated = await Promise.all(
-      Object.entries(parsed.data.plans).map(([code, patch]) =>
-        upsertPlanConfig(code as never, patch, {
+      Object.entries(parsed.data.plans).map(([code, patch]) => {
+        if (!isPlanCode(code)) {
+          throw new Error(`Unsupported plan code: ${code}`);
+        }
+
+        return upsertPlanConfig(code, patch, {
           recordVersion: true,
           note: "admin pricing update",
-        }),
-      ),
+        });
+      }),
     );
     const versions = await getPricingVersions();
 

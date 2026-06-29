@@ -85,11 +85,12 @@ async function recordPricingVersion(code: PlanCode, snapshot: PlanConfig, note?:
 
 export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig>, options: { recordVersion?: boolean; note?: string } = {}) {
   const fallback = defaultPlans.find((plan) => plan.code === code) ?? defaultPlans[0];
+  const current = await getPlanConfig(code);
   const data = {
     code,
-    name: patch.name ?? fallback.name,
-    description: patch.description ?? fallback.description,
-    priceCents: patch.priceCents === undefined ? fallback.priceCents : patch.priceCents,
+    name: patch.name ?? current.name ?? fallback.name,
+    description: patch.description ?? current.description ?? fallback.description,
+    priceCents: patch.priceCents === undefined ? current.priceCents : patch.priceCents,
     active: true,
     sortOrder: defaultPlans.findIndex((plan) => plan.code === code),
   };
@@ -101,10 +102,10 @@ export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig
   });
 
   const entitlements = {
-    accountProfileLimit: patch.accountProfileLimit ?? fallback.accountProfileLimit,
-    dailyGenerationLimit: patch.dailyGenerationLimit ?? fallback.dailyGenerationLimit,
-    monthlyGenerationLimit: patch.monthlyGenerationLimit ?? fallback.monthlyGenerationLimit,
-    advancedChecks: patch.advancedChecks ?? fallback.advancedChecks,
+    accountProfileLimit: patch.accountProfileLimit ?? current.accountProfileLimit ?? fallback.accountProfileLimit,
+    dailyGenerationLimit: patch.dailyGenerationLimit === undefined ? current.dailyGenerationLimit : patch.dailyGenerationLimit,
+    monthlyGenerationLimit: patch.monthlyGenerationLimit === undefined ? current.monthlyGenerationLimit : patch.monthlyGenerationLimit,
+    advancedChecks: patch.advancedChecks ?? current.advancedChecks ?? fallback.advancedChecks,
   };
 
   await Promise.all(
