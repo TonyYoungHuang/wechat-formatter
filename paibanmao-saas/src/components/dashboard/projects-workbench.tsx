@@ -17,7 +17,16 @@ type Project = {
   topic?: { title: string } | null;
   variants: Array<{ id: string; entry: string; title: string }>;
   metrics?: Metric[];
+  reports?: ComplianceReport[];
   _count?: { reports: number; metrics: number };
+};
+
+type ComplianceReport = {
+  id: string;
+  score: number;
+  level: string;
+  summary: string;
+  createdAt: string;
 };
 
 type Metric = {
@@ -198,6 +207,17 @@ export function ProjectsWorkbench() {
                   <span>收藏 {project.metrics[0].favoriteCount}</span>
                   <span>新增关注 {project.metrics[0].followerGain}</span>
                   <span>成交 {project.metrics[0].dealCount}</span>
+                </div>
+              ) : null}
+              {project.reports?.[0] ? (
+                <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="font-medium">
+                      最近检查：{project.reports[0].level} · {project.reports[0].score} 分
+                    </span>
+                    <span className="text-xs text-amber-700">{new Date(project.reports[0].createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-amber-800">{project.reports[0].summary}</p>
                 </div>
               ) : null}
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">

@@ -34,6 +34,11 @@ export async function GET(request: Request) {
           orderBy: { recordedAt: "desc" },
           take: 1,
         },
+        reports: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true, score: true, level: true, summary: true, createdAt: true },
+        },
         _count: {
           select: { reports: true, metrics: true },
         },
