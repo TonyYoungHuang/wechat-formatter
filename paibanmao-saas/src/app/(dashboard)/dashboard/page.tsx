@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, FileText, Layers3, SearchCheck, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/session";
@@ -16,6 +16,7 @@ const actions = [
   { href: "/dashboard/account-profiles", title: "完善账号档案", desc: "让 AI 知道你是谁、写给谁、卖什么。", icon: FileText },
   { href: "/dashboard/topics", title: "生成选题", desc: "围绕一个账号生成可复用选题。", icon: Layers3 },
   { href: "/dashboard/generate", title: "五入口生成", desc: "把一个选题拆成微信五个入口。", icon: Sparkles },
+  { href: "/dashboard/cta-library", title: "沉淀 CTA", desc: "保存资料包、咨询和成交话术。", icon: MessageSquareText },
   { href: "/dashboard/checks", title: "发布前检查", desc: "检查风险表达、标题和 CTA。", icon: SearchCheck },
 ];
 
@@ -86,7 +87,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {actions.map((action) => {
           const Icon = action.icon;
           return (

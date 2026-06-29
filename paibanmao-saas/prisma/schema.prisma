@@ -101,6 +101,7 @@ model Workspace {
   subscriptions    Subscription[]
   paymentOrders    PaymentOrder[]
   paymentCallbacks PaymentCallback[]
+  ctaSnippets      CtaSnippet[]
 }
 
 model WorkspaceMember {
@@ -195,6 +196,7 @@ model AccountProfile {
   topics        Topic[]
   projects      ContentProject[]
   calendarItems ContentCalendarItem[]
+  ctaSnippets   CtaSnippet[]
 }
 
 model Topic {
@@ -296,6 +298,27 @@ model ContentMetric {
   project ContentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, recordedAt])
+  @@index([entry])
+}
+
+model CtaSnippet {
+  id               String        @id @default(cuid())
+  workspaceId      String
+  accountProfileId String?
+  title            String
+  category         String
+  entry            ContentEntry?
+  content          String
+  tags             String[]
+  active           Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile? @relation(fields: [accountProfileId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, active])
+  @@index([accountProfileId])
   @@index([entry])
 }
 
