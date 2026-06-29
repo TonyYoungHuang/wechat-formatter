@@ -18,7 +18,9 @@ export async function runFiveEntryGeneration(input: {
 }) {
   const { workspaceId, planCode, payload, existingJobId } = input;
 
-  await assertCanUseGeneration(workspaceId, planCode);
+  await assertCanUseGeneration(workspaceId, planCode, {
+    excludeGenerationJobId: existingJobId,
+  });
 
   const accountProfile = payload.accountProfileId
     ? await prisma.accountProfile.findFirstOrThrow({
