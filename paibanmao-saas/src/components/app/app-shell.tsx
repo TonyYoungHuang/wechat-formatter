@@ -21,6 +21,8 @@ const navItems = [
   { href: "/dashboard/settings", label: "设置", icon: Settings, adminOnly: true },
 ];
 
+const mobileNavHrefs = new Set(["/dashboard", "/dashboard/topics", "/dashboard/generate", "/dashboard/projects", "/dashboard/billing"]);
+
 function formatRemaining(remaining: number | null) {
   return remaining === null ? "不限" : `${remaining} 次`;
 }
@@ -73,8 +75,23 @@ export async function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:pb-6">{children}</main>
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-100 bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          {visibleNavItems
+            .filter((item) => mobileNavHrefs.has(item.href))
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700">
+                  <Icon className="size-4" />
+                  <span className="max-w-full truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+        </div>
+      </nav>
     </div>
   );
 }
