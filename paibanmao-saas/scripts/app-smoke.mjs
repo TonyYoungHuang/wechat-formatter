@@ -396,6 +396,33 @@ async function checkPaymentFlow() {
   assert(duplicateInvoice.response.status === 409, `/api/billing/invoices duplicate returned ${duplicateInvoice.response.status}, expected 409`);
 }
 
+async function checkAlipayPaymentFlow() {
+  const order = await jsonRequest("/api/billing/orders", {
+    planCode: "starter",
+    provider: "alipay",
+  });
+
+  assert(order.response.ok, `/api/billing/orders alipay returned ${order.response.status}: ${order.text}`);
+  assert(order.payload?.order?.id, "alipay payment order id missing");
+  assert(order.payload.order.amountCents === 9900, "alipay payment order amount mismatch");
+
+  const callback = await jsonRequest("/api/billing/callback/alipay", {
+    orderId: order.payload.order.id,
+    paid: true,
+    amountCents: 9900,
+    tradeNo: `SMOKE_ALIPAY_${timestamp}`,
+    providerOrderId: `SMOKE_ALIPAY_PROVIDER_${timestamp}`,
+  });
+
+  assert(callback.response.ok, `/api/billing/callback/alipay returned ${callback.response.status}: ${callback.text}`);
+  assert(callback.text === "success", "alipay callback did not return success");
+
+  const refreshed = await request(`/api/billing/orders/${order.payload.order.id}`);
+  assert(refreshed.response.ok, `/api/billing/orders/:id alipay returned ${refreshed.response.status}: ${refreshed.text}`);
+  assert(refreshed.payload?.order?.status === "paid", "alipay payment order was not marked paid");
+  assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "alipay callback diagnostic missing");
+}
+
 async function checkPaymentFailureFlow() {
   const order = await jsonRequest("/api/billing/orders", {
     planCode: "starter",
@@ -462,6 +489,7 @@ async function main() {
 
   if (canCheckPayment) {
     await checkPaymentFlow();
+    await checkAlipayPaymentFlow();
     await checkPaymentFailureFlow();
     await checkPaymentAmountMismatchFlow();
     await checkStarterAccountProfileLimit();
