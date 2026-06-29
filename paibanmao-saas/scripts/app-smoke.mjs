@@ -743,6 +743,20 @@ async function checkPaymentFailureFlow() {
   assert(refreshed.response.ok, `/api/billing/orders/:id for failed callback returned ${refreshed.response.status}: ${refreshed.text}`);
   assert(refreshed.payload?.order?.status === "failed", "payment order was not marked failed after failed callback");
   assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "failed payment callback diagnostic missing");
+
+  const recovery = await jsonRequest("/api/billing/callback/wechat", {
+    orderId: order.payload.order.id,
+    paid: true,
+    amountCents: 9900,
+    tradeNo: `SMOKE_FAILED_RECOVERY_${timestamp}`,
+    providerOrderId: `SMOKE_FAILED_RECOVERY_PROVIDER_${timestamp}`,
+    status: "SUCCESS",
+  });
+  assert(recovery.response.status >= 400, `/api/billing/callback/wechat failed-order recovery returned ${recovery.response.status}, expected failure`);
+
+  const afterRecovery = await request(`/api/billing/orders/${order.payload.order.id}`);
+  assert(afterRecovery.response.ok, `/api/billing/orders/:id after failed-order recovery returned ${afterRecovery.response.status}: ${afterRecovery.text}`);
+  assert(afterRecovery.payload?.order?.status === "failed", "failed payment order was revived by a later paid callback");
 }
 
 async function checkPaymentAmountMismatchFlow() {

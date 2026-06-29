@@ -274,6 +274,10 @@ export async function markOrderPaid(input: {
       throw new Error("Payment callback amount does not match the order amount.");
     }
 
+    if (order.status !== "pending" && order.status !== "paid") {
+      throw new Error(`Payment order is ${order.status} and cannot be marked paid.`);
+    }
+
     if (order.status === "paid") {
       return tx.paymentOrder.update({
         where: { id: order.id },
