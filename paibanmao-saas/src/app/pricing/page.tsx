@@ -29,15 +29,27 @@ function formatPrice(priceCents: number | null) {
 }
 
 function formatGenerationLimit(daily: number | null, monthly: number | null) {
-  if (daily) {
+  if (daily !== null) {
     return `每天 ${daily} 次生成`;
   }
 
-  if (monthly) {
+  if (monthly !== null) {
     return `每月 ${monthly} 次生成`;
   }
 
   return "生成额度后台配置";
+}
+
+function getPlanAction(priceCents: number | null) {
+  if (priceCents === null) {
+    return "预约开通";
+  }
+
+  if (priceCents === 0) {
+    return "开始使用";
+  }
+
+  return "开通套餐";
 }
 
 export default async function PricingPage() {
@@ -72,7 +84,7 @@ export default async function PricingPage() {
                 <li>{plan.advancedChecks ? "高级发布前检查" : "基础发布前检查"}</li>
               </ul>
               <Button className="w-full" asChild>
-                <Link href={`/register?plan=${plan.code}`}>{plan.priceCents && plan.priceCents > 0 ? "开通套餐" : "开始使用"}</Link>
+                <Link href={`/register?plan=${plan.code}`}>{getPlanAction(plan.priceCents)}</Link>
               </Button>
             </CardContent>
           </Card>
