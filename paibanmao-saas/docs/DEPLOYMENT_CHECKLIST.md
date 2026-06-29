@@ -43,6 +43,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 ## 4. Pricing And Quotas
 
 - Admin Billing has configured non-null positive prices for paid plans before enabling purchase buttons.
+- App smoke confirms admin pricing and entitlement updates create version records.
+- App smoke confirms `/api/billing/plans` returns the updated public price and quota values.
 - Free plan keeps low trial quota.
 - App smoke confirms the second free five-entry generation is rejected.
 - Starter and Pro account-profile limits match the product plan.
