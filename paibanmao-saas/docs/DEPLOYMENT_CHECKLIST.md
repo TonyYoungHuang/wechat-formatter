@@ -37,6 +37,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Admin Billing has configured non-null positive prices for paid plans before enabling purchase buttons.
 - Free plan keeps low trial quota.
 - Starter and Pro account-profile limits match the product plan.
+- App smoke confirms free users cannot create a second account profile.
+- App smoke confirms Starter can create up to three account profiles and rejects the fourth.
 - Daily or monthly generation quotas match expected AI cost.
 - Pricing page shows the same values as admin configuration.
 
@@ -70,6 +72,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - Confirm callback records are created.
 - Confirm paid callback changes order status to `paid`.
 - Confirm failed or mismatched callback changes unpaid order status to `failed`.
+- Confirm paid callback with the wrong amount is rejected and does not mark the order paid.
 - Confirm paid callback updates workspace plan and subscription.
 - Confirm paid order can be selected for invoice request.
 - Confirm duplicate active invoice requests for the same paid order are rejected.
@@ -101,6 +104,8 @@ pnpm smoke:app
 ```
 
 `pnpm smoke:app` expects a running app with database access. It registers a smoke user, checks the starter account profile, runs five-entry generation, and verifies generation job logging. To include admin pricing, payment callback, topic generation, image prompt, and rewrite checks, start the app with `SITE_ADMIN_EMAIL` set to the smoke email, or pass a fixed `SMOKE_EMAIL`; set `SMOKE_REQUIRE_ADMIN=1` when this part must not be skipped.
+
+The app smoke also checks invalid dashboard sessions, account-profile plan limits, queued generation fallback, failed callbacks, amount-mismatch callbacks, and duplicate invoice prevention.
 
 Run during deployment:
 
