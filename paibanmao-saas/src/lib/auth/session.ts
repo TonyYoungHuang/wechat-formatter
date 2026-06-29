@@ -115,3 +115,26 @@ export async function requireWorkspaceOwner() {
 
   return current;
 }
+
+function siteAdminEmails() {
+  const raw = [process.env.SITE_ADMIN_EMAIL, process.env.SITE_ADMIN_EMAILS].filter(Boolean).join(",");
+
+  return raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isSiteAdminEmail(email: string) {
+  return siteAdminEmails().includes(email.toLowerCase());
+}
+
+export async function requireSiteAdmin() {
+  const current = await requireCurrentUser();
+
+  if (!isSiteAdminEmail(current.user.email)) {
+    throw new Error("FORBIDDEN");
+  }
+
+  return current;
+}

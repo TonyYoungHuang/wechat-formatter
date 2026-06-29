@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAiProviderStatus } from "@/lib/ai/provider";
 import { aiProviderPatchSchema } from "@/lib/ai/schemas";
-import { requireWorkspaceOwner } from "@/lib/auth/session";
+import { requireSiteAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 export async function GET() {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     return NextResponse.json(await getAiProviderStatus());
   } catch (error) {
     return mapApiError(error);
@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     const parsed = aiProviderPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {

@@ -1,0 +1,2 @@
+ALTER TABLE "PricingPlan" ALTER COLUMN "priceCents" DROP DEFAULT;
+ALTER TABLE "PricingPlan" ALTER COLUMN "priceCents" DROP NOT NULL;

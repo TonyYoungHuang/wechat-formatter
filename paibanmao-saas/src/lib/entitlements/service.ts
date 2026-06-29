@@ -89,7 +89,7 @@ export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig
     code,
     name: patch.name ?? fallback.name,
     description: patch.description ?? fallback.description,
-    priceCents: patch.priceCents ?? fallback.priceCents ?? 0,
+    priceCents: patch.priceCents === undefined ? fallback.priceCents : patch.priceCents,
     active: true,
     sortOrder: defaultPlans.findIndex((plan) => plan.code === code),
   };

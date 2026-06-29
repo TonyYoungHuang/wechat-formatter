@@ -26,7 +26,7 @@ const plans = [
     code: "starter",
     name: "Starter",
     description: "For individual creators operating several WeChat side-project accounts.",
-    priceCents: 0,
+    priceCents: null,
     sortOrder: 1,
     entitlements: {
       accountProfileLimit: 3,
@@ -39,7 +39,7 @@ const plans = [
     code: "pro",
     name: "Pro",
     description: "For high-frequency creators and small WeChat content teams.",
-    priceCents: 0,
+    priceCents: null,
     sortOrder: 2,
     entitlements: {
       accountProfileLimit: 10,

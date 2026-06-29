@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { requireWorkspaceOwner } from "@/lib/auth/session";
+import { requireSiteAdmin } from "@/lib/auth/session";
 import { adminPlansPatchSchema } from "@/lib/entitlements/schemas";
 import { getPlanConfigs, getPricingVersions, upsertPlanConfig } from "@/lib/entitlements/service";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
 export async function GET() {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     const [plans, versions] = await Promise.all([getPlanConfigs(), getPricingVersions()]);
 
     return NextResponse.json({
@@ -22,7 +22,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     const parsed = adminPlansPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success || !parsed.data.plans) {

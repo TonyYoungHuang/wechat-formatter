@@ -131,7 +131,7 @@ model PricingPlan {
   code        PlanCode @unique
   name        String
   description String
-  priceCents  Int      @default(0)
+  priceCents  Int?
   currency    String   @default("CNY")
   active      Boolean  @default(true)
   sortOrder   Int      @default(0)

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, isSiteAdminEmail } from "@/lib/auth/session";
 
 export async function GET() {
   const current = await getCurrentUser();
@@ -13,6 +13,7 @@ export async function GET() {
       id: current.user.id,
       name: current.user.name,
       email: current.user.email,
+      isSiteAdmin: isSiteAdminEmail(current.user.email),
     },
     workspace: {
       id: current.workspace.id,
@@ -21,4 +22,3 @@ export async function GET() {
     },
   });
 }
-

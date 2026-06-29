@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CreditCard, RefreshCcw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ function getInitialPlan(): PlanCode {
   return plan === "free" || plan === "starter" || plan === "pro" ? plan : "starter";
 }
 
-export function BillingWorkbench() {
+export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolean }) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [versions, setVersions] = useState<PricingVersion[]>([]);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -115,11 +115,11 @@ export function BillingWorkbench() {
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  const load = useCallback(async function load() {
     setLoading(true);
     try {
       const [planData, usageData] = await Promise.all([
-        fetch("/api/admin/pricing").then((response) => readJson<{ plans: Plan[]; versions: PricingVersion[] }>(response)),
+        fetch(isSiteAdmin ? "/api/admin/pricing" : "/api/billing/plans").then((response) => readJson<{ plans: Plan[]; versions?: PricingVersion[] }>(response)),
         fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response)),
       ]);
       const [orderData, invoiceData] = await Promise.all([
@@ -137,7 +137,7 @@ export function BillingWorkbench() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [isSiteAdmin]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -145,7 +145,7 @@ export function BillingWorkbench() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [load]);
 
   function updatePlan(code: PlanCode, patch: Partial<Plan>) {
     setPlans((items) => items.map((plan) => (plan.code === code ? { ...plan, ...patch } : plan)));
@@ -256,9 +256,11 @@ export function BillingWorkbench() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        {plans.map((plan) => (
-          <Card key={plan.code}>
+      {isSiteAdmin ? (
+        <>
+          <div className="grid gap-4 xl:grid-cols-3">
+            {plans.map((plan) => (
+              <Card key={plan.code}>
             <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
             </CardHeader>
@@ -298,12 +300,12 @@ export function BillingWorkbench() {
                 保存配置
               </Button>
             </CardContent>
-          </Card>
-        ))}
-      </div>
+              </Card>
+            ))}
+          </div>
 
-      {versions.length ? (
-        <Card>
+          {versions.length ? (
+            <Card>
           <CardHeader>
             <CardTitle>价格与额度版本记录</CardTitle>
           </CardHeader>
@@ -326,7 +328,9 @@ export function BillingWorkbench() {
               </div>
             ))}
           </CardContent>
-        </Card>
+            </Card>
+          ) : null}
+        </>
       ) : null}
 
       <Card>

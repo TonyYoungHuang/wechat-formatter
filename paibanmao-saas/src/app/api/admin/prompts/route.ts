@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireWorkspaceOwner } from "@/lib/auth/session";
+import { requireSiteAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 import { defaultPromptTemplates, upsertPromptTemplate } from "@/lib/prompts/service";
@@ -19,7 +19,7 @@ const promptPatchSchema = z.object({
 
 export async function GET() {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     const templates = await prisma.promptTemplate.findMany({
       orderBy: [{ key: "asc" }, { version: "desc" }],
     });
@@ -46,7 +46,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    await requireWorkspaceOwner();
+    await requireSiteAdmin();
     const parsed = promptPatchSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {

@@ -31,6 +31,11 @@ export async function POST(request: Request) {
     }
 
     const amountCents = await getPlanPriceCents(parsed.data.planCode);
+
+    if (amountCents <= 0) {
+      return errorResponse("This paid plan price is not configured. Set a positive price before creating a payment order.", 409);
+    }
+
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
     const order = await prisma.paymentOrder.create({
