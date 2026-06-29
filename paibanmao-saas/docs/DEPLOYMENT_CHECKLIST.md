@@ -35,6 +35,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
   - Generate green-note image prompts.
   - Save and fetch a compliance report for a generated project.
   - Add a project to the content calendar and mark it published.
+  - Record project metrics and confirm the project moves to reviewed.
+  - Create, search, update, and archive a content template and CTA snippet.
 
 ## 4. Pricing And Quotas
 
@@ -111,7 +113,7 @@ pnpm smoke:app
 
 `pnpm smoke:app` expects a running app with database access. It registers a smoke user, checks the starter account profile, runs five-entry generation, and verifies generation job logging. To include admin pricing, payment callback, topic generation, image prompt, and rewrite checks, start the app with `SITE_ADMIN_EMAIL` set to the smoke email, or pass a fixed `SMOKE_EMAIL`; set `SMOKE_REQUIRE_ADMIN=1` when this part must not be skipped.
 
-The app smoke also checks invalid dashboard sessions, topic-to-generation status sync, free generation quota, account-profile plan limits, queued generation fallback, editor project save, calendar project sync, compliance report save/fetch, failed callbacks, amount-mismatch callbacks, and duplicate invoice prevention.
+The app smoke also checks invalid dashboard sessions, topic-to-generation status sync, free generation quota, account-profile plan limits, queued generation fallback, editor project save, calendar project sync, project metrics review, template/CTA libraries, compliance report save/fetch, failed callbacks, amount-mismatch callbacks, and duplicate invoice prevention.
 
 Run during deployment:
 
