@@ -56,7 +56,9 @@ type PaymentOrder = {
   amountCents: number;
   status: string;
   paidAt?: string | null;
+  expiresAt: string;
   createdAt: string;
+  checkout?: Checkout | null;
 };
 
 type InvoiceRequest = {
@@ -118,6 +120,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>(getInitialPlan);
   const [provider, setProvider] = useState("wechat");
   const [checkout, setCheckout] = useState<Checkout | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<PaymentOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async function load() {
@@ -135,6 +138,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
       setVersions(planData.versions || []);
       setUsage(usageData);
       setOrders(orderData.orders);
+      setCurrentOrder((current) => (current ? orderData.orders.find((order) => order.id === current.id) ?? current : current));
       setInvoices(invoiceData.invoices);
       setMessage("");
     } catch (error) {
@@ -181,7 +185,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
 
   async function createOrder() {
     try {
-      const data = await readJson<{ order: { id: string; status: string; checkout?: Checkout } }>(
+      const data = await readJson<{ order: PaymentOrder }>(
         await fetch("/api/billing/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -189,9 +193,38 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         }),
       );
       setCheckout(data.order.checkout || null);
+      setCurrentOrder(data.order);
+      setOrders((items) => [data.order, ...items.filter((order) => order.id !== data.order.id)]);
       setMessage(`已创建订单 ${data.order.id}，状态：${data.order.status}。`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "创建订单失败。");
+    }
+  }
+
+  async function refreshCurrentOrder() {
+    if (!checkout) {
+      return;
+    }
+
+    try {
+      const data = await readJson<{ order: PaymentOrder }>(await fetch(`/api/billing/orders/${checkout.orderId}`));
+      setCurrentOrder(data.order);
+      setOrders((items) => [data.order, ...items.filter((order) => order.id !== data.order.id)]);
+
+      if (data.order.status === "paid") {
+        await load();
+        setMessage("支付已确认，会员权益已经更新。");
+        return;
+      }
+
+      if (data.order.status === "expired") {
+        setMessage("订单已过期，请重新创建支付订单。");
+        return;
+      }
+
+      setMessage(`订单当前状态：${data.order.status}。如果已经完成支付，请稍后再次检查。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "检查支付状态失败。");
     }
   }
 
@@ -392,7 +425,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
             <CardTitle>支付参数</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-600">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
               <div className="rounded-lg bg-slate-50 p-3">
                 <div className="text-xs text-slate-500">模式</div>
                 <div className="mt-1 font-medium text-slate-950">{checkout.mode}</div>
@@ -405,6 +438,14 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
                 <div className="text-xs text-slate-500">金额</div>
                 <div className="mt-1 font-medium text-slate-950">¥{(checkout.amountCents / 100).toFixed(2)}</div>
               </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">订单状态</div>
+                <div className="mt-1 font-medium text-slate-950">{currentOrder?.status || "pending"}</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">过期时间</div>
+                <div className="mt-1 font-medium text-slate-950">{new Date(currentOrder?.expiresAt || checkout.expiresAt).toLocaleString()}</div>
+              </div>
             </div>
             {checkout.qrCodeDataUrl ? <Image alt="微信支付二维码" className="rounded-lg border border-slate-200 bg-white p-2" height={160} src={checkout.qrCodeDataUrl} unoptimized width={160} /> : null}
             {checkout.paymentUrl ? (
@@ -413,6 +454,10 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
               </a>
             ) : null}
             {checkout.instructions ? <p className="leading-6">{checkout.instructions}</p> : null}
+            <Button variant="secondary" onClick={refreshCurrentOrder}>
+              <RefreshCcw className="size-4" />
+              检查支付状态
+            </Button>
           </CardContent>
         </Card>
       ) : null}
