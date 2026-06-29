@@ -171,6 +171,26 @@ async function checkImagePrompts() {
   assert(imagePrompts.payload?.job?.type === "image_prompt_generation", "image prompt generation job type mismatch");
 }
 
+async function checkQueuedGeneration(profile) {
+  const queued = await jsonRequest("/api/generate/five-entry/queue", {
+    accountProfileId: profile.id,
+    topic: `${topic}\uff1a\u5f02\u6b65\u751f\u6210\u56de\u5f52`,
+    goal: "search",
+  });
+
+  assert([200, 202].includes(queued.response.status), `/api/generate/five-entry/queue returned ${queued.response.status}: ${queued.text}`);
+
+  if (queued.response.status === 202) {
+    assert(queued.payload?.queued === true, "queued generation did not mark queued=true");
+    assert(queued.payload?.job?.id, "queued generation job id missing");
+    return;
+  }
+
+  assert(queued.payload?.queued === false, "queue fallback did not mark queued=false");
+  assert(queued.payload?.project?.id, "queue fallback project id missing");
+  assert(Array.isArray(queued.payload.project.variants) && queued.payload.project.variants.length === 5, "queue fallback variants missing");
+}
+
 async function configurePricingIfAdmin(currentUser) {
   if (!currentUser?.user?.isSiteAdmin) {
     const message = `Smoke user ${email} is not a site admin. Set SITE_ADMIN_EMAIL to this email before starting the server to test pricing and payment.`;
@@ -282,6 +302,7 @@ async function main() {
   if (canCheckPayment) {
     await checkPaymentFlow();
     await checkPaymentFailureFlow();
+    await checkQueuedGeneration(profile);
     await checkTopicSuggestions(profile);
     await checkImagePrompts();
     await checkRewrite(profile, generated);
