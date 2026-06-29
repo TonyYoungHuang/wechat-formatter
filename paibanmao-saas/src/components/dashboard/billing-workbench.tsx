@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Save } from "lucide-react";
+import { CreditCard, RefreshCcw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,14 @@ type Plan = {
   dailyGenerationLimit: number | null;
   monthlyGenerationLimit: number | null;
   advancedChecks: boolean;
+};
+
+type UsageSummary = {
+  generation: {
+    plan: Plan;
+    daily: { used: number; limit: number | null; remaining: number | null };
+    monthly: { used: number; limit: number | null; remaining: number | null };
+  };
 };
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -35,30 +43,41 @@ function toNullableNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function formatLimit(value: number | null) {
+  return value === null ? "不限" : `${value} 次`;
+}
+
 export function BillingWorkbench() {
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [message, setMessage] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanCode>("starter");
   const [provider, setProvider] = useState("wechat");
+  const [loading, setLoading] = useState(true);
 
   async function load() {
+    setLoading(true);
     try {
-      const data = await readJson<{ plans: Plan[] }>(await fetch("/api/billing/plans"));
-      setPlans(data.plans);
+      const [planData, usageData] = await Promise.all([
+        fetch("/api/billing/plans").then((response) => readJson<{ plans: Plan[] }>(response)),
+        fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response)),
+      ]);
+      setPlans(planData.plans);
+      setUsage(usageData);
       setMessage("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "加载套餐失败。");
+      setMessage(error instanceof Error ? error.message : "加载会员额度失败。");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetch("/api/billing/plans")
-      .then((response) => readJson<{ plans: Plan[] }>(response))
-      .then((data) => {
-        setPlans(data.plans);
-        setMessage("");
-      })
-      .catch((error: Error) => setMessage(error.message));
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function updatePlan(code: PlanCode, patch: Partial<Plan>) {
@@ -105,12 +124,45 @@ export function BillingWorkbench() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-950">会员与额度</h1>
-        <p className="mt-1 text-sm text-slate-600">配置套餐价格、账号档案上限、生成额度，并验证支付订单链路。</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-950">会员与额度</h1>
+          <p className="mt-1 text-sm text-slate-600">配置套餐价格、账号档案上限、生成额度，并验证支付订单链路。</p>
+        </div>
+        <Button variant="secondary" onClick={load} disabled={loading}>
+          <RefreshCcw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+          刷新
+        </Button>
       </div>
 
       {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
+
+      {usage ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-500">当前套餐</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold text-slate-950">{usage.generation.plan.name}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-500">今日生成额度</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold text-slate-950">
+              {usage.generation.daily.used} / {formatLimit(usage.generation.daily.limit)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-500">本月生成额度</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold text-slate-950">
+              {usage.generation.monthly.used} / {formatLimit(usage.generation.monthly.limit)}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-3">
         {plans.map((plan) => (

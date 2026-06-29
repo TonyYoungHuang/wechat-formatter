@@ -1,4 +1,5 @@
 import { createHmac, createVerify, timingSafeEqual } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 
@@ -25,6 +26,47 @@ export function parseCallbackPayload(value: unknown): CallbackPayload | null {
     tradeNo: typeof payload.tradeNo === "string" ? payload.tradeNo : undefined,
     providerOrderId: typeof payload.providerOrderId === "string" ? payload.providerOrderId : undefined,
   };
+}
+
+export function parseCallbackJson(rawBody: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(rawBody || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function recordPaymentCallback(input: {
+  provider: "wechat" | "alipay";
+  status: string;
+  rawBody: string;
+  payload?: Record<string, unknown> | null;
+  signature?: string | null;
+  message?: string;
+  orderId?: string;
+  providerTradeNo?: string;
+}) {
+  const order = input.orderId
+    ? await prisma.paymentOrder.findFirst({
+        where: { id: input.orderId, provider: input.provider },
+        select: { id: true, workspaceId: true },
+      })
+    : null;
+
+  return prisma.paymentCallback.create({
+    data: {
+      workspaceId: order?.workspaceId,
+      paymentOrderId: order?.id,
+      provider: input.provider,
+      status: input.status,
+      providerTradeNo: input.providerTradeNo,
+      rawBody: input.rawBody,
+      payload: input.payload ? (input.payload as Prisma.InputJsonValue) : undefined,
+      signature: input.signature,
+      message: input.message,
+    },
+  });
 }
 
 function safeEqual(left: string, right: string) {

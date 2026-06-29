@@ -2,18 +2,14 @@ import Link from "next/link";
 import { ArrowRight, FileText, Layers3, SearchCheck, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const stats = [
-  ["账号档案", "1 / 1"],
-  ["今日生成", "0 / 1"],
-  ["内容项目", "0"],
-  ["待发布", "0"],
-];
+import { requireCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/prisma";
+import { getGenerationUsageSummary } from "@/lib/usage/service";
 
 const suggestions = [
-  "普通人做公众号副业还有机会吗",
-  "小绿书适合哪些公众号创作者",
-  "问一问怎么给公众号带来精准关注",
+  "普通人做公众号副业还有机会吗？",
+  "小绿书适合哪些公众号创作者使用？",
+  "问一问怎么给公众号带来精准关注？",
 ];
 
 const actions = [
@@ -23,14 +19,34 @@ const actions = [
   { href: "/dashboard/checks", title: "发布前检查", desc: "检查风险表达、标题和 CTA。", icon: SearchCheck },
 ];
 
-export default function DashboardPage() {
+function quotaText(used: number, limit: number | null) {
+  return limit === null ? `${used} / 不限` : `${used} / ${limit}`;
+}
+
+export default async function DashboardPage() {
+  const current = await requireCurrentUser();
+  const [accountProfileCount, projectCount, pendingCalendarCount, usage] = await Promise.all([
+    prisma.accountProfile.count({ where: { workspaceId: current.workspace.id } }),
+    prisma.contentProject.count({ where: { workspaceId: current.workspace.id } }),
+    prisma.contentCalendarItem.count({ where: { workspaceId: current.workspace.id, status: { in: ["ready", "editing", "generated"] } } }),
+    getGenerationUsageSummary(current.workspace.id, current.workspace.planCode),
+  ]);
+
+  const stats = [
+    ["账号档案", `${accountProfileCount} / ${usage.plan.accountProfileLimit}`],
+    ["今日生成", quotaText(usage.daily.used, usage.daily.limit)],
+    ["本月生成", quotaText(usage.monthly.used, usage.monthly.limit)],
+    ["待发布", String(pendingCalendarCount)],
+    ["内容项目", String(projectCount)],
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">工作台</h1>
         <p className="mt-1 text-sm text-slate-600">从一个选题开始，生成五个微信入口的内容包。</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map(([label, value]) => (
           <Card key={label}>
             <CardHeader>
@@ -56,13 +72,13 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>账号档案完整度</CardTitle>
+            <CardTitle>当前套餐</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 h-3 rounded-full bg-emerald-100">
-              <div className="h-3 w-2/5 rounded-full bg-emerald-500" />
-            </div>
-            <p className="text-sm leading-6 text-slate-600">先补充目标读者、变现方式和常用 CTA，生成结果会更像你的账号。</p>
+            <div className="text-lg font-semibold text-slate-950">{usage.plan.name}</div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              今日已用 {usage.daily.used} 次，本月已用 {usage.monthly.used} 次。套餐额度从后台配置读取，支付成功后立即更新。
+            </p>
           </CardContent>
         </Card>
       </div>

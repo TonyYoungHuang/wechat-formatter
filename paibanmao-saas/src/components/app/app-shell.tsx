@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { CalendarDays, CreditCard, FileText, Home, Layers3, SearchCheck, Settings, Sparkles, UserRoundCog } from "lucide-react";
 
 import { LogoutButton } from "@/components/app/logout-button";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getGenerationUsageSummary } from "@/lib/usage/service";
 
 const navItems = [
   { href: "/dashboard", label: "工作台", icon: Home },
@@ -17,7 +19,14 @@ const navItems = [
   { href: "/dashboard/settings", label: "设置", icon: Settings },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+function formatRemaining(remaining: number | null) {
+  return remaining === null ? "不限" : `${remaining} 次`;
+}
+
+export async function AppShell({ children }: { children: ReactNode }) {
+  const current = await getCurrentUser();
+  const usage = current ? await getGenerationUsageSummary(current.workspace.id, current.workspace.planCode) : null;
+
   return (
     <div className="min-h-screen bg-[#f6faf7]">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-100 bg-white lg:block">
@@ -47,8 +56,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-emerald-100 bg-white/85 px-4 backdrop-blur sm:px-6">
           <div>
-            <div className="text-sm font-medium text-slate-950">默认账号档案</div>
-            <div className="text-xs text-slate-500">免费版 · 今日剩余 1 次生成</div>
+            <div className="text-sm font-medium text-slate-950">{current?.workspace.name || "排版猫工作台"}</div>
+            <div className="text-xs text-slate-500">
+              {usage?.plan.name || "免费版"} · 今日剩余 {formatRemaining(usage?.daily.remaining ?? null)} · 本月剩余 {formatRemaining(usage?.monthly.remaining ?? null)}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <LogoutButton />

@@ -92,14 +92,15 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members         WorkspaceMember[]
-  accountProfiles AccountProfile[]
-  topics          Topic[]
-  projects        ContentProject[]
-  calendarItems   ContentCalendarItem[]
-  usageLogs       UsageLog[]
-  subscriptions   Subscription[]
-  paymentOrders   PaymentOrder[]
+  members          WorkspaceMember[]
+  accountProfiles  AccountProfile[]
+  topics           Topic[]
+  projects         ContentProject[]
+  calendarItems    ContentCalendarItem[]
+  usageLogs        UsageLog[]
+  subscriptions    Subscription[]
+  paymentOrders    PaymentOrder[]
+  paymentCallbacks PaymentCallback[]
 }
 
 model WorkspaceMember {
@@ -368,5 +369,28 @@ model PaymentOrder {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  callbacks PaymentCallback[]
+}
+
+model PaymentCallback {
+  id              String   @id @default(cuid())
+  workspaceId     String?
+  paymentOrderId  String?
+  provider        String
+  status          String
+  eventType       String?
+  providerTradeNo String?
+  rawBody         String
+  payload         Json?
+  signature       String?
+  message         String?
+  createdAt       DateTime @default(now())
+
+  workspace    Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  paymentOrder PaymentOrder? @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
+
+  @@index([provider, status, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([paymentOrderId, createdAt])
 }
