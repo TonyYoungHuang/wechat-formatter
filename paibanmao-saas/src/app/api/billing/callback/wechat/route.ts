@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       orderId: payload.orderId,
       tradeNo: payload.tradeNo,
       providerOrderId: payload.providerOrderId,
+      paid: payload.paid,
+      amountCents: payload.amountCents,
+      rawStatus: payload.rawStatus,
     });
     await recordPaymentCallback({
       provider: "wechat",

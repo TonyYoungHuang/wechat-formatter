@@ -7,7 +7,23 @@ type CallbackPayload = {
   orderId: string;
   tradeNo?: string;
   providerOrderId?: string;
+  paid?: boolean;
+  amountCents?: number;
+  rawStatus?: string;
 };
+
+function parseAmountCents(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.round(value * 100);
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : undefined;
+}
 
 export function parseCallbackPayload(value: unknown): CallbackPayload | null {
   if (!value || typeof value !== "object") {
@@ -25,6 +41,9 @@ export function parseCallbackPayload(value: unknown): CallbackPayload | null {
     orderId,
     tradeNo: typeof payload.tradeNo === "string" ? payload.tradeNo : undefined,
     providerOrderId: typeof payload.providerOrderId === "string" ? payload.providerOrderId : undefined,
+    paid: typeof payload.paid === "boolean" ? payload.paid : undefined,
+    amountCents: typeof payload.amountCents === "number" ? payload.amountCents : parseAmountCents(payload.amount),
+    rawStatus: typeof payload.status === "string" ? payload.status : undefined,
   };
 }
 
@@ -76,6 +95,12 @@ export function parseWechatCallbackPayload(value: Record<string, unknown> | null
     orderId,
     tradeNo: typeof decrypted.transaction_id === "string" ? decrypted.transaction_id : undefined,
     providerOrderId: typeof decrypted.transaction_id === "string" ? decrypted.transaction_id : undefined,
+    paid: decrypted.trade_state === "SUCCESS",
+    amountCents:
+      typeof (decrypted.amount as Record<string, unknown> | undefined)?.total === "number"
+        ? ((decrypted.amount as Record<string, unknown>).total as number)
+        : undefined,
+    rawStatus: typeof decrypted.trade_state === "string" ? decrypted.trade_state : undefined,
   };
 }
 
@@ -111,6 +136,9 @@ export function parseAlipayCallbackPayload(value: Record<string, unknown> | null
     orderId,
     tradeNo: typeof value?.trade_no === "string" ? value.trade_no : undefined,
     providerOrderId: typeof value?.trade_no === "string" ? value.trade_no : undefined,
+    paid: value?.trade_status === "TRADE_SUCCESS" || value?.trade_status === "TRADE_FINISHED",
+    amountCents: parseAmountCents(value?.total_amount),
+    rawStatus: typeof value?.trade_status === "string" ? value.trade_status : undefined,
   };
 }
 
@@ -226,6 +254,9 @@ export async function markOrderPaid(input: {
   provider: "wechat" | "alipay";
   tradeNo?: string;
   providerOrderId?: string;
+  paid?: boolean;
+  amountCents?: number;
+  rawStatus?: string;
 }) {
   return prisma.$transaction(async (tx) => {
     const order = await tx.paymentOrder.findFirstOrThrow({
@@ -234,6 +265,14 @@ export async function markOrderPaid(input: {
         provider: input.provider,
       },
     });
+
+    if (input.paid === false) {
+      throw new Error(`Payment callback is not successful: ${input.rawStatus || "unknown"}.`);
+    }
+
+    if (typeof input.amountCents === "number" && input.amountCents !== order.amountCents) {
+      throw new Error("Payment callback amount does not match the order amount.");
+    }
 
     const paidOrder = await tx.paymentOrder.update({
       where: { id: order.id },
