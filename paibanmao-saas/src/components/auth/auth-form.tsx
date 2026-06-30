@@ -29,6 +29,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [devVerificationLink, setDevVerificationLink] = useState("");
   const [loading, setLoading] = useState(false);
   const isRegister = mode === "register";
 
@@ -38,13 +39,16 @@ export function AuthForm({ mode }: AuthFormProps) {
     setMessage("");
 
     try {
-      await readJson(
+      const data = await readJson<{ verificationLink?: string }>(
         await fetch(`/api/auth/${mode}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(isRegister ? { name, email, password } : { email, password }),
         }),
       );
+      if (isRegister && data.verificationLink) {
+        setDevVerificationLink(data.verificationLink);
+      }
       router.replace(next);
       router.refresh();
     } catch (error) {
@@ -95,7 +99,13 @@ export function AuthForm({ mode }: AuthFormProps) {
               type="password"
               value={password}
             />
+            {!isRegister ? (
+              <div className="text-right text-sm">
+                <Link className="text-emerald-700" href="/forgot-password">忘记密码？</Link>
+              </div>
+            ) : null}
             {message ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</div> : null}
+            {devVerificationLink ? <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地邮箱验证链接：{devVerificationLink}</div> : null}
             <Button className="w-full" disabled={loading}>
               {loading ? <Loader2 className="size-4 animate-spin" /> : isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
               {isRegister ? "创建账号" : "登录"}

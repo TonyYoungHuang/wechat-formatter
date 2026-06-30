@@ -3,6 +3,7 @@ import { createStarterAccountProfileData } from "@/lib/account-profiles/service"
 import { prisma } from "@/lib/db/prisma";
 import { createSession, hashPassword } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/schemas";
+import { createAuthToken, exposeDevSecurityLink } from "@/lib/auth/security";
 import { errorResponse } from "@/lib/http/errors";
 
 export async function POST(request: Request) {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
     return { user, workspace };
   });
 
+  const verification = await createAuthToken(result.user.id, "email_verification");
   await createSession(result.user.id);
 
   return NextResponse.json({
@@ -54,11 +56,13 @@ export async function POST(request: Request) {
       id: result.user.id,
       name: result.user.name,
       email: result.user.email,
+      emailVerifiedAt: result.user.emailVerifiedAt,
     },
     workspace: {
       id: result.workspace.id,
       name: result.workspace.name,
       planCode: result.workspace.planCode,
     },
+    verificationLink: exposeDevSecurityLink(verification.link),
   });
 }

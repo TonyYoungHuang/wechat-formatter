@@ -13,6 +13,7 @@ export async function GET() {
       id: current.user.id,
       name: current.user.name,
       email: current.user.email,
+      emailVerifiedAt: current.user.emailVerifiedAt,
       isSiteAdmin: isSiteAdminEmail(current.user.email),
     },
     workspace: {

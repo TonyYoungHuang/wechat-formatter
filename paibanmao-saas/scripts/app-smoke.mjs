@@ -5,6 +5,7 @@ const timestamp = Date.now();
 const email = process.env.SMOKE_EMAIL || `smoke+${timestamp}@paibanmao.local`;
 const normalizedEmail = email.trim().toLowerCase();
 const password = process.env.SMOKE_PASSWORD || "paibanmao-smoke-123";
+let currentPassword = password;
 const requireAdmin = process.env.SMOKE_REQUIRE_ADMIN === "1";
 const paymentCallbackSmokeSecret = process.env.PAYMENT_CALLBACK_SMOKE_SECRET;
 const topic = "\u666e\u901a\u4eba\u505a\u516c\u4f17\u53f7\u526f\u4e1a\u8fd8\u6709\u673a\u4f1a\u5417";
@@ -156,7 +157,7 @@ async function registerAndCheckSession() {
   const registration = await jsonRequest("/api/auth/register", {
     name: "Smoke User",
     email,
-    password,
+    password: currentPassword,
   });
 
   assert(registration.response.ok, `/api/auth/register returned ${registration.response.status}: ${registration.text}`);
@@ -166,7 +167,7 @@ async function registerAndCheckSession() {
   assert(me.response.ok, `/api/auth/me returned ${me.response.status}: ${me.text}`);
   assert(me.payload?.user?.email === normalizedEmail, "session user missing after registration");
 
-  return me.payload;
+  return { ...me.payload, verificationLink: registration.payload?.verificationLink };
 }
 
 async function checkAuthRejections() {
@@ -186,6 +187,64 @@ async function checkAuthRejections() {
   assert(wrongPassword.response.status === 401, `/api/auth/login wrong password returned ${wrongPassword.response.status}, expected 401`);
 }
 
+async function checkEmailVerification(current) {
+  assert(current.verificationLink, "registration did not return a local verification link");
+  const token = new URL(current.verificationLink).searchParams.get("token");
+  assert(token, "verification link missing token");
+
+  const verified = await jsonRequest("/api/auth/verify-email", { token });
+  assert(verified.response.ok, `/api/auth/verify-email returned ${verified.response.status}: ${verified.text}`);
+  assert(verified.payload?.user?.emailVerifiedAt, "email verification timestamp missing");
+
+  const me = await request("/api/auth/me");
+  assert(me.response.ok, `/api/auth/me after email verification returned ${me.response.status}: ${me.text}`);
+  assert(me.payload?.user?.emailVerifiedAt, "current user is not marked email verified");
+
+  const resend = await jsonRequest("/api/auth/verify-email/request", {});
+  assert(resend.response.ok, `/api/auth/verify-email/request returned ${resend.response.status}: ${resend.text}`);
+  assert(resend.payload?.verified === true, "verified user should not receive another verification token");
+}
+
+async function checkLoginRateLimit() {
+  const rateLimitEmail = `ratelimit+${timestamp}@paibanmao.local`;
+  const rateLimitIp = `198.51.100.${timestamp % 200}`;
+
+  for (let index = 0; index < 5; index += 1) {
+    const failed = await jsonRequest(
+      "/api/auth/login",
+      { email: rateLimitEmail, password: `wrong-${index}` },
+      { headers: { "x-forwarded-for": rateLimitIp } },
+    );
+    assert(failed.response.status === 401, `/api/auth/login rate setup returned ${failed.response.status}, expected 401`);
+  }
+
+  const limited = await jsonRequest(
+    "/api/auth/login",
+    { email: rateLimitEmail, password: "wrong-limited" },
+    { headers: { "x-forwarded-for": rateLimitIp } },
+  );
+  assert(limited.response.status === 429, `/api/auth/login rate limit returned ${limited.response.status}, expected 429`);
+}
+
+async function checkPasswordResetFlow() {
+  const resetRequest = await jsonRequest("/api/auth/password-reset/request", { email: normalizedEmail });
+  assert(resetRequest.response.ok, `/api/auth/password-reset/request returned ${resetRequest.response.status}: ${resetRequest.text}`);
+  assert(resetRequest.payload?.resetLink, "password reset request did not return local reset link");
+
+  const token = new URL(resetRequest.payload.resetLink).searchParams.get("token");
+  assert(token, "reset link missing token");
+
+  const nextPassword = `paibanmao-reset-${timestamp}`;
+  const reset = await jsonRequest("/api/auth/password-reset/confirm", { token, password: nextPassword });
+  assert(reset.response.ok, `/api/auth/password-reset/confirm returned ${reset.response.status}: ${reset.text}`);
+  assert(reset.payload?.reset === true, "password reset confirmation missing reset flag");
+  currentPassword = nextPassword;
+
+  const meAfterReset = await request("/api/auth/me");
+  assert(meAfterReset.response.ok, `/api/auth/me after password reset returned ${meAfterReset.response.status}: ${meAfterReset.text}`);
+  assert(meAfterReset.payload?.user === null, "password reset did not revoke the current session");
+}
+
 async function checkLogoutAndReloginFlow() {
   const logout = await request("/api/auth/logout", { method: "POST" });
   assert(logout.response.status === 204, `/api/auth/logout returned ${logout.response.status}, expected 204`);
@@ -200,7 +259,7 @@ async function checkLogoutAndReloginFlow() {
 
   const relogin = await jsonRequest("/api/auth/login", {
     email: email.toUpperCase(),
-    password,
+    password: currentPassword,
   });
 
   assert(relogin.response.ok, `/api/auth/login after logout returned ${relogin.response.status}: ${relogin.text}`);
@@ -1073,7 +1132,9 @@ async function main() {
   await checkDashboardRequiresValidSession();
   await checkAuthPagesIgnoreInvalidSessionCookie();
   const current = await registerAndCheckSession();
+  await checkEmailVerification(current);
   await checkAuthRejections();
+  await checkLoginRateLimit();
   const profile = await checkAccountProfiles();
   await checkDashboardOperatingView();
   await checkEditorFiveEntryView();
@@ -1107,6 +1168,7 @@ async function main() {
     await checkAdminOperationsFlow(current);
   }
 
+  await checkPasswordResetFlow();
   await checkLogoutAndReloginFlow();
 
   console.log("App smoke checks passed.");

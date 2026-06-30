@@ -18,6 +18,10 @@ function businessErrorStatus(message: string) {
     return 503;
   }
 
+  if (message === "Security token is invalid or expired.") {
+    return 400;
+  }
+
   return null;
 }
 
