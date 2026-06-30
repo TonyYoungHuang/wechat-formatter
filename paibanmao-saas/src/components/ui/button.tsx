@@ -35,7 +35,7 @@ export function Button({
   ...props
 }: ButtonProps | (Omit<ButtonProps, "asChild"> & { asChild: true; children: ReactNode })) {
   const classes = cn(
-    "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition",
+    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition disabled:pointer-events-none disabled:opacity-60",
     sizeClass[size],
     variantClass[variant],
     className,

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, FileText, Layers3, MessageSquareText, SearchCheck, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -118,6 +118,12 @@ export default async function DashboardPage() {
     ["待发布", String(pendingCalendarCount)],
     ["内容项目", String(projectCount)],
   ];
+  const onboardingSteps = [
+    { done: accountProfileCount > 0, title: "建立账号档案", desc: "先让 AI 记住你的定位、读者、产品和禁用词。", href: "/dashboard/account-profiles" },
+    { done: projectCount > 0, title: "生成第一套五入口内容", desc: "用一个选题生成公众号、小绿书、搜一搜、问一问和朋友圈。", href: "/dashboard/generate" },
+    { done: pendingCalendarCount > 0, title: "加入发布日历", desc: "把半自动发布动作排进日历，形成稳定更新节奏。", href: "/dashboard/calendar" },
+  ];
+  const showOnboarding = onboardingSteps.some((step) => !step.done);
 
   return (
     <div className="space-y-6">
@@ -135,6 +141,29 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+      {showOnboarding ? (
+        <Card className="border-emerald-100 bg-white">
+          <CardHeader>
+            <CardTitle>首次使用引导</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            {onboardingSteps.map((step, index) => (
+              <Link
+                key={step.title}
+                href={step.href}
+                className="rounded-lg border border-slate-100 bg-slate-50 p-4 transition hover:border-emerald-200 hover:bg-emerald-50"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-950">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-xs text-slate-500">{index + 1}</span>
+                  {step.done ? <CheckCircle2 className="size-4 text-emerald-600" /> : null}
+                  {step.title}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{step.desc}</p>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>
           <CardHeader>

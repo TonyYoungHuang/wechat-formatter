@@ -1,31 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarDays, CreditCard, FileText, Home, Layers3, MessageSquareText, SearchCheck, Settings, ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
 
 import { AccountProfileSwitcher } from "@/components/app/account-profile-switcher";
+import { AppNavigation } from "@/components/app/app-nav";
 import { LogoutButton } from "@/components/app/logout-button";
 import { isSiteAdminEmail, type getCurrentUser } from "@/lib/auth/session";
 import { getGenerationUsageSummary } from "@/lib/usage/service";
 
 type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
-
-const navItems = [
-  { href: "/dashboard", label: "工作台", icon: Home },
-  { href: "/dashboard/account-profiles", label: "账号档案", icon: UserRoundCog },
-  { href: "/dashboard/topics", label: "选题库", icon: Layers3 },
-  { href: "/dashboard/generate", label: "五入口生成", icon: Sparkles },
-  { href: "/dashboard/editor", label: "公众号编辑", icon: FileText },
-  { href: "/dashboard/projects", label: "内容项目", icon: FileText },
-  { href: "/dashboard/calendar", label: "内容日历", icon: CalendarDays },
-  { href: "/dashboard/templates", label: "模板库", icon: Layers3 },
-  { href: "/dashboard/cta-library", label: "CTA 库", icon: MessageSquareText },
-  { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
-  { href: "/dashboard/billing", label: "会员额度", icon: CreditCard },
-  { href: "/dashboard/admin", label: "运营后台", icon: ShieldCheck, adminOnly: true },
-  { href: "/dashboard/settings", label: "设置", icon: Settings, adminOnly: true },
-];
-
-const mobileNavHrefs = new Set(["/dashboard", "/dashboard/topics", "/dashboard/generate", "/dashboard/projects", "/dashboard/billing"]);
 
 function formatRemaining(remaining: number | null) {
   return remaining === null ? "不限" : `${remaining} 次`;
@@ -34,7 +16,6 @@ function formatRemaining(remaining: number | null) {
 export async function AppShell({ children, current }: { children: ReactNode; current: CurrentUser }) {
   const usage = await getGenerationUsageSummary(current.workspace.id, current.workspace.planCode);
   const isSiteAdmin = isSiteAdminEmail(current.user.email);
-  const visibleNavItems = navItems.filter((item) => !("adminOnly" in item) || !item.adminOnly || isSiteAdmin);
 
   return (
     <div className="min-h-screen bg-[#f6faf7]">
@@ -46,21 +27,7 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
             <div className="text-xs text-slate-500">微信内容增长工作台</div>
           </div>
         </div>
-        <nav className="space-y-1 p-3">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700"
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <AppNavigation isSiteAdmin={isSiteAdmin} />
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 flex min-h-16 flex-col gap-3 border-b border-emerald-100 bg-white/85 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between sm:px-6">
@@ -82,21 +49,9 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
         </header>
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:pb-6">{children}</main>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-100 bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur lg:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-          {visibleNavItems
-            .filter((item) => mobileNavHrefs.has(item.href))
-            .map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.href} href={item.href} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700">
-                  <Icon className="size-4" />
-                  <span className="max-w-full truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-        </div>
-      </nav>
+      <div className="lg:hidden">
+        <AppNavigation isSiteAdmin={isSiteAdmin} mode="mobile" />
+      </div>
     </div>
   );
 }
