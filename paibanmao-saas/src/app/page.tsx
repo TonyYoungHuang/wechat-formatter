@@ -36,6 +36,7 @@ export default function HomePage() {
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <Link href="/tools/topic-generator">免费工具</Link>
             <Link href="/templates">模板库</Link>
+            <Link href="/use-cases">场景</Link>
             <Link href="/pricing">价格</Link>
             <Link href="/tutorials">教程</Link>
             <Link href="/login">登录</Link>

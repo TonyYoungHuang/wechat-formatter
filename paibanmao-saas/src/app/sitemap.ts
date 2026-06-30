@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
 
 import { tutorialArticles } from "@/lib/seo/tutorials";
+import { useCasePages } from "@/lib/seo/use-cases";
 
 const publicPaths = [
   "",
   "/pricing",
   "/templates",
+  "/use-cases",
   "/tutorials",
   "/tools/wechat-title-generator",
   "/tools/topic-generator",
@@ -33,5 +35,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...toolAndPageUrls, ...tutorialUrls];
+  const useCaseUrls = useCasePages.map((page) => ({
+    url: `${baseUrl}/use-cases/${page.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  return [...toolAndPageUrls, ...tutorialUrls, ...useCaseUrls];
 }

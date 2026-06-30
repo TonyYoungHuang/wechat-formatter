@@ -7,6 +7,7 @@ const publicPages = [
   "/",
   "/pricing",
   "/templates",
+  "/use-cases",
   "/tutorials",
   "/tools/topic-generator",
   "/tools/wechat-title-generator",
@@ -26,7 +27,17 @@ const tutorialPaths = [
   "/tutorials/wechat-publish-checklist",
 ];
 
+const useCasePaths = [
+  "/use-cases/wechat-side-hustle",
+  "/use-cases/personal-ip-wechat",
+  "/use-cases/multi-account-matrix",
+  "/use-cases/green-note-from-wechat",
+  "/use-cases/wechat-search-seo",
+  "/use-cases/question-answer-wechat",
+];
+
 const toolPages = publicPages.filter((path) => path.startsWith("/tools/"));
+const useCaseHeading = "\u4e94\u4e2a\u5fae\u4fe1\u5165\u53e3\u600e\u4e48\u5206\u5de5";
 const usageHeading = "\u600e\u4e48\u4f7f\u7528\u8fd9\u4e2a\u5de5\u5177";
 const faqHeading = "\u5e38\u89c1\u95ee\u9898";
 const tutorialSectionHeadings = ["\u76f4\u63a5\u7b54\u6848", "\u64cd\u4f5c\u6b65\u9aa4", "\u793a\u4f8b", "\u5e38\u89c1\u8bef\u533a"];
@@ -41,8 +52,10 @@ const sitemapPaths = [
   "/tools/compliance-checker",
   "/pricing",
   "/templates",
+  "/use-cases",
   "/tutorials",
   ...tutorialPaths,
+  ...useCasePaths,
 ];
 
 const protectedGetPaths = [
@@ -195,7 +208,7 @@ function findTag(html, pattern) {
 }
 
 async function checkPublicPages() {
-  for (const path of [...publicPages, ...tutorialPaths]) {
+  for (const path of [...publicPages, ...tutorialPaths, ...useCasePaths]) {
     const { response, text } = await request(path);
     assert(response.ok, `${path} returned ${response.status}`);
     assert(text.includes(brandText), `${path} does not include brand text`);
@@ -204,7 +217,7 @@ async function checkPublicPages() {
 }
 
 async function checkPublicMetadata() {
-  for (const path of [...publicPages, ...tutorialPaths]) {
+  for (const path of [...publicPages, ...tutorialPaths, ...useCasePaths]) {
     const { response, text } = await request(path);
     assert(response.ok, `${path} returned ${response.status}`);
 
@@ -269,6 +282,16 @@ async function checkTutorialSeoSections() {
     for (const heading of tutorialSectionHeadings) {
       assert(text.includes(heading), `${path} missing tutorial section: ${heading}`);
     }
+  }
+}
+
+async function checkUseCaseSeoSections() {
+  for (const path of useCasePaths) {
+    const { response, text } = await request(path);
+    assert(response.ok, `${path} returned ${response.status}`);
+    assert(text.includes(useCaseHeading), `${path} missing entry split section`);
+    assert(text.includes("FAQPage"), `${path} missing FAQPage structured data`);
+    assert(text.includes("BreadcrumbList"), `${path} missing BreadcrumbList structured data`);
   }
 }
 
@@ -365,6 +388,7 @@ async function main() {
   await checkSitemapAndRobots();
   await checkToolSeoSections();
   await checkTutorialSeoSections();
+  await checkUseCaseSeoSections();
   await checkDashboardRedirect();
   await checkProtectedApiAuth();
   await checkToolPreview();
