@@ -14,6 +14,8 @@ export type PlanConfig = {
   accountProfileLimit: number;
   dailyGenerationLimit: number | null;
   monthlyGenerationLimit: number | null;
+  dailyImageGenerationLimit: number | null;
+  monthlyImageGenerationLimit: number | null;
   advancedChecks: boolean;
 };
 
@@ -26,6 +28,8 @@ export const defaultPlans: PlanConfig[] = [
     accountProfileLimit: 1,
     dailyGenerationLimit: 1,
     monthlyGenerationLimit: null,
+    dailyImageGenerationLimit: 0,
+    monthlyImageGenerationLimit: 0,
     advancedChecks: false,
   },
   {
@@ -36,6 +40,8 @@ export const defaultPlans: PlanConfig[] = [
     accountProfileLimit: 3,
     dailyGenerationLimit: null,
     monthlyGenerationLimit: null,
+    dailyImageGenerationLimit: 3,
+    monthlyImageGenerationLimit: 60,
     advancedChecks: false,
   },
   {
@@ -46,6 +52,8 @@ export const defaultPlans: PlanConfig[] = [
     accountProfileLimit: 10,
     dailyGenerationLimit: null,
     monthlyGenerationLimit: null,
+    dailyImageGenerationLimit: 10,
+    monthlyImageGenerationLimit: 300,
     advancedChecks: true,
   },
 ];

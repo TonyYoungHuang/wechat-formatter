@@ -61,7 +61,7 @@ export async function generateTopicSuggestionsWithAi(input: {
       `读者痛点: ${profile.audiencePainPoints}`,
       `产品或服务: ${profile.productOrService || "未填写"}`,
       `变现方式: ${profile.monetizationMethods.join(", ") || "未填写"}`,
-      `语气: ${profile.tone}`,
+      `语气风格: ${profile.tone}`,
       `常用 CTA: ${profile.commonCta || "自然关注或私信引导"}`,
       `禁用表达: ${profile.forbiddenWords.join(", ") || "无"}`,
       `参考样文: ${profile.sampleText || "无"}`,
@@ -92,12 +92,15 @@ export async function generateTopicSuggestionsWithAi(input: {
         system: [
           "你是排版猫的微信内容选题策划助手。",
           "请为中国大陆微信副业创作者生成可执行、可复用、可转化的中文选题。",
-          "每个选题要标注适合的微信入口和内容目标。",
+          "选题要像真人创作者会在备忘录里写下来的题，而不是 AI 生成的栏目标题。",
+          "优先写具体处境、具体矛盾和具体动作，例如“写了几篇没人看”“下班后只有 1 小时”“不知道朋友圈怎么转”。",
+          "不要使用空泛大词，例如赋能、闭环、全方位、打造个人品牌、快速变现。",
+          "每个选题都要标注适合的微信入口和内容目标，并能延展到公众号、小绿书、搜一搜、问一问和朋友圈。",
           "不要承诺保证涨粉、保证收入、保证排名或保证审核通过。",
-          "避免洗稿、搬运、夸大收益和诱导分享。",
+          "避免洗稿、搬运、夸大收益、制造焦虑和诱导分享。",
         ].join("\n"),
         prompt,
-        temperature: 0.75,
+        temperature: 0.7,
       });
 
       return {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { WechatSupportWidget } from "@/components/support/wechat-support-widget";
 import { siteUrl } from "@/lib/seo/metadata";
 import "./globals.css";
 
@@ -39,7 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="h-full antialiased">
-      <body className="min-h-full bg-[#f6faf7] text-slate-950">{children}</body>
+      <body className="min-h-full bg-[#f6faf7] text-slate-950">
+        {children}
+        <WechatSupportWidget />
+      </body>
     </html>
   );
 }

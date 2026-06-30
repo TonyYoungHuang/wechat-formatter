@@ -35,45 +35,45 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
     case "topic":
       return {
         title: "选题预览",
-        summary: `围绕“${input}”，先给你 5 个适合微信内容矩阵的选题方向。`,
+        summary: `围绕「${input}」，先给你 5 个适合微信内容矩阵的选题方向。`,
         blocks: [
-          block("公众号", `${input}：普通人真正该先做的 3 件事`),
-          block("小绿书", `3 张图讲清楚${input}的新手路线`),
+          block("公众号", `${input}: 普通人真正应该先做的 3 件事`),
+          block("小绿书", `3 张图讲清「${input}」的新手路线`),
           block("搜一搜", `${input}怎么做？适合新手的步骤和避坑`),
-          block("问一问", `现在做${input}还来得及吗？`),
-          block("朋友圈", `我把${input}拆成了一套更容易开始的小计划。`),
+          block("问一问", `现在做「${input}」还来得及吗？`),
+          block("朋友圈", `我把「${input}」拆成了一套更容易开始的小计划。`),
         ],
         loginHint: "登录后可保存到选题库，并一键生成五入口完整内容。",
       };
     case "green_note":
       return {
         title: "小绿书图文预览",
-        summary: `把“${input}”改成适合微信图文卡片的短内容。`,
+        summary: `把「${input}」改成适合微信图文卡片的短内容。`,
         blocks: [
           block("封面文案", `${input}，先别急着做复杂`),
-          block("第 1 页", "痛点：很多人不是没想法，而是不知道第一步怎么落地。"),
-          block("第 2 页", "方法：先用一个明确场景，写给一类具体读者。"),
-          block("图片提示词", "微信绿色工作台风格，清爽信息卡片，留白充足，中文标题醒目。"),
-          block("结尾 CTA", "想要完整脚本，可以把这篇保存下来，再按自己的账号定位改写。"),
+          block("第 1 页", "痛点: 很多人不是没有想法，而是不知道第一步怎么落地。"),
+          block("第 2 页", "方法: 先用一个明确场景，写给一类具体读者。"),
+          block("图片提示词", "3:4 竖版，浅绿色微信工作台风格，清爽信息卡片，中文标题醒目，留白充足。"),
+          block("结尾 CTA", "想要完整脚本，可以先保存这篇，再按自己的账号定位改写。"),
         ],
-        loginHint: "登录后可生成 3/6/9 页脚本、逐页图片提示词和朋友圈转发卡片。",
+        loginHint: "登录后可生成 3/6/9 页脚本、逐页图片提示词，并继续用 image2 生成图片。",
       };
     case "search":
       return {
         title: "搜一搜关键词预览",
-        summary: `围绕“${input}”生成适合微信搜一搜的关键词结构。`,
+        summary: `围绕「${input}」生成适合微信搜一搜的关键词结构。`,
         blocks: [
           block("主关键词", input),
           block("长尾关键词", `${input}怎么做、${input}新手、${input}步骤、${input}避坑`),
           block("搜索型标题", `${input}怎么做？新手先看这 5 个步骤`),
-          block("摘要前 100 字", `如果你正在搜索“${input}”，这篇会从适合人群、具体步骤和常见误区三个方面讲清楚。`),
+          block("摘要前 100 字", `如果你正在搜索「${input}」，这篇会从适合人群、具体步骤和常见误区三个方面讲清楚。`),
         ],
-        loginHint: "登录后可把关键词直接应用到公众号正文和标题候选里。",
+        loginHint: "登录后可把关键词直接应用到公众号正文、标题候选和问一问问题库里。",
       };
     case "question":
       return {
         title: "问一问回答预览",
-        summary: `把“${input}”整理成问一问里更自然的回答结构。`,
+        summary: `把「${input}」整理成问一问里更自然的回答结构。`,
         blocks: [
           block("相关问题", `${input}适合普通人现在开始吗？`),
           block("一句话回答", "可以开始，但要先选清楚定位、读者和可持续输出方式。"),
@@ -85,9 +85,9 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
     case "moments":
       return {
         title: "朋友圈文案预览",
-        summary: `把“${input}”改成更像真人表达的朋友圈转发文案。`,
+        summary: `把「${input}」改成更像真人表达的朋友圈转发文案。`,
         blocks: [
-          block("转发理由", `最近一直在想${input}这件事，越拆越发现它不是一个大问题，而是一组小步骤。`),
+          block("转发理由", `最近一直在想「${input}」这件事，越拆越发现它不是一个大问题，而是一组小步骤。`),
           block("互动话术", "你们觉得最难的是开始、坚持，还是不知道写给谁？"),
           block("资料包 CTA", "我把思路整理成了一份清单，想看的可以留言，我发你。"),
         ],
@@ -100,7 +100,7 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
 
 function buildCompliancePreview(input: string): PublicToolPreview {
   const issues: PublicToolPreviewBlock[] = [];
-  const extremeWords = ["最", "第一", "必赚", "保证", "永久", "唯一", "100%"];
+  const extremeWords = ["最", "第一", "稳赚", "保证", "永久", "唯一", "100%"];
   const aiWords = ["首先", "其次", "综上所述", "不难发现"];
 
   if (extremeWords.some((word) => input.includes(word))) {

@@ -73,6 +73,7 @@ const starterContent = `
 `;
 
 const editableEntries = contentEntries.filter((entry) => !["wechat_article", "green_note"].includes(entry.id));
+const imageGenerationEnabled = process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "true" || process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "1";
 
 function escapeHtml(value: string) {
   return value
@@ -472,6 +473,11 @@ export function WechatEditor() {
   }
 
   async function generateGreenNoteImages() {
+    if (!imageGenerationEnabled) {
+      setNotice("图片生成点数包即将上线，当前套餐暂不包含 image2 生图。你可以先复制图片提示词。");
+      return;
+    }
+
     if (!imagePrompts.length) {
       setNotice("请先生成或填写小绿书图片提示词。");
       return;
@@ -729,9 +735,9 @@ export function WechatEditor() {
                 {generatingPrompts ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
                 生成图片提示词
               </Button>
-              <Button className="w-full" onClick={generateGreenNoteImages} disabled={generatingImages || !imagePrompts.length}>
+              <Button className="w-full" onClick={generateGreenNoteImages} disabled={generatingImages || !imagePrompts.length || !imageGenerationEnabled}>
                 {generatingImages ? <Loader2 className="size-4 animate-spin" /> : <Images className="size-4" />}
-                用 image2 生成图片
+                {imageGenerationEnabled ? "用 image2 生成图片" : "image2 生图点数包即将上线"}
               </Button>
               <textarea
                 className="min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 outline-none focus:border-emerald-400"

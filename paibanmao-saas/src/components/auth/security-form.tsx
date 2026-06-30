@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Loader2, Mail, RotateCcw } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -74,8 +75,12 @@ export function SecurityForm({ mode }: { mode: Mode }) {
   const icon = mode === "forgot-password" ? <Mail className="size-4" /> : mode === "reset-password" ? <RotateCcw className="size-4" /> : <CheckCircle2 className="size-4" />;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f6faf7] px-4">
-      <Card className="w-full max-w-md border-emerald-100">
+    <main className="flex min-h-screen items-center justify-center bg-[#f5fbf7] px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex justify-center">
+          <BrandLogo />
+        </div>
+      <Card className="w-full border-emerald-300 shadow-md shadow-emerald-900/[0.06]">
         <CardHeader>
           <CardTitle className="text-2xl">{title}</CardTitle>
           <p className="text-sm leading-6 text-slate-600">
@@ -85,10 +90,10 @@ export function SecurityForm({ mode }: { mode: Mode }) {
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
             {mode === "forgot-password" ? (
-              <input className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" onChange={(event) => setEmail(event.target.value)} placeholder="邮箱" required type="email" value={email} />
+              <input className="h-11 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-500" onChange={(event) => setEmail(event.target.value)} placeholder="邮箱" required type="email" value={email} />
             ) : null}
             {mode === "reset-password" ? (
-              <input className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="新密码，至少 8 位" required type="password" value={password} />
+              <input className="h-11 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-500" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="新密码，至少 8 位" required type="password" value={password} />
             ) : null}
             {mode !== "forgot-password" && !token ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">链接缺少 token，请重新申请。</div> : null}
             {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
@@ -103,6 +108,7 @@ export function SecurityForm({ mode }: { mode: Mode }) {
           </p>
         </CardContent>
       </Card>
+      </div>
     </main>
   );
 }

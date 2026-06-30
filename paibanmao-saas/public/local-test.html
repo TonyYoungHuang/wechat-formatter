@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>排版猫本地测试导航</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6faf7;
+        --panel: #ffffff;
+        --line: #dce8df;
+        --text: #132017;
+        --muted: #60706a;
+        --brand: #11844f;
+        --soft: #e8f8ef;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+        letter-spacing: 0;
+      }
+
+      main {
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 32px 18px 48px;
+      }
+
+      header {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+
+      p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 0 10px;
+        color: var(--brand);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      section {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 16px;
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 17px;
+      }
+
+      a {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-radius: 8px;
+        padding: 9px 10px;
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      a:hover {
+        background: var(--soft);
+        color: var(--brand);
+      }
+
+      small {
+        color: var(--muted);
+      }
+
+      .note {
+        margin: 0 0 18px;
+        border: 1px solid #bee7cf;
+        border-radius: 8px;
+        background: var(--soft);
+        padding: 12px 14px;
+        color: #245b3d;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 640px) {
+        header {
+          display: block;
+        }
+
+        .badge {
+          margin-top: 12px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>排版猫本地测试导航</h1>
+          <p>按下面链接走一遍页面。登录后页面需要先注册或登录本地测试账号。</p>
+        </div>
+        <span class="badge">本地地址：http://127.0.0.1:3001</span>
+      </header>
+
+      <p class="note">建议顺序：先看公开页和 SEO 页面，再注册账号进入工作台，最后看后台和设置页。</p>
+
+      <div class="grid">
+        <section>
+          <h2>公开页</h2>
+          <a href="/"><span>首页</span><small>/</small></a>
+          <a href="/pricing"><span>价格页</span><small>/pricing</small></a>
+          <a href="/templates"><span>模板库</span><small>/templates</small></a>
+          <a href="/tutorials"><span>教程列表</span><small>/tutorials</small></a>
+          <a href="/use-cases"><span>场景列表</span><small>/use-cases</small></a>
+          <a href="/robots.txt"><span>robots</span><small>/robots.txt</small></a>
+          <a href="/sitemap.xml"><span>sitemap</span><small>/sitemap.xml</small></a>
+          <a href="/api/health"><span>健康检查</span><small>/api/health</small></a>
+        </section>
+
+        <section>
+          <h2>免费工具</h2>
+          <a href="/tools/topic-generator"><span>选题生成器</span><small>topic</small></a>
+          <a href="/tools/wechat-title-generator"><span>标题生成器</span><small>title</small></a>
+          <a href="/tools/green-note-generator"><span>小绿书生成器</span><small>green note</small></a>
+          <a href="/tools/search-keyword-helper"><span>搜一搜关键词</span><small>search</small></a>
+          <a href="/tools/question-answer-generator"><span>问一问回答</span><small>question</small></a>
+          <a href="/tools/moments-copy-generator"><span>朋友圈文案</span><small>moments</small></a>
+          <a href="/tools/compliance-checker"><span>合规检查</span><small>checks</small></a>
+        </section>
+
+        <section>
+          <h2>账号入口</h2>
+          <a href="/register"><span>注册</span><small>/register</small></a>
+          <a href="/login"><span>登录</span><small>/login</small></a>
+          <a href="/forgot-password"><span>忘记密码</span><small>/forgot-password</small></a>
+          <a href="/reset-password"><span>重置密码</span><small>/reset-password</small></a>
+          <a href="/verify-email"><span>邮箱验证</span><small>/verify-email</small></a>
+        </section>
+
+        <section>
+          <h2>SEO 场景页</h2>
+          <a href="/use-cases/wechat-side-hustle"><span>公众号副业</span><small>side hustle</small></a>
+          <a href="/use-cases/personal-ip-wechat"><span>个人 IP</span><small>personal IP</small></a>
+          <a href="/use-cases/multi-account-matrix"><span>多账号矩阵</span><small>matrix</small></a>
+          <a href="/use-cases/green-note-from-wechat"><span>公众号转小绿书</span><small>green note</small></a>
+          <a href="/use-cases/wechat-search-seo"><span>搜一搜布局</span><small>search SEO</small></a>
+          <a href="/use-cases/question-answer-wechat"><span>问一问回答</span><small>Q&A</small></a>
+        </section>
+
+        <section>
+          <h2>教程详情</h2>
+          <a href="/tutorials/wechat-topic-to-five-entries"><span>一个选题到五入口</span><small>tutorial</small></a>
+          <a href="/tutorials/green-note-from-wechat-topic"><span>公众号转小绿书</span><small>tutorial</small></a>
+          <a href="/tutorials/wechat-search-keywords"><span>搜一搜关键词</span><small>tutorial</small></a>
+          <a href="/tutorials/question-answer-wechat"><span>问一问回答</span><small>tutorial</small></a>
+          <a href="/tutorials/moments-copy-from-article"><span>朋友圈转发</span><small>tutorial</small></a>
+          <a href="/tutorials/wechat-publish-checklist"><span>发布前检查</span><small>tutorial</small></a>
+        </section>
+
+        <section>
+          <h2>工作台页面</h2>
+          <a href="/dashboard"><span>工作台首页</span><small>/dashboard</small></a>
+          <a href="/dashboard/account-profiles"><span>账号档案</span><small>profiles</small></a>
+          <a href="/dashboard/topics"><span>选题库</span><small>topics</small></a>
+          <a href="/dashboard/generate"><span>五入口生成</span><small>generate</small></a>
+          <a href="/dashboard/editor"><span>公众号编辑器</span><small>editor</small></a>
+          <a href="/dashboard/projects"><span>内容项目</span><small>projects</small></a>
+          <a href="/dashboard/calendar"><span>内容日历</span><small>calendar</small></a>
+          <a href="/dashboard/templates"><span>模板库管理</span><small>templates</small></a>
+          <a href="/dashboard/cta-library"><span>CTA 库</span><small>CTA</small></a>
+          <a href="/dashboard/checks"><span>发布检查</span><small>checks</small></a>
+          <a href="/dashboard/billing"><span>会员额度</span><small>billing</small></a>
+          <a href="/dashboard/admin"><span>运营后台</span><small>admin</small></a>
+          <a href="/dashboard/settings"><span>系统设置</span><small>settings</small></a>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

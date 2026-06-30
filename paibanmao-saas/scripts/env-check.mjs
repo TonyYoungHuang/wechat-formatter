@@ -37,7 +37,7 @@ addCheck({
   ok: configuredAny(["REQUESTY_API_KEY", "AI_OPENAI_COMPATIBLE_API_KEY"]),
   message: "REQUESTY_API_KEY is required for Requesty text and image generation.",
 });
-warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is openai/gpt-4o-mini.");
+warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is anthropic/claude-3-5-sonnet-latest.");
 warnEnv("REQUESTY_IMAGE_MODEL", "REQUESTY_IMAGE_MODEL is optional; default is openai/gpt-image-2.");
 warnEnv("HEALTH_ALERT_WEBHOOK_URL", "HEALTH_ALERT_WEBHOOK_URL is recommended for production ops verification alerts.");
 warnEnv("BACKUP_DIR", "BACKUP_DIR is optional; default database backups are written to ./backups.");
@@ -73,7 +73,7 @@ if (configured("OPS_BASE_URL")) {
 }
 
 const wechatCheckoutKeys = ["WECHAT_PAY_APP_ID", "WECHAT_PAY_MCH_ID", "WECHAT_PAY_MCH_SERIAL_NO", "WECHAT_PAY_PRIVATE_KEY_PEM"];
-const wechatCallbackKeys = ["WECHAT_PAY_API_V3_KEY", "WECHAT_PAY_PLATFORM_CERT_PEM"];
+const wechatCallbackKeys = ["WECHAT_PAY_API_V3_KEY"];
 const alipayCheckoutKeys = ["ALIPAY_APP_ID", "ALIPAY_PRIVATE_KEY_PEM"];
 const alipayCallbackKeys = ["ALIPAY_PUBLIC_KEY_PEM"];
 
@@ -91,12 +91,28 @@ function addPaymentGroup(provider, purpose, keys) {
 
 addPaymentGroup("WeChat Pay", "checkout", wechatCheckoutKeys);
 addPaymentGroup("WeChat Pay", "callback", wechatCallbackKeys);
+addCheck({
+  key: "WeChat Pay:platform public key",
+  ok: configuredAny(["WECHAT_PAY_PLATFORM_CERT_PEM", "WECHAT_PAY_PLATFORM_PUBLIC_KEY_PEM"]),
+  level: production ? "error" : "warn",
+  message: "WeChat Pay callback verification requires WECHAT_PAY_PLATFORM_CERT_PEM or WECHAT_PAY_PLATFORM_PUBLIC_KEY_PEM.",
+});
 addPaymentGroup("Alipay", "checkout", alipayCheckoutKeys);
 addPaymentGroup("Alipay", "callback", alipayCallbackKeys);
 
 if (!configured("ALIPAY_GATEWAY_URL")) {
   warnEnv("ALIPAY_GATEWAY_URL", "ALIPAY_GATEWAY_URL is optional; production default is https://openapi.alipay.com/gateway.do.");
 }
+
+const smtpKeys = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"];
+const smtpMissing = smtpKeys.filter((key) => !configured(key));
+addCheck({
+  key: "SMTP email",
+  ok: smtpMissing.length === 0,
+  level: "warn",
+  message: `SMTP email is not fully configured; missing: ${smtpMissing.join(", ")}. Email verification and password reset links will not be delivered until SMTP is configured.`,
+});
+warnEnv("SMTP_FROM", "SMTP_FROM is optional; default is 排版猫 <admin@paibanmao.cn>.");
 
 const errors = checks.filter((check) => !check.ok && check.level === "error");
 const warnings = checks.filter((check) => !check.ok && check.level === "warn");

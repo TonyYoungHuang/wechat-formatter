@@ -8,6 +8,8 @@ const entitlementKeys = [
   "accountProfileLimit",
   "dailyGenerationLimit",
   "monthlyGenerationLimit",
+  "dailyImageGenerationLimit",
+  "monthlyImageGenerationLimit",
   "advancedChecks",
 ] as const;
 
@@ -48,6 +50,8 @@ export async function getPlanConfigs(): Promise<PlanConfig[]> {
       accountProfileLimit: parseNullableInt(entitlements.get("accountProfileLimit"), fallback.accountProfileLimit) ?? fallback.accountProfileLimit,
       dailyGenerationLimit: parseNullableInt(entitlements.get("dailyGenerationLimit"), fallback.dailyGenerationLimit),
       monthlyGenerationLimit: parseNullableInt(entitlements.get("monthlyGenerationLimit"), fallback.monthlyGenerationLimit),
+      dailyImageGenerationLimit: parseNullableInt(entitlements.get("dailyImageGenerationLimit"), fallback.dailyImageGenerationLimit),
+      monthlyImageGenerationLimit: parseNullableInt(entitlements.get("monthlyImageGenerationLimit"), fallback.monthlyImageGenerationLimit),
       advancedChecks: parseBoolean(entitlements.get("advancedChecks"), fallback.advancedChecks),
       sortOrder: row?.sortOrder ?? index,
     };
@@ -105,6 +109,10 @@ export async function upsertPlanConfig(code: PlanCode, patch: Partial<PlanConfig
     accountProfileLimit: patch.accountProfileLimit ?? current.accountProfileLimit ?? fallback.accountProfileLimit,
     dailyGenerationLimit: patch.dailyGenerationLimit === undefined ? current.dailyGenerationLimit : patch.dailyGenerationLimit,
     monthlyGenerationLimit: patch.monthlyGenerationLimit === undefined ? current.monthlyGenerationLimit : patch.monthlyGenerationLimit,
+    dailyImageGenerationLimit:
+      patch.dailyImageGenerationLimit === undefined ? current.dailyImageGenerationLimit : patch.dailyImageGenerationLimit,
+    monthlyImageGenerationLimit:
+      patch.monthlyImageGenerationLimit === undefined ? current.monthlyImageGenerationLimit : patch.monthlyImageGenerationLimit,
     advancedChecks: patch.advancedChecks ?? current.advancedChecks ?? fallback.advancedChecks,
   };
 

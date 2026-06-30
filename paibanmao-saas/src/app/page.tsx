@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, CircleHelp, Images, Lightbulb, PenLine, Search, ShieldCheck, UsersRound } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { HomeHeroGenerator } from "@/components/marketing/home-hero-generator";
+import { PublicFooter, PublicHeader } from "@/components/marketing/public-shell";
 import { contentEntries } from "@/lib/content/entries";
 import { createPublicMetadata } from "@/lib/seo/metadata";
 
@@ -26,7 +26,7 @@ const freeTools = [
 ];
 
 const entryHrefs: Record<string, string> = {
-  wechat_article: "/dashboard/generate?entry=wechat_article",
+  wechat_article: "/tools/wechat-title-generator",
   green_note: "/tools/green-note-generator",
   search: "/tools/search-keyword-helper",
   question: "/tools/question-answer-generator",
@@ -61,28 +61,37 @@ const entryThemes: Record<string, { imageSrc: string; className: string; iconCla
   },
 };
 
+const pricingCards = [
+  {
+    name: "免费版",
+    price: "¥0",
+    originalPrice: "",
+    badge: "先体验",
+    description: "适合先试一次排版猫的五入口生成能力。",
+    features: ["Claude 3.5 Sonnet 文字生成", "每天 1 次五入口内容生成", "1 个账号档案", "图片提示词", "image2 模型生图：0 张"],
+  },
+  {
+    name: "入门版",
+    price: "¥19.90",
+    originalPrice: "¥29.00",
+    badge: "新网站促销",
+    description: "适合一个人运营多个微信副业账号。",
+    features: ["Claude 3.5 Sonnet 文字生成", "每月 150 次五入口内容生成", "3 个账号档案", "image2 模型生图：3 张/天，60 张/月", "每天最多做 1 组小绿书图文"],
+  },
+  {
+    name: "专业版",
+    price: "¥69.00",
+    originalPrice: "¥99.00",
+    badge: "新网站促销",
+    description: "适合高频创作者和小团队做微信内容矩阵。",
+    features: ["Claude 3.5 Sonnet 文字生成", "每月 500 次五入口内容生成", "10 个账号档案", "image2 模型生图：10 张/天，300 张/月", "每天最多做 3 组左右小绿书图文", "高级发布前检查"],
+  },
+];
+
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f5fbf7]">
-      <header className="border-b border-emerald-200 bg-white/92 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo />
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <Link href="/tools/topic-generator">免费工具</Link>
-            <Link href="/templates">模板库</Link>
-            <Link href="/use-cases">场景</Link>
-            <Link href="/pricing">价格</Link>
-            <Link href="/tutorials">教程</Link>
-            <Link href="/login">登录</Link>
-          </nav>
-          <Button asChild>
-            <Link href="/dashboard">
-              开始使用
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <PublicHeader />
 
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
         <HomeHeroGenerator />
@@ -126,6 +135,48 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-emerald-100/80 bg-white py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mb-8 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-emerald-700">套餐价格</p>
+            <h2 className="text-2xl font-semibold text-slate-950">Claude 3.5 Sonnet 文字生成 + image2 模型生图</h2>
+            <p className="max-w-3xl text-base leading-7 text-slate-600">
+              新网站上线促销中，文字内容统一使用 Claude 3.5 Sonnet 生成，套餐内同时包含微信五入口内容生成和小绿书 image2 生图额度。免费版只提供图片提示词，不包含真生图。
+            </p>
+          </div>
+          <div className="grid items-stretch gap-4 lg:grid-cols-3">
+            {pricingCards.map((plan) => (
+              <div key={plan.name} className="flex h-full flex-col rounded-lg border border-emerald-200 bg-[#f5fbf7] p-5 shadow-sm shadow-emerald-950/[0.04]">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-xl font-semibold text-slate-950">{plan.name}</h3>
+                  <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-sm font-semibold text-emerald-700">{plan.badge}</span>
+                </div>
+                <p className="mt-3 min-h-12 text-sm leading-6 text-slate-600">{plan.description}</p>
+                <div className="mt-5 flex items-end gap-3">
+                  {plan.originalPrice ? <span className="pb-1 text-base text-slate-400 line-through">{plan.originalPrice}</span> : null}
+                  <span className="text-3xl font-bold text-emerald-700">{plan.price}</span>
+                  <span className="pb-1 text-sm text-slate-500">/ 月</span>
+                </div>
+                <ul className="mt-5 flex-1 space-y-2 text-sm leading-6 text-slate-700">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex gap-2">
+                      <span className="mt-2 size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button asChild className="mt-5 w-full">
+                  <Link href={plan.name === "免费版" ? "/register?plan=free" : "/pricing"}>
+                    查看套餐
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-emerald-100/80 bg-[#f5fbf7] py-14">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
@@ -150,6 +201,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <PublicFooter />
     </main>
   );
 }

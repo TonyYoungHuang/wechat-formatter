@@ -21,7 +21,7 @@ export function PlaceholderPage({
         </CardHeader>
         <CardContent className="space-y-3">
           {items.map((item) => (
-            <div key={item} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div key={item} className="rounded-lg border border-emerald-200 bg-[#f5fbf7] px-4 py-3 text-sm text-slate-700">
               {item}
             </div>
           ))}

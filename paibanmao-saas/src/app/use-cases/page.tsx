@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
-import { Button } from "@/components/ui/button";
+import { PublicShell } from "@/components/marketing/public-shell";
 import { createPublicMetadata } from "@/lib/seo/metadata";
 import { useCasePages } from "@/lib/seo/use-cases";
 
@@ -15,22 +14,7 @@ export const metadata = createPublicMetadata({
 
 export default function UseCasesPage() {
   return (
-    <main className="min-h-screen bg-[#f6faf7]">
-      <header className="border-b border-emerald-100 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo />
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <Link href="/tools/topic-generator">免费工具</Link>
-            <Link href="/templates">模板库</Link>
-            <Link href="/tutorials">教程</Link>
-            <Link href="/pricing">价格</Link>
-          </nav>
-          <Button asChild size="sm">
-            <Link href="/register">开始使用</Link>
-          </Button>
-        </div>
-      </header>
-
+    <PublicShell ctaHref="/register" ctaLabel="开始使用">
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="max-w-3xl">
           <p className="text-sm font-medium text-emerald-700">微信内容增长场景</p>
@@ -41,13 +25,13 @@ export default function UseCasesPage() {
         </div>
       </section>
 
-      <section className="border-y border-emerald-100 bg-white py-12">
+      <section className="border-y border-emerald-200 bg-[#f5fbf7] py-12">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3">
           {useCasePages.map((item) => (
-            <Link key={item.slug} href={`/use-cases/${item.slug}`} className="rounded-lg border border-slate-100 bg-white p-5 transition hover:border-emerald-200 hover:shadow-sm">
+            <Link key={item.slug} href={`/use-cases/${item.slug}`} className="rounded-lg border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-900/[0.04] transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-900/[0.07]">
               <div className="text-sm font-medium text-emerald-700">{item.audience}</div>
               <h2 className="mt-3 text-xl font-semibold text-slate-950">{item.title}</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+              <p className="mt-3 text-base leading-7 text-slate-600">{item.description}</p>
               <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
                 查看场景方案
                 <ArrowRight className="size-4" />
@@ -56,6 +40,6 @@ export default function UseCasesPage() {
           ))}
         </div>
       </section>
-    </main>
+    </PublicShell>
   );
 }

@@ -11,6 +11,8 @@ export const planConfigPatchSchema = z.object({
   accountProfileLimit: z.number().int().min(1).max(100).optional(),
   dailyGenerationLimit: z.number().int().min(0).nullable().optional(),
   monthlyGenerationLimit: z.number().int().min(0).nullable().optional(),
+  dailyImageGenerationLimit: z.number().int().min(0).nullable().optional(),
+  monthlyImageGenerationLimit: z.number().int().min(0).nullable().optional(),
   advancedChecks: z.boolean().optional(),
 });
 

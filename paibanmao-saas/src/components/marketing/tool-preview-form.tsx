@@ -52,7 +52,7 @@ export function ToolPreviewForm({
   return (
     <div className="space-y-4">
       <textarea
-        className="min-h-28 w-full rounded-lg border border-slate-200 p-4 outline-none focus:border-emerald-400"
+        className="min-h-28 w-full rounded-lg border border-emerald-200 bg-white p-4 outline-none focus:border-emerald-500"
         onChange={(event) => setInput(event.target.value)}
         placeholder={placeholder}
         value={input}
@@ -67,16 +67,16 @@ export function ToolPreviewForm({
       {preview ? (
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-4">
           <h2 className="font-semibold text-slate-950">{preview.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{preview.summary}</p>
+          <p className="mt-2 text-base leading-7 text-slate-600">{preview.summary}</p>
           <div className="mt-4 grid gap-3">
             {preview.blocks.map((block) => (
-              <div key={`${block.label}-${block.content}`} className="rounded-lg bg-white p-3 text-sm">
+              <div key={`${block.label}-${block.content}`} className="rounded-lg border border-emerald-100 bg-white p-3 text-base">
                 <p className="font-medium text-emerald-700">{block.label}</p>
                 <p className="mt-1 leading-6 text-slate-700">{block.content}</p>
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm leading-6 text-slate-600">{preview.loginHint}</p>
+          <p className="mt-4 text-base leading-7 text-slate-600">{preview.loginHint}</p>
           <Button asChild className="mt-4 w-full">
             <Link href={continuation.href}>
               {continuation.label}

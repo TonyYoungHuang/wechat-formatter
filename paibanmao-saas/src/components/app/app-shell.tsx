@@ -19,9 +19,9 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
   const isSiteAdmin = isSiteAdminEmail(current.user.email);
 
   return (
-    <div className="min-h-screen bg-[#f6faf7]">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-100 bg-white lg:block">
-        <div className="flex h-16 items-center gap-2 border-b border-emerald-100 px-5">
+    <div className="min-h-screen bg-[#f5fbf7]">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-200 bg-white/95 lg:block">
+        <div className="flex h-16 items-center gap-2 border-b border-emerald-200 px-5">
           <BrandMark />
           <div>
             <div className="font-semibold text-slate-950">排版猫</div>
@@ -31,7 +31,7 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
         <AppNavigation isSiteAdmin={isSiteAdmin} />
       </aside>
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 flex min-h-16 flex-col gap-3 border-b border-emerald-100 bg-white/85 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between sm:px-6">
+        <header className="sticky top-0 z-10 flex min-h-16 flex-col gap-3 border-b border-emerald-200 bg-white/90 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between sm:px-6">
           <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-950">{current.workspace.name}</div>

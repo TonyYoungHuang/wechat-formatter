@@ -20,11 +20,11 @@ function startOfThisMonth() {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-async function sumUsage(workspaceId: string, since: Date) {
+async function sumUsage(workspaceId: string, since: Date, key = "generation") {
   const used = await prisma.usageLog.aggregate({
     where: {
       workspaceId,
-      key: "generation",
+      key,
       createdAt: { gte: since },
     },
     _sum: { quantity: true },
@@ -73,6 +73,30 @@ export async function getGenerationUsageSummary(workspaceId: string, planCode: s
   };
 }
 
+export async function getImageGenerationUsageSummary(workspaceId: string, planCode: string) {
+  const plan = await getPlanConfig(normalizePlanCode(planCode));
+  const today = startOfToday();
+  const thisMonth = startOfThisMonth();
+  const [dailyUsed, monthlyUsed] = await Promise.all([
+    sumUsage(workspaceId, today, "image_generation"),
+    sumUsage(workspaceId, thisMonth, "image_generation"),
+  ]);
+
+  return {
+    plan,
+    daily: {
+      used: dailyUsed,
+      limit: plan.dailyImageGenerationLimit,
+      remaining: plan.dailyImageGenerationLimit === null ? null : Math.max(plan.dailyImageGenerationLimit - dailyUsed, 0),
+    },
+    monthly: {
+      used: monthlyUsed,
+      limit: plan.monthlyImageGenerationLimit,
+      remaining: plan.monthlyImageGenerationLimit === null ? null : Math.max(plan.monthlyImageGenerationLimit - monthlyUsed, 0),
+    },
+  };
+}
+
 export async function assertCanUseGeneration(workspaceId: string, planCode: string, options: UsageSummaryOptions = {}) {
   const summary = await getGenerationUsageSummary(workspaceId, planCode, options);
 
@@ -85,11 +109,33 @@ export async function assertCanUseGeneration(workspaceId: string, planCode: stri
   }
 }
 
+export async function assertCanUseImageGeneration(workspaceId: string, planCode: string, quantity = 1) {
+  const summary = await getImageGenerationUsageSummary(workspaceId, planCode);
+
+  if (summary.daily.limit !== null && summary.daily.used + quantity > summary.daily.limit) {
+    throw new Error(`Current plan allows ${summary.daily.limit} image2 images per day.`);
+  }
+
+  if (summary.monthly.limit !== null && summary.monthly.used + quantity > summary.monthly.limit) {
+    throw new Error(`Current plan allows ${summary.monthly.limit} image2 images per month.`);
+  }
+}
+
 export async function recordGenerationUsage(workspaceId: string, quantity = 1) {
   await prisma.usageLog.create({
     data: {
       workspaceId,
       key: "generation",
+      quantity,
+    },
+  });
+}
+
+export async function recordImageGenerationUsage(workspaceId: string, quantity = 1) {
+  await prisma.usageLog.create({
+    data: {
+      workspaceId,
+      key: "image_generation",
       quantity,
     },
   });

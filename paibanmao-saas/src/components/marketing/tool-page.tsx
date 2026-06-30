@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
+import { PublicPageShell } from "@/components/marketing/public-shell";
+import { UsageStepsFlow } from "@/components/marketing/usage-steps-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToolPreviewForm } from "@/components/marketing/tool-preview-form";
@@ -140,16 +142,14 @@ export function ToolPage({
   ];
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-12 sm:px-6">
+    <PublicPageShell contentClassName="max-w-5xl" ctaHref="/register" ctaLabel="免费开始">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData) }} />
-      <Link className="text-sm text-emerald-700" href="/">
-        返回首页
-      </Link>
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_0.8fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
         <div>
-          <h1 className="text-3xl font-semibold text-slate-950">{title}</h1>
-          <p className="mt-3 leading-7 text-slate-600">{description}</p>
-          <Card className="mt-6">
+          <p className="mb-3 text-sm font-medium text-emerald-700">排版猫免费工具</p>
+          <h1 className="text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">{title}</h1>
+          <p className="mt-5 text-lg leading-8 text-slate-600">{description}</p>
+          <Card className="mt-6 border-emerald-300 shadow-md shadow-emerald-900/[0.05]">
             <CardHeader>
               <CardTitle>免费试用</CardTitle>
             </CardHeader>
@@ -158,11 +158,11 @@ export function ToolPage({
             </CardContent>
           </Card>
         </div>
-        <Card>
+        <Card className="border-emerald-300 shadow-md shadow-emerald-900/[0.05]">
           <CardHeader>
             <CardTitle>登录后解锁</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-600">
+          <CardContent className="space-y-3 text-base leading-7 text-slate-600">
             {unlocks.map((item) => (
               <p key={item} className="flex gap-2">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
@@ -175,35 +175,28 @@ export function ToolPage({
           </CardContent>
         </Card>
       </div>
-      <section className="mt-10 border-t border-slate-100 pt-8">
-        <h2 className="text-xl font-semibold text-slate-950">怎么使用这个工具</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {steps.map((step, index) => (
-            <div key={step} className="rounded-lg border border-slate-100 bg-white p-4">
-              <div className="text-sm font-semibold text-emerald-700">步骤 {index + 1}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{step}</p>
-            </div>
-          ))}
-        </div>
+      <section className="mt-10 border-t border-emerald-200 pt-8">
+        <h2 className="text-2xl font-semibold text-slate-950">怎么使用这个工具</h2>
+        <UsageStepsFlow steps={steps} />
       </section>
-      <section className="mt-10 border-t border-slate-100 pt-8">
-        <h2 className="text-xl font-semibold text-slate-950">常见问题</h2>
+      <section className="mt-10 border-t border-emerald-200 pt-8">
+        <h2 className="text-2xl font-semibold text-slate-950">常见问题</h2>
         <div className="mt-4 space-y-3">
           {faqItems.map((item) => (
-            <details key={item.question} className="rounded-lg border border-slate-100 bg-white p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-950">{item.question}</summary>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+            <details key={item.question} className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03]">
+              <summary className="cursor-pointer text-base font-semibold text-slate-950">{item.question}</summary>
+              <p className="mt-3 text-base leading-7 text-slate-600">{item.answer}</p>
             </details>
           ))}
         </div>
       </section>
-      <section className="mt-10 border-t border-slate-100 pt-8">
-        <h2 className="text-xl font-semibold text-slate-950">相关免费工具</h2>
+      <section className="mt-10 border-t border-emerald-200 pt-8">
+        <h2 className="text-2xl font-semibold text-slate-950">相关免费工具</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {relatedTools.map((tool) => (
             <Link
               key={tool.href}
-              className="rounded-lg border border-slate-100 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-emerald-200 hover:text-emerald-700"
+              className="rounded-lg border border-emerald-200 bg-white px-4 py-3 text-base text-slate-700 shadow-sm shadow-emerald-900/[0.03] transition hover:border-emerald-400 hover:text-emerald-700"
               href={tool.href}
             >
               {tool.label}
@@ -211,6 +204,6 @@ export function ToolPage({
           ))}
         </div>
       </section>
-    </main>
+    </PublicPageShell>
   );
 }

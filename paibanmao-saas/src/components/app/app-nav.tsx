@@ -38,7 +38,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
 
   if (mode === "mobile") {
     return (
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-100 bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-200 bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {visibleNavItems
             .filter((item) => mobileNavHrefs.has(item.href))
@@ -53,7 +53,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
                   href={item.href}
                   className={cn(
                     "flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs transition",
-                    active ? "bg-emerald-50 font-medium text-emerald-800" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
+                    active ? "bg-emerald-600 font-medium text-white shadow-sm shadow-emerald-900/10" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
                   )}
                 >
                   <Icon className="size-4" />
@@ -79,7 +79,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
             href={item.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
-              active ? "bg-emerald-50 font-medium text-emerald-800" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
+              active ? "bg-emerald-600 font-medium text-white shadow-sm shadow-emerald-900/10" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-700",
             )}
           >
             <Icon className="size-4" />

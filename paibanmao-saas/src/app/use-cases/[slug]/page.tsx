@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
+import { PublicShell } from "@/components/marketing/public-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { absoluteUrl, createPublicMetadata, jsonLdScript } from "@/lib/seo/metadata";
@@ -64,24 +64,9 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6faf7]">
+    <PublicShell ctaHref="/register" ctaLabel="免费开始">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }} />
-
-      <header className="border-b border-emerald-100 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <BrandLogo />
-          <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
-            <Link href="/use-cases">场景</Link>
-            <Link href="/tools/topic-generator">免费工具</Link>
-            <Link href="/templates">模板库</Link>
-            <Link href="/tutorials">教程</Link>
-          </nav>
-          <Button asChild size="sm">
-            <Link href="/register">免费开始</Link>
-          </Button>
-        </div>
-      </header>
 
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_360px]">
         <div>
@@ -100,15 +85,15 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
             </Button>
           </div>
         </div>
-        <Card className="border-emerald-100">
+        <Card className="border-emerald-300 shadow-md shadow-emerald-900/[0.05]">
           <CardHeader>
             <CardTitle>适合谁</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm leading-7 text-slate-600">{page.audience}</CardContent>
+          <CardContent className="text-base leading-7 text-slate-600">{page.audience}</CardContent>
         </Card>
       </section>
 
-      <section className="border-y border-emerald-100 bg-white py-12">
+      <section className="border-y border-emerald-200 bg-[#f5fbf7] py-12">
         <div className="mx-auto grid max-w-7xl gap-5 px-4 sm:px-6 lg:grid-cols-3">
           <InfoBlock title="常见问题" items={page.painPoints} />
           <InfoBlock title="发布前检查" items={page.checklist} />
@@ -119,28 +104,28 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold text-slate-950">五个微信入口怎么分工</h2>
-          <p className="mt-2 text-slate-600">同一个选题不需要重复创作五遍，关键是每个入口承担不同任务。</p>
+          <p className="mt-2 text-lg leading-8 text-slate-600">同一个选题不需要重复创作五遍，关键是每个入口承担不同任务。</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {page.entries.map((entry) => (
-            <Card key={entry.name} className="border-slate-100">
+            <Card key={entry.name} className="border-emerald-200">
               <CardHeader>
                 <CardTitle className="text-base">{entry.name}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm leading-6 text-slate-600">{entry.value}</CardContent>
+              <CardContent className="text-base leading-7 text-slate-600">{entry.value}</CardContent>
             </Card>
           ))}
         </div>
       </section>
 
-      <section className="border-y border-emerald-100 bg-white py-12">
+      <section className="border-y border-emerald-200 bg-[#f5fbf7] py-12">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <h2 className="text-2xl font-semibold text-slate-950">常见问题</h2>
           <div className="mt-6 space-y-4">
             {page.faq.map((item) => (
-              <div key={item.question} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+              <div key={item.question} className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03]">
                 <h3 className="font-semibold text-slate-950">{item.question}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{item.answer}</p>
+                <p className="mt-2 text-base leading-7 text-slate-600">{item.answer}</p>
               </div>
             ))}
           </div>
@@ -148,7 +133,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-6 md:flex md:items-center md:justify-between">
+        <div className="rounded-lg border border-emerald-300 bg-white p-6 shadow-md shadow-emerald-900/[0.05] md:flex md:items-center md:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-950">用排版猫生成你的第一套五入口内容</h2>
             <p className="mt-2 text-slate-700">从账号档案开始，让 AI 知道你是谁、写给谁、卖什么、哪些话不能说。</p>
@@ -158,7 +143,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
           </Button>
         </div>
       </section>
-    </main>
+    </PublicShell>
   );
 }
 
@@ -166,12 +151,12 @@ function InfoBlock({ title, items, ordered = false }: { title: string; items: st
   const ListTag = ordered ? "ol" : "ul";
 
   return (
-    <Card className="border-slate-100">
+    <Card className="border-emerald-200">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ListTag className="space-y-3 text-sm leading-6 text-slate-600">
+        <ListTag className="space-y-3 text-base leading-7 text-slate-600">
           {items.map((item) => (
             <li key={item} className="flex gap-2">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />

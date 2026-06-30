@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/session";
 import { mapApiError } from "@/lib/http/errors";
-import { getGenerationUsageSummary } from "@/lib/usage/service";
+import { getGenerationUsageSummary, getImageGenerationUsageSummary } from "@/lib/usage/service";
 
 export async function GET() {
   try {
     const current = await requireCurrentUser();
-    const generation = await getGenerationUsageSummary(current.workspace.id, current.workspace.planCode);
+    const [generation, imageGeneration] = await Promise.all([
+      getGenerationUsageSummary(current.workspace.id, current.workspace.planCode),
+      getImageGenerationUsageSummary(current.workspace.id, current.workspace.planCode),
+    ]);
 
     return NextResponse.json({
       workspace: {
@@ -15,6 +18,7 @@ export async function GET() {
         planCode: current.workspace.planCode,
       },
       generation,
+      imageGeneration,
     });
   } catch (error) {
     return mapApiError(error);

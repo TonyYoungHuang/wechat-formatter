@@ -27,12 +27,16 @@ export function buildFallbackRewrite(input: {
   commonCta?: string | null;
 }) {
   const replacements: Array<[RegExp, string]> = [
-    [/首先[，。:：]?/g, "先说结论: "],
-    [/其次[，。:：]?/g, "再看一个关键点: "],
-    [/最后[，。:：]?/g, "收个尾，"],
-    [/综上所述[，。:：]?/g, "简单总结一下，"],
-    [/不难发现[，。:：]?/g, "我自己的感受是，"],
-    [/总而言之[，。:：]?/g, "说到底，"],
+    [/首先[，。、:：]?/g, "先说结论: "],
+    [/其次[，。、:：]?/g, "再看一个关键点: "],
+    [/最后[，。、:：]?/g, "收个尾，"],
+    [/综上所述[，。、:：]?/g, "简单总结一下，"],
+    [/不难发现[，。、:：]?/g, "我自己的感受是，"],
+    [/总而言之[，。、:：]?/g, "说到底，"],
+    [/在当今时代[，。、:：]?/g, ""],
+    [/赋能/g, "帮到"],
+    [/闭环/g, "流程"],
+    [/全方位/g, "更完整地"],
   ];
   let body = input.content.trim();
 
@@ -92,12 +96,14 @@ export async function rewriteWithAi(input: {
         schema: rewriteSchema,
         system: [
           "You are Paibanmao, a Chinese WeChat editor for small creators.",
-          "Rewrite content to sound natural, specific, and trustworthy.",
-          "Do not invent facts, data, screenshots, income, traffic, rankings, or platform approval results.",
+          "Rewrite content so it feels written by a real creator, not an AI assistant.",
+          "Preserve the original meaning and do not invent facts, data, screenshots, income, traffic, rankings, or platform approval results.",
+          "Avoid generic AI transitions and slogan words. Use plain WeChat-native wording, concrete reader scenes, mild uncertainty, and restrained calls to action.",
+          "Keep paragraph rhythm human: mix short and medium sentences, avoid perfectly symmetrical bullet sections unless the original requires them.",
           "Return only the rewritten title and body.",
         ].join("\n"),
         prompt: input.prompt,
-        temperature: 0.6,
+        temperature: 0.56,
       });
 
       return {

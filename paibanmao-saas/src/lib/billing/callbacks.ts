@@ -240,7 +240,9 @@ export function verifyWechatCallback(options: {
     return true;
   }
 
-  const platformCert = process.env.WECHAT_PAY_PLATFORM_CERT_PEM?.replace(/\\n/g, "\n");
+  const platformCert = (
+    process.env.WECHAT_PAY_PLATFORM_CERT_PEM || process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY_PEM
+  )?.replace(/\\n/g, "\n");
 
   if (platformCert && options.signature && options.timestamp && options.nonce) {
     const verifier = createVerify("RSA-SHA256");

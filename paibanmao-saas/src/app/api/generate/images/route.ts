@@ -6,10 +6,14 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { imageGenerationSchema } from "@/lib/generation/schemas";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
-import { assertCanUseGeneration, recordGenerationUsage } from "@/lib/usage/service";
+import { assertCanUseImageGeneration, recordImageGenerationUsage } from "@/lib/usage/service";
 
 function toJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function imageGenerationEnabled() {
+  return process.env.IMAGE_GENERATION_ENABLED === "true" || process.env.IMAGE_GENERATION_ENABLED === "1";
 }
 
 export async function POST(request: Request) {
@@ -21,9 +25,17 @@ export async function POST(request: Request) {
       return errorResponse("Valid image generation parameters are required.");
     }
 
-    await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
+    if (!imageGenerationEnabled()) {
+      return errorResponse("图片生成点数包即将上线，当前套餐暂不包含 image2 生图。你可以先使用图片提示词。", 403);
+    }
 
-    const output = await generateImagesWithRequesty(parsed.data);
+    const imageCount = parsed.data.prompts.length;
+    await assertCanUseImageGeneration(current.workspace.id, current.workspace.planCode, imageCount);
+
+    const output = await generateImagesWithRequesty({
+      ...parsed.data,
+      quality: "low",
+    });
     const job = await prisma.generationJob.create({
       data: {
         workspaceId: current.workspace.id,
@@ -35,7 +47,7 @@ export async function POST(request: Request) {
         tokenOutput: 0,
       },
     });
-    await recordGenerationUsage(current.workspace.id, 1);
+    await recordImageGenerationUsage(current.workspace.id, imageCount);
 
     return NextResponse.json({ output, job });
   } catch (error) {

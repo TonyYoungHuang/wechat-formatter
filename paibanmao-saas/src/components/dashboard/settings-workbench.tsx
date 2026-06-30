@@ -63,10 +63,10 @@ type PaymentConfigStatus = {
 };
 
 const defaultProviderModels: ProviderModelConfig[] = [
-  { name: "内容生成模型", modelId: "openai/gpt-4o-mini", purpose: "content", active: true },
-  { name: "选题生成模型", modelId: "openai/gpt-4o-mini", purpose: "topic", active: true },
-  { name: "降低 AI 味模型", modelId: "openai/gpt-4o-mini", purpose: "rewrite", active: true },
-  { name: "图片提示词模型", modelId: "openai/gpt-4o-mini", purpose: "image", active: true },
+  { name: "内容生成模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "content", active: true },
+  { name: "选题生成模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "topic", active: true },
+  { name: "降低 AI 味模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "rewrite", active: true },
+  { name: "图片提示词模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "image", active: true },
   { name: "小绿书 image2 生图模型", modelId: "openai/gpt-image-2", purpose: "image_generation", active: true },
 ];
 

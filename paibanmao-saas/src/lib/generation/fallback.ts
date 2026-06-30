@@ -39,11 +39,11 @@ export function buildFallbackFiveEntry(input: {
         `这篇文章面向${audience}，用${tone}的方式讲清楚这个问题。`,
         "",
         "## 为什么这个选题值得写",
-        `它和「${niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。读者不是缺信息，而是缺一套能马上执行的小步骤。`,
+        `它和「${niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。读者缺的通常不是信息，而是一套能马上执行的小步骤。`,
         "",
         "## 可以怎么展开",
-        "1. 先讲读者当下的困境，不要一上来就给宏大结论。",
-        "2. 再给一个能马上执行的小动作，让读者感觉这件事可开始。",
+        "1. 先讲读者当下的具体困境，不要一上来就给宏大结论。",
+        "2. 再给一个能马上执行的小动作，让读者觉得这件事可以开始。",
         "3. 最后自然引导到你的产品、服务或资料包。",
         "",
         "## 可放入正文的案例角度",
@@ -69,9 +69,9 @@ export function buildFallbackFiveEntry(input: {
       metadata: {
         pages: 3,
         imagePrompts: [
-          `微信绿色轻工作台风格封面，主题: ${topic}，干净留白，中文标题醒目，适合中文短图文`,
-          "步骤清单页，浅绿色背景，三条简洁中文要点，信息层级清晰，适合手机阅读",
-          "结尾行动页，预留关注、收藏、私信关键词的视觉空间，清爽克制",
+          `轻微信绿色工作台风格封面，3:4 竖版，主题「${topic}」，大标题区域清晰，浅绿色与白色留白，适合中文短图文`,
+          "步骤清单页，浅绿色背景，三条简洁中文要点，信息层级清楚，手机屏幕可读，避免小字密集",
+          "结尾行动页，预留关注、收藏、私信关键词的视觉空间，干净克制，适合微信创作者工具感",
         ],
       },
     },
@@ -125,15 +125,15 @@ export function buildImagePrompts(topic: string, scene: string, style: string, p
     const pageRole =
       pageNumber === 1 ? "封面钩子页" : pageNumber === pageCount ? "结尾行动页" : `第 ${pageNumber} 页观点拆解`;
 
-    return `${style}，微信小绿书 3:4 竖版图文，主题「${topic}」，${pageRole}，中文标题醒目，正文留白充足，信息层级清晰，适合手机阅读`;
+    return `${style}，微信小绿书 3:4 竖版图文，主题「${topic}」，${pageRole}，中文标题醒目，正文留白充足，信息层级清晰，适合手机阅读，避免真实平台 Logo 和夸大收益表达`;
   });
   const prompts =
     scene === "green_note_pages"
       ? greenNotePagePrompts
       : [
-          `${style}，中文封面图，主题「${topic}」，主体清晰，浅绿色留白，适合微信公众号和小绿书`,
-          `${style}，步骤说明页，3 个信息层级，适合 3:4 手机图文比例`,
-          `${style}，结尾行动页，预留中文标题和 CTA 位置，不要复杂背景`,
+          `${style}，中文封面图，主题「${topic}」，主体清晰，浅绿色留白，适合微信公众号和小绿书，预留大标题和短副标题区域`,
+          `${style}，步骤说明页，3 个信息层级，适合 3:4 手机图文比例，中文短句排版清楚，避免小字密集`,
+          `${style}，结尾行动页，预留中文标题和 CTA 位置，背景干净，不要复杂装饰和夸大承诺`,
         ];
 
   return {
@@ -143,6 +143,6 @@ export function buildImagePrompts(topic: string, scene: string, style: string, p
     style,
     prompts,
     imageGenerationReady: false,
-    nextStep: "当前版本只生成图片提示词；后续可把 prompts 数组逐条发送给图片生成模型。",
+    nextStep: "当前先生成图片提示词；开通 image2 后可将 prompts 数组逐条发送给图片生成模型。",
   };
 }

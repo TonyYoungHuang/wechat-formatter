@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Copy, Loader2, Sparkles } from "lucide-react";
 
+import { PublicShell } from "@/components/marketing/public-shell";
+import { UsageStepsFlow } from "@/components/marketing/usage-steps-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { WechatTitleSuggestion } from "@/lib/tools/wechat-title-generator";
@@ -84,30 +86,27 @@ export function WechatTitleGeneratorTool() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <section className="border-b border-emerald-100 bg-white">
+    <PublicShell ctaHref="/register" ctaLabel="免费开始">
+      <section className="border-b border-emerald-200 bg-[#f5fbf7]">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <Link className="text-sm text-emerald-700" href="/">
-            返回首页
-          </Link>
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 px-3 py-1 text-sm text-emerald-700">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-sm text-emerald-700">
                 <Sparkles className="size-4" />
                 公众号免费工具
               </div>
-              <h1 className="max-w-2xl text-3xl font-semibold text-slate-950 sm:text-4xl">
+              <h1 className="max-w-2xl text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">
                 公众号标题生成器
               </h1>
-              <p className="mt-4 max-w-2xl leading-7 text-slate-600">
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
                 输入一个选题，快速生成适合公众号头条、搜一搜、小绿书、问一问和朋友圈转发的标题角度。适合副业创作者、个人 IP 和小团队做选题冷启动。
               </p>
             </div>
-            <Card className="border-emerald-100 bg-emerald-50/60">
+            <Card className="border-emerald-300 bg-white shadow-md shadow-emerald-900/[0.05]">
               <CardHeader>
                 <CardTitle className="text-base">登录排版猫后可以继续做什么</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-700">
+              <CardContent className="space-y-3 text-base leading-7 text-slate-700">
                 <p>把标题保存为选题，一键扩写成公众号正文。</p>
                 <p>同步生成小绿书、搜一搜、问一问和朋友圈版本。</p>
                 <p>进入发布前检查，减少标题党、AI 味和转化突兀问题。</p>
@@ -124,7 +123,7 @@ export function WechatTitleGeneratorTool() {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.85fr_1.15fr]">
-        <Card>
+        <Card className="border-emerald-300 shadow-md shadow-emerald-900/[0.05]">
           <CardHeader>
             <CardTitle>生成标题预览</CardTitle>
           </CardHeader>
@@ -185,21 +184,21 @@ export function WechatTitleGeneratorTool() {
 
         <div className="space-y-4">
           {suggestions.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-emerald-300 bg-white">
               <CardHeader>
                 <CardTitle>标题结果会显示在这里</CardTitle>
               </CardHeader>
-              <CardContent className="leading-7 text-slate-600">
+              <CardContent className="text-base leading-7 text-slate-600">
                 公开工具先给预览标题，登录后可以把标题继续扩写成完整公众号文章、小绿书图文脚本、搜一搜关键词、问一问回答和朋友圈文案。
               </CardContent>
             </Card>
           ) : (
             <>
-              <Card className="border-emerald-100 bg-emerald-50/70">
+              <Card className="border-emerald-300 bg-white shadow-md shadow-emerald-900/[0.05]">
                 <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="font-semibold text-slate-950">选好标题后，继续生成完整五入口内容</h2>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                    <h2 className="text-lg font-semibold text-slate-950">选好标题后，继续生成完整五入口内容</h2>
+                    <p className="mt-1 text-base leading-7 text-slate-600">
                       注册后会带着当前选题进入工作台，继续生成公众号正文、小绿书图文、搜一搜关键词、问一问回答和朋友圈文案。
                     </p>
                   </div>
@@ -212,7 +211,7 @@ export function WechatTitleGeneratorTool() {
                 </CardContent>
               </Card>
               {suggestions.map((item, index) => (
-              <Card key={`${item.title}-${index}`} className="border-slate-100">
+              <Card key={`${item.title}-${index}`} className="border-emerald-200">
                 <CardContent className="flex gap-4 p-4">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-sm font-semibold text-emerald-700">
                     {index + 1}
@@ -222,8 +221,8 @@ export function WechatTitleGeneratorTool() {
                       <span className="rounded-full bg-slate-100 px-2 py-1">{item.angle}</span>
                       <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{item.entryFit}</span>
                     </div>
-                    <h2 className="mt-3 text-lg font-semibold leading-7 text-slate-950">{item.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.reason}</p>
+                    <h2 className="mt-3 text-xl font-semibold leading-8 text-slate-950">{item.title}</h2>
+                    <p className="mt-2 text-base leading-7 text-slate-600">{item.reason}</p>
                   </div>
                   <Button
                     aria-label="复制标题"
@@ -241,30 +240,23 @@ export function WechatTitleGeneratorTool() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl border-t border-slate-100 px-4 py-8 sm:px-6">
-        <h2 className="text-xl font-semibold text-slate-950">怎么使用这个工具</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {usageSteps.map((step, index) => (
-            <div key={step} className="rounded-lg border border-slate-100 bg-white p-4">
-              <div className="text-sm font-semibold text-emerald-700">步骤 {index + 1}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{step}</p>
-            </div>
-          ))}
-        </div>
+      <section className="mx-auto max-w-6xl border-t border-emerald-200 px-4 py-8 sm:px-6">
+        <h2 className="text-2xl font-semibold text-slate-950">怎么使用这个工具</h2>
+        <UsageStepsFlow steps={usageSteps} />
       </section>
 
-      <section className="mx-auto max-w-6xl border-t border-slate-100 px-4 py-8 sm:px-6">
-        <h2 className="text-xl font-semibold text-slate-950">常见问题</h2>
+      <section className="mx-auto max-w-6xl border-t border-emerald-200 px-4 py-8 sm:px-6">
+        <h2 className="text-2xl font-semibold text-slate-950">常见问题</h2>
         <div className="mt-4 space-y-3">
           {faqItems.map((item) => (
-            <details key={item.question} className="rounded-lg border border-slate-100 bg-white p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-950">{item.question}</summary>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
+            <details key={item.question} className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03]">
+              <summary className="cursor-pointer text-base font-semibold text-slate-950">{item.question}</summary>
+              <p className="mt-3 text-base leading-7 text-slate-600">{item.answer}</p>
             </details>
           ))}
         </div>
       </section>
-    </main>
+    </PublicShell>
   );
 }
 

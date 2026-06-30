@@ -37,7 +37,7 @@ const templates = [
   {
     angle: "搜一搜长尾",
     entryFit: "搜一搜",
-    build: (topic: string) => `${topic}怎么做？一篇讲清楚新手最该先做的 5 件事`,
+    build: (topic: string) => `${topic}怎么做？一篇讲清新手最该先做的 5 件事`,
     reason: "包含搜索型问句和明确收益，利于覆盖微信搜一搜长尾需求。",
   },
   {
@@ -79,7 +79,7 @@ const templates = [
   {
     angle: "对比判断",
     entryFit: "搜一搜",
-    build: (topic: string) => `${topic}新手最该选哪种路径？我建议先看这张对比表`,
+    build: (topic: string) => `${topic}新手最该选哪种路径？建议先看这张对比表`,
     reason: "对比型标题容易匹配决策搜索，也方便正文结构化展开。",
   },
   {
@@ -97,7 +97,7 @@ const templates = [
   {
     angle: "信任建设",
     entryFit: "公众号深度文",
-    build: (topic: string) => `认真聊聊${topic}：适合谁，不适合谁，怎么少走弯路`,
+    build: (topic: string) => `认真聊聊${topic}: 适合谁，不适合谁，怎么少走弯路`,
     reason: "边界感强，适合建立专业可信的内容人设。",
   },
 ];
@@ -115,7 +115,7 @@ export function generateWechatTitles(input: WechatTitleGeneratorInput): WechatTi
       title,
       angle: `${template.angle} / ${goalLabel}`,
       entryFit: template.entryFit,
-      reason: `${template.reason} 当前语气：${tone}。`,
+      reason: `${template.reason} 当前语气: ${tone}。`,
     };
   });
 }

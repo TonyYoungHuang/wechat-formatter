@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { createSession, hashPassword } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/schemas";
 import { createAuthToken, exposeDevSecurityLink } from "@/lib/auth/security";
+import { sendVerificationEmail } from "@/lib/email/service";
 import { errorResponse } from "@/lib/http/errors";
 
 export async function POST(request: Request) {
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
   });
 
   const verification = await createAuthToken(result.user.id, "email_verification");
+  const emailDelivery = await sendVerificationEmail({
+    to: result.user.email,
+    name: result.user.name,
+    link: verification.link,
+  });
   await createSession(result.user.id);
 
   return NextResponse.json({
@@ -63,6 +69,8 @@ export async function POST(request: Request) {
       name: result.workspace.name,
       planCode: result.workspace.planCode,
     },
+    emailSent: emailDelivery.sent,
+    emailConfigured: emailDelivery.configured,
     verificationLink: exposeDevSecurityLink(verification.link),
   });
 }

@@ -46,9 +46,12 @@ export async function generateImagePromptsWithAi(input: {
       `视觉风格: ${input.style}`,
       `提示词数量: ${count}`,
       "",
-      "请生成中文图片提示词，只描述画面，不要生成图片。",
-      "每条提示词需要包含画面比例、主体、中文标题区域、信息层级、留白、色彩和 CTA 预留位置。",
-      "适合微信生态内容创作者直接复制到后续图片模型或设计工具。",
+      "请生成中文图片提示词，只描述画面，不要声称已经生成图片。",
+      "每条提示词都要适合直接发送给 image2 图片模型。",
+      "可见中文要像真人创作者写的小卡片标题，短、具体、有判断，不要像广告口号。",
+      "提示词必须包含画面比例、主体、中文标题区域、信息层级、留白、配色、CTA 预留位置和禁止事项。",
+      "如果是小绿书分页图文，请按页面顺序安排: 封面钩子页、问题解释页、方法步骤页、清单页、总结行动页。",
+      "图片中的中文不要堆满小字，不要写“爆款、逆袭、躺赚、官方推荐、保证有效”。",
     ].join("\n");
 
   const candidates = (await getAiProviderCandidates("image")).filter((config) => config.baseUrl && config.apiKey && config.model);
@@ -72,11 +75,14 @@ export async function generateImagePromptsWithAi(input: {
         system: [
           "You are Paibanmao's Chinese visual prompt assistant.",
           "Generate practical image prompts for WeChat articles, green-note cards, and creator workflows.",
+          "Prompts should be Chinese, production-ready, and concise enough for an image model.",
+          "Visible Chinese text should feel written by a real creator: short, grounded, and not slogan-like.",
           "Do not claim that images have already been generated. Return prompts only.",
-          "Avoid unsafe, exaggerated, or misleading claims in visible Chinese text.",
+          "Avoid unsafe, exaggerated, misleading, copyrighted, or official-platform endorsement claims in visible Chinese text.",
+          "Prefer clean WeChat-green workspace visuals, clear cards, readable Chinese title zones, and enough whitespace.",
         ].join("\n"),
         prompt,
-        temperature: 0.65,
+        temperature: 0.6,
       });
 
       return {

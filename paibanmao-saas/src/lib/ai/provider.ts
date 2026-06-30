@@ -12,7 +12,7 @@ export type AiProviderConfig = {
 };
 
 export function getDefaultAiProvider(): AiProviderConfig {
-  const model = process.env.REQUESTY_TEXT_MODEL || process.env.AI_DEFAULT_MODEL || "openai/gpt-4o-mini";
+  const model = process.env.REQUESTY_TEXT_MODEL || process.env.AI_DEFAULT_MODEL || "anthropic/claude-3-5-sonnet-latest";
 
   return {
     type: "openai-compatible",

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Loader2, LogIn, UserPlus } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -59,66 +60,71 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f6faf7] px-4">
-      <Card className="w-full max-w-md border-emerald-100">
-        <CardHeader>
-          <CardTitle className="text-2xl">{isRegister ? "注册排版猫" : "登录排版猫"}</CardTitle>
-          <p className="text-sm leading-6 text-slate-600">
-            {isRegister
-              ? plan && plan !== "free"
-                ? "创建账号后会进入会员页，继续开通你在价格页选择的套餐。"
-                : "免费版每天 1 次生成，先体验一个选题布局五个微信入口。"
-              : "继续管理你的微信内容增长工作台。"}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={submit}>
-            {isRegister ? (
+    <main className="flex min-h-screen items-center justify-center bg-[#f5fbf7] px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex justify-center">
+          <BrandLogo />
+        </div>
+        <Card className="w-full border-emerald-300 shadow-md shadow-emerald-900/[0.06]">
+          <CardHeader>
+            <CardTitle className="text-2xl">{isRegister ? "注册排版猫" : "登录排版猫"}</CardTitle>
+            <p className="text-sm leading-6 text-slate-600">
+              {isRegister
+                ? plan && plan !== "free"
+                  ? "创建账号后会进入会员页，继续开通你在价格页选择的套餐。"
+                  : "免费版每天 1 次生成，先体验一个选题布局五个微信入口。"
+                : "继续管理你的微信内容增长工作台。"}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={submit}>
+              {isRegister ? (
               <input
-                className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                className="h-11 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-500"
                 onChange={(event) => setName(event.target.value)}
                 placeholder="昵称"
                 required
                 value={name}
               />
-            ) : null}
-            <input
-              className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="邮箱"
-              required
-              type="email"
-              value={email}
-            />
-            <input
-              className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
-              minLength={isRegister ? 8 : 1}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={isRegister ? "密码，至少 8 位" : "密码"}
-              required
-              type="password"
-              value={password}
-            />
-            {!isRegister ? (
-              <div className="text-right text-sm">
-                <Link className="text-emerald-700" href="/forgot-password">忘记密码？</Link>
-              </div>
-            ) : null}
-            {message ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</div> : null}
-            {devVerificationLink ? <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地邮箱验证链接：{devVerificationLink}</div> : null}
-            <Button className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="size-4 animate-spin" /> : isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
-              {isRegister ? "创建账号" : "登录"}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-slate-500">
-            {isRegister ? "已有账号？" : "还没有账号？"}
-            <Link className="ml-1 text-emerald-700" href={buildAuthSwitchHref(isRegister ? "/login" : "/register", plan, next)}>
-              {isRegister ? "登录" : "注册"}
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+              ) : null}
+              <input
+                className="h-11 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-500"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="邮箱"
+                required
+                type="email"
+                value={email}
+              />
+              <input
+                className="h-11 w-full rounded-lg border border-emerald-200 bg-white px-3 outline-none focus:border-emerald-500"
+                minLength={isRegister ? 8 : 1}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={isRegister ? "密码，至少 8 位" : "密码"}
+                required
+                type="password"
+                value={password}
+              />
+              {!isRegister ? (
+                <div className="text-right text-sm">
+                  <Link className="text-emerald-700" href="/forgot-password">忘记密码？</Link>
+                </div>
+              ) : null}
+              {message ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</div> : null}
+              {devVerificationLink ? <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地邮箱验证链接：{devVerificationLink}</div> : null}
+              <Button className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
+                {isRegister ? "创建账号" : "登录"}
+              </Button>
+            </form>
+            <p className="mt-4 text-center text-sm text-slate-500">
+              {isRegister ? "已有账号？" : "还没有账号？"}
+              <Link className="ml-1 text-emerald-700" href={buildAuthSwitchHref(isRegister ? "/login" : "/register", plan, next)}>
+                {isRegister ? "登录" : "注册"}
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
