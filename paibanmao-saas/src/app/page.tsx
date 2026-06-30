@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, CircleHelp, Images, Lightbulb, PenLine, Search, ShieldCheck, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { HomeHeroGenerator } from "@/components/marketing/home-hero-generator";
@@ -14,13 +15,13 @@ export const metadata = createPublicMetadata({
 });
 
 const freeTools = [
-  { href: "/tools/wechat-title-generator", label: "公众号标题生成器", desc: "从一个选题拆出 12 个标题角度。" },
-  { href: "/tools/topic-generator", label: "公众号选题生成器", desc: "生成适合五个微信入口的选题。" },
-  { href: "/tools/green-note-generator", label: "小绿书文案生成器", desc: "生成图文脚本和图片提示词。" },
-  { href: "/tools/search-keyword-helper", label: "搜一搜关键词助手", desc: "整理主关键词、长尾词和摘要建议。" },
-  { href: "/tools/question-answer-generator", label: "问一问回答生成器", desc: "把选题改写成问答型内容。" },
-  { href: "/tools/moments-copy-generator", label: "朋友圈文案生成器", desc: "生成更自然的私域转发文案。" },
-  { href: "/tools/compliance-checker", label: "发布前检查", desc: "检查标题风险、AI 味和 CTA 突兀感。" },
+  { href: "/tools/wechat-title-generator", label: "公众号标题生成器", desc: "从一个选题拆出 12 个标题角度。", icon: PenLine, theme: "border-sky-300 bg-sky-50 hover:border-sky-500 hover:bg-sky-100 text-sky-700" },
+  { href: "/tools/topic-generator", label: "公众号选题生成器", desc: "生成适合五个微信入口的选题。", icon: Lightbulb, theme: "border-amber-300 bg-amber-50 hover:border-amber-500 hover:bg-amber-100 text-amber-700" },
+  { href: "/tools/green-note-generator", label: "小绿书文案生成器", desc: "生成图文脚本和图片提示词。", icon: Images, theme: "border-teal-300 bg-teal-50 hover:border-teal-500 hover:bg-teal-100 text-teal-700" },
+  { href: "/tools/search-keyword-helper", label: "搜一搜关键词助手", desc: "整理主关键词、长尾词和摘要建议。", icon: Search, theme: "border-blue-300 bg-blue-50 hover:border-blue-500 hover:bg-blue-100 text-blue-700" },
+  { href: "/tools/question-answer-generator", label: "问一问回答生成器", desc: "把选题改写成问答型内容。", icon: CircleHelp, theme: "border-violet-300 bg-violet-50 hover:border-violet-500 hover:bg-violet-100 text-violet-700" },
+  { href: "/tools/moments-copy-generator", label: "朋友圈文案生成器", desc: "生成更自然的私域转发文案。", icon: UsersRound, theme: "border-rose-300 bg-rose-50 hover:border-rose-500 hover:bg-rose-100 text-rose-700" },
+  { href: "/tools/compliance-checker", label: "发布前检查", desc: "检查标题风险、AI 味和 CTA 突兀感。", icon: ShieldCheck, theme: "border-slate-300 bg-slate-50 hover:border-slate-500 hover:bg-slate-100 text-slate-700" },
 ];
 
 const entryHrefs: Record<string, string> = {
@@ -31,9 +32,37 @@ const entryHrefs: Record<string, string> = {
   moments: "/tools/moments-copy-generator",
 };
 
+const entryThemes: Record<string, { imageSrc: string; className: string; iconClassName: string }> = {
+  wechat_article: {
+    imageSrc: "/generated/entries/wechat-article.png",
+    className: "border-sky-300 bg-sky-50 hover:border-sky-500 hover:bg-sky-100",
+    iconClassName: "bg-sky-100 text-sky-700",
+  },
+  green_note: {
+    imageSrc: "/generated/entries/green-note.png",
+    className: "border-teal-300 bg-teal-50 hover:border-teal-500 hover:bg-teal-100",
+    iconClassName: "bg-teal-100 text-teal-700",
+  },
+  search: {
+    imageSrc: "/generated/entries/search.png",
+    className: "border-amber-300 bg-amber-50 hover:border-amber-500 hover:bg-amber-100",
+    iconClassName: "bg-amber-100 text-amber-700",
+  },
+  question: {
+    imageSrc: "/generated/entries/question.png",
+    className: "border-violet-300 bg-violet-50 hover:border-violet-500 hover:bg-violet-100",
+    iconClassName: "bg-violet-100 text-violet-700",
+  },
+  moments: {
+    imageSrc: "/generated/entries/moments.png",
+    className: "border-rose-300 bg-rose-50 hover:border-rose-500 hover:bg-rose-100",
+    iconClassName: "bg-rose-100 text-rose-700",
+  },
+};
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#f4fbf6]">
+    <main className="min-h-screen bg-[#f5fbf7]">
       <header className="border-b border-emerald-200 bg-white/92 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold text-slate-950">
@@ -61,7 +90,7 @@ export default function HomePage() {
         <HomeHeroGenerator />
       </section>
 
-      <section className="border-y border-emerald-200 bg-white py-14">
+      <section className="border-y border-emerald-100/80 bg-[#f5fbf7] py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-col gap-2">
             <h2 className="text-2xl font-semibold text-slate-950">五个入口一起做，不浪费每个选题</h2>
@@ -69,20 +98,13 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 md:grid-cols-5">
             {contentEntries.map((entry) => (
-              <Link
-                key={entry.id}
-                href={entryHrefs[entry.id] || "/dashboard/generate"}
-                className="group rounded-lg border border-emerald-400 bg-[#e6f8ed] p-5 shadow-sm shadow-emerald-900/[0.06] transition hover:border-emerald-600 hover:bg-[#d7f1e1] hover:shadow-md hover:shadow-emerald-900/[0.1]"
-              >
-                <h3 className="text-base font-semibold text-slate-950 transition group-hover:text-emerald-900">{entry.label}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-700">{entry.summary}</p>
-              </Link>
+              <EntryCard key={entry.id} id={entry.id} label={entry.label} summary={entry.summary} href={entryHrefs[entry.id] || "/dashboard/generate"} />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-emerald-200 bg-[#edf9f1] py-14">
+      <section className="border-b border-emerald-100/80 bg-[#f5fbf7] py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-col gap-2">
             <h2 className="text-2xl font-semibold text-slate-950">先用免费工具试一个入口</h2>
@@ -92,10 +114,13 @@ export default function HomePage() {
             {freeTools.map((tool) => (
               <Link
                 key={tool.href}
-                className="group rounded-lg border border-emerald-400 bg-[#e3f7eb] p-4 shadow-sm shadow-emerald-900/[0.06] transition hover:border-emerald-600 hover:bg-[#d2efdf] hover:shadow-md hover:shadow-emerald-900/[0.1]"
+                className={`group rounded-lg border p-4 shadow-sm shadow-slate-950/[0.04] transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-950/[0.08] ${tool.theme}`}
                 href={tool.href}
               >
-                <h3 className="font-semibold text-slate-950 transition group-hover:text-emerald-900">{tool.label}</h3>
+                <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-white/75">
+                  <tool.icon className="size-5" />
+                </div>
+                <h3 className="font-semibold text-slate-950">{tool.label}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-700">{tool.desc}</p>
               </Link>
             ))}
@@ -103,7 +128,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-emerald-200 bg-white py-14">
+      <section className="border-t border-emerald-100/80 bg-[#f5fbf7] py-14">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <h2 className="text-2xl font-semibold text-slate-950">从模板开始，少在空白页前耗着</h2>
@@ -119,7 +144,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {["公众号痛点解决型长文", "小绿书 6 页图文脚本", "一个选题五入口发布"].map((item) => (
-              <div key={item} className="rounded-lg border border-emerald-200 bg-[#f5fbf7] p-4 shadow-sm shadow-emerald-900/[0.03]">
+              <div key={item} className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03]">
                 <h3 className="font-semibold text-slate-950">{item}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">适合微信副业创作者快速搭建可发布内容结构。</p>
               </div>
@@ -128,5 +153,22 @@ export default function HomePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function EntryCard({ id, label, summary, href }: { id: string; label: string; summary: string; href: string }) {
+  const theme = entryThemes[id] || entryThemes.wechat_article;
+
+  return (
+    <Link
+      href={href}
+      className={`group rounded-lg border p-5 shadow-sm shadow-slate-950/[0.04] transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-950/[0.08] ${theme.className}`}
+    >
+      <div className={`mb-4 flex size-14 items-center justify-center overflow-hidden rounded-lg ${theme.iconClassName}`}>
+        <Image src={theme.imageSrc} alt="" width={56} height={56} className="size-14 object-cover" />
+      </div>
+      <h3 className="text-base font-semibold text-slate-950">{label}</h3>
+      <p className="mt-3 text-sm leading-6 text-slate-700">{summary}</p>
+    </Link>
   );
 }
