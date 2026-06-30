@@ -291,10 +291,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         await fetch(`/api/billing/invoices/${invoice.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status,
-            issuedAt: status === "issued" ? new Date().toISOString() : invoice.issuedAt,
-          }),
+          body: JSON.stringify({ status }),
         }),
       );
       setMessage("发票状态已更新。");
