@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check:env": "node scripts/env-check.mjs",
+    "ops:verify": "node scripts/ops-verify.mjs",
+    "backup:db": "node scripts/backup-postgres.mjs",
     "smoke:public": "node scripts/public-smoke.mjs",
     "smoke:app": "node scripts/app-smoke.mjs",
     "db:up": "docker compose up -d postgres redis",

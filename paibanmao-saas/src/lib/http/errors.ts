@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
+import { logger } from "@/lib/ops/logger";
+
 export function errorResponse(message: string, status = 400) {
   return NextResponse.json({ message }, { status });
 }
@@ -70,5 +72,6 @@ export function mapApiError(error: unknown) {
     return errorResponse(message, status);
   }
 
+  logger.error("Unhandled API error", { error });
   return errorResponse(process.env.NODE_ENV === "production" ? "Request failed." : message, 500);
 }

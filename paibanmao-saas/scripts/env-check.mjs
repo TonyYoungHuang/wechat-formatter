@@ -39,6 +39,8 @@ addCheck({
 });
 warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is openai/gpt-4o-mini.");
 warnEnv("REQUESTY_IMAGE_MODEL", "REQUESTY_IMAGE_MODEL is optional; default is openai/gpt-image-2.");
+warnEnv("HEALTH_ALERT_WEBHOOK_URL", "HEALTH_ALERT_WEBHOOK_URL is recommended for production ops verification alerts.");
+warnEnv("BACKUP_DIR", "BACKUP_DIR is optional; default database backups are written to ./backups.");
 
 if (!configured("SITE_ADMIN_EMAIL") && !configured("SITE_ADMIN_EMAILS")) {
   addCheck({
@@ -61,6 +63,14 @@ addCheck({
   ok: configured("APP_URL") && (!production || appUrl.startsWith("https://")),
   message: production ? "APP_URL is required and must use HTTPS in production." : "APP_URL is required for sitemap, payment callbacks, and auth redirects.",
 });
+if (configured("OPS_BASE_URL")) {
+  const opsBaseUrl = process.env.OPS_BASE_URL || "";
+  addCheck({
+    key: "OPS_BASE_URL",
+    ok: !production || opsBaseUrl.startsWith("https://"),
+    message: production ? "OPS_BASE_URL should use HTTPS in production." : "OPS_BASE_URL is configured.",
+  });
+}
 
 const wechatCheckoutKeys = ["WECHAT_PAY_APP_ID", "WECHAT_PAY_MCH_ID", "WECHAT_PAY_MCH_SERIAL_NO", "WECHAT_PAY_PRIVATE_KEY_PEM"];
 const wechatCallbackKeys = ["WECHAT_PAY_API_V3_KEY", "WECHAT_PAY_PLATFORM_CERT_PEM"];

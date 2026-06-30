@@ -1,0 +1,18 @@
+[Unit]
+Description=Paibanmao SaaS
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/paibanmao-saas
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/paibanmao/paibanmao.env
+ExecStart=/usr/bin/corepack pnpm start --hostname 127.0.0.1 --port 3001
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paibanmao-saas
+
+[Install]
+WantedBy=multi-user.target

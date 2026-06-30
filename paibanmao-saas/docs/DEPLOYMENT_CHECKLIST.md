@@ -16,6 +16,8 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - `AUTH_SECRET` is a long random value and is different from local development.
 - `SITE_ADMIN_EMAIL` or `SITE_ADMIN_EMAILS` contains the admin account email.
 - `GENERATION_QUEUE_CONCURRENCY` is set based on AI budget and Redis capacity.
+- `HEALTH_ALERT_WEBHOOK_URL` is configured when using `pnpm ops:verify` for scheduled alerts.
+- `BACKUP_DIR` points to a durable disk path if database backups run on the app server.
 
 ## 3. AI Provider
 
@@ -117,6 +119,7 @@ pnpm check:env
 pnpm lint
 pnpm build
 pnpm prisma validate
+pnpm ops:verify
 ```
 
 `pnpm check:env` verifies required deployment variables without printing secret values. In production it requires HTTPS `APP_URL`, Redis, AI provider credentials, admin email, and complete WeChat Pay / Alipay checkout and callback configuration.
@@ -137,14 +140,19 @@ The app smoke also checks invalid dashboard sessions, duplicate registration rej
 Run during deployment:
 
 ```bash
+pnpm backup:db
 pnpm db:deploy
 pnpm prisma:seed
 ```
 
+For PM2, systemd, Nginx, backup retention, alert webhook payloads, and migration rollback steps, see `docs/PRODUCTION_OPERATIONS.md`.
+
 ## 8. Post-Launch Monitoring
 
+- Schedule `pnpm ops:verify` every 1-5 minutes and send failures to `HEALTH_ALERT_WEBHOOK_URL`.
 - Watch payment callback failures.
-- Watch generation job failure rate.
+- Watch generation job failure rate and queue errors in JSON logs.
 - Watch AI token usage and quota consumption.
+- Confirm `pnpm backup:db` runs daily and restore-test one backup before paid launch.
 - Watch free-tool preview to signup conversion.
-- Review search traffic for tool and tutorial pages weekly.
+- Review search traffic for tool, tutorial, and use-case pages weekly.

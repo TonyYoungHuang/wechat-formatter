@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { runFiveEntryGeneration } from "@/lib/generation/five-entry-service";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
+import { logger } from "@/lib/ops/logger";
 import { createBullMqConnection } from "@/lib/redis/client";
 
 const GENERATION_QUEUE_NAME = "paibanmao:generation";
@@ -130,6 +131,12 @@ export function ensureGenerationWorker() {
   );
 
   globalForQueues.generationWorker.on("failed", async (job, error) => {
+    logger.error("Generation queue job failed", {
+      jobId: job?.id,
+      generationJobId: job?.data.generationJobId,
+      error,
+    });
+
     if (!job?.data.generationJobId) {
       return;
     }
