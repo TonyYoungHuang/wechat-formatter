@@ -84,14 +84,14 @@ async function jsonRequest(path, body, options = {}) {
   });
 }
 
-async function paymentCallbackRequest(path, provider, body) {
+async function paymentCallbackRequest(path, provider, body, options = {}) {
   const rawBody = JSON.stringify(body);
   const headers = {
     "Content-Type": "application/json",
   };
 
   if (paymentCallbackSmokeSecret) {
-    const signedAt = Math.floor(Date.now() / 1000).toString();
+    const signedAt = options.signedAt ?? Math.floor(Date.now() / 1000).toString();
     const nonce = `smoke-${timestamp}-${provider}`;
     const message = `${provider}\n${signedAt}\n${nonce}\n${rawBody}`;
     headers["x-paibanmao-timestamp"] = signedAt;
@@ -988,6 +988,41 @@ async function checkPaymentAmountMismatchFlow() {
   assert(Array.isArray(refreshed.payload.order.callbacks) && refreshed.payload.order.callbacks.length >= 1, "amount mismatch callback diagnostic missing");
 }
 
+async function checkStalePaymentSmokeSignature() {
+  if (!paymentCallbackSmokeSecret) {
+    return;
+  }
+
+  const order = await jsonRequest("/api/billing/orders", {
+    planCode: "starter",
+    provider: "wechat",
+  });
+
+  assert(order.response.ok, `/api/billing/orders for stale signature returned ${order.response.status}: ${order.text}`);
+  assert(order.payload?.order?.id, "stale-signature order id missing");
+
+  const staleSignedAt = (Math.floor(Date.now() / 1000) - 3600).toString();
+  const callback = await paymentCallbackRequest(
+    "/api/billing/callback/wechat",
+    "wechat",
+    {
+      orderId: order.payload.order.id,
+      paid: true,
+      amountCents: 9900,
+      tradeNo: `SMOKE_STALE_${timestamp}`,
+      providerOrderId: `SMOKE_STALE_PROVIDER_${timestamp}`,
+      status: "SUCCESS",
+    },
+    { signedAt: staleSignedAt },
+  );
+
+  assert(callback.response.status === 401, `/api/billing/callback/wechat stale signature returned ${callback.response.status}, expected 401`);
+
+  const refreshed = await request(`/api/billing/orders/${order.payload.order.id}`);
+  assert(refreshed.response.ok, `/api/billing/orders/:id for stale signature returned ${refreshed.response.status}: ${refreshed.text}`);
+  assert(refreshed.payload?.order?.status === "pending", "stale payment callback changed the order status");
+}
+
 async function main() {
   console.log(`Running app smoke checks against ${baseUrl}`);
   await checkDashboardRequiresValidSession();
@@ -1017,6 +1052,7 @@ async function main() {
     await checkAlipayPaymentFlow();
     await checkPaymentFailureFlow();
     await checkPaymentAmountMismatchFlow();
+    await checkStalePaymentSmokeSignature();
     await checkStarterAccountProfileLimit();
     await checkQueuedGeneration(profile);
     await checkSingleEntryGeneration(profile);

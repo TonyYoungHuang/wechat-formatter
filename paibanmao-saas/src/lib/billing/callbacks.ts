@@ -189,6 +189,20 @@ function safeEqual(left: string, right: string) {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+function isFreshUnixTimestamp(value: string | null | undefined, maxAgeSeconds = 600) {
+  if (!value || !/^\d+$/.test(value)) {
+    return false;
+  }
+
+  const signedAt = Number(value);
+  if (!Number.isFinite(signedAt)) {
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  return Math.abs(now - signedAt) <= maxAgeSeconds;
+}
+
 function localSmokeCallbacksAllowed() {
   const appUrl = process.env.APP_URL || "";
   return Boolean(process.env.PAYMENT_CALLBACK_SMOKE_SECRET && /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/.test(appUrl));
@@ -204,6 +218,10 @@ function verifyLocalSmokeCallback(options: {
   const secret = process.env.PAYMENT_CALLBACK_SMOKE_SECRET;
 
   if (!secret || !localSmokeCallbacksAllowed() || !options.signature || !options.timestamp || !options.nonce) {
+    return false;
+  }
+
+  if (!isFreshUnixTimestamp(options.timestamp)) {
     return false;
   }
 
