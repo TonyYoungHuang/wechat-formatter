@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarDays, CreditCard, FileText, Home, Layers3, MessageSquareText, SearchCheck, Settings, Sparkles, UserRoundCog } from "lucide-react";
+import { CalendarDays, CreditCard, FileText, Home, Layers3, MessageSquareText, SearchCheck, Settings, ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
 
 import { AccountProfileSwitcher } from "@/components/app/account-profile-switcher";
 import { LogoutButton } from "@/components/app/logout-button";
@@ -21,6 +21,7 @@ const navItems = [
   { href: "/dashboard/cta-library", label: "CTA 库", icon: MessageSquareText },
   { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
   { href: "/dashboard/billing", label: "会员额度", icon: CreditCard },
+  { href: "/dashboard/admin", label: "运营后台", icon: ShieldCheck, adminOnly: true },
   { href: "/dashboard/settings", label: "设置", icon: Settings, adminOnly: true },
 ];
 

@@ -59,6 +59,7 @@ enum PaymentStatus {
   failed
   cancelled
   expired
+  refunded
 }
 
 enum InvoiceStatus {
@@ -96,6 +97,9 @@ model Workspace {
   id        String   @id @default(cuid())
   name      String
   planCode  PlanCode @default(free)
+  riskStatus String  @default("normal")
+  riskNote   String?
+  riskFlaggedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

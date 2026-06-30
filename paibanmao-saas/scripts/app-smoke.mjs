@@ -825,6 +825,51 @@ async function checkAdminSettingsFlow() {
   }
 }
 
+async function checkAdminOperationsFlow(current) {
+  const operations = await request("/api/admin/operations");
+  assert(operations.response.ok, `/api/admin/operations returned ${operations.response.status}: ${operations.text}`);
+  assert(Array.isArray(operations.payload?.users), "admin operations users list missing");
+  assert(Array.isArray(operations.payload?.workspaces), "admin operations workspaces list missing");
+  assert(Array.isArray(operations.payload?.orders), "admin operations orders list missing");
+  assert(typeof operations.payload?.usage?.generation?.weekly === "number", "admin operations usage summary missing");
+
+  const risk = await jsonRequest("/api/admin/operations", {
+    action: "risk_update",
+    workspaceId: current.workspace.id,
+    riskStatus: "watch",
+    riskNote: "smoke risk watch",
+  });
+  assert(risk.response.ok, `/api/admin/operations risk_update returned ${risk.response.status}: ${risk.text}`);
+  assert(risk.payload?.workspace?.riskStatus === "watch", "risk status was not updated");
+
+  const manualComp = await jsonRequest("/api/admin/operations", {
+    action: "manual_comp",
+    workspaceId: current.workspace.id,
+    planCode: "pro",
+    note: "smoke manual comp",
+  });
+  assert(manualComp.response.ok, `/api/admin/operations manual_comp returned ${manualComp.response.status}: ${manualComp.text}`);
+  assert(manualComp.payload?.order?.status === "paid", "manual compensation did not create a paid order");
+  assert(manualComp.payload?.order?.provider === "manual", "manual compensation provider mismatch");
+
+  const refund = await jsonRequest("/api/admin/operations", {
+    action: "refund_order",
+    orderId: manualComp.payload.order.id,
+    note: "smoke refund marker",
+  });
+  assert(refund.response.ok, `/api/admin/operations refund_order returned ${refund.response.status}: ${refund.text}`);
+  assert(refund.payload?.order?.status === "refunded", "refund marker did not update order status");
+
+  const restoredRisk = await jsonRequest("/api/admin/operations", {
+    action: "risk_update",
+    workspaceId: current.workspace.id,
+    riskStatus: "normal",
+    riskNote: null,
+  });
+  assert(restoredRisk.response.ok, `/api/admin/operations restore risk returned ${restoredRisk.response.status}: ${restoredRisk.text}`);
+  assert(restoredRisk.payload?.workspace?.riskStatus === "normal", "risk status was not restored");
+}
+
 async function checkPaymentFlow() {
   const order = await jsonRequest("/api/billing/orders", {
     planCode: "starter",
@@ -1059,6 +1104,7 @@ async function main() {
     await checkTopicSuggestions(profile);
     await checkImagePrompts();
     await checkRewrite(profile, generated);
+    await checkAdminOperationsFlow(current);
   }
 
   await checkLogoutAndReloginFlow();
