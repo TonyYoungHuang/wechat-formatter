@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AccountProfileSwitcher } from "@/components/app/account-profile-switcher";
 import { AppNavigation } from "@/components/app/app-nav";
 import { LogoutButton } from "@/components/app/logout-button";
+import { BrandMark } from "@/components/brand/brand-logo";
 import { isSiteAdminEmail, type getCurrentUser } from "@/lib/auth/session";
 import { getGenerationUsageSummary } from "@/lib/usage/service";
 
@@ -21,7 +22,7 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
     <div className="min-h-screen bg-[#f6faf7]">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-100 bg-white lg:block">
         <div className="flex h-16 items-center gap-2 border-b border-emerald-100 px-5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-sm font-semibold text-white">排</span>
+          <BrandMark />
           <div>
             <div className="font-semibold text-slate-950">排版猫</div>
             <div className="text-xs text-slate-500">微信内容增长工作台</div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { absoluteUrl, createPublicMetadata, jsonLdScript } from "@/lib/seo/metadata";
@@ -69,7 +70,7 @@ export default async function UseCaseDetailPage({ params }: PageProps) {
 
       <header className="border-b border-emerald-100 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="font-semibold text-slate-950">排版猫</Link>
+          <BrandLogo />
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <Link href="/use-cases">场景</Link>
             <Link href="/tools/topic-generator">免费工具</Link>

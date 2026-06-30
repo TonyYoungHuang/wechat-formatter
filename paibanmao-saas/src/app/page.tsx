@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, CircleHelp, Images, Lightbulb, PenLine, Search, ShieldCheck, UsersRound } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { HomeHeroGenerator } from "@/components/marketing/home-hero-generator";
 import { contentEntries } from "@/lib/content/entries";
@@ -65,10 +66,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#f5fbf7]">
       <header className="border-b border-emerald-200 bg-white/92 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-slate-950">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-white">排</span>
-            <span>排版猫</span>
-          </Link>
+          <BrandLogo />
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <Link href="/tools/topic-generator">免费工具</Link>
             <Link href="/templates">模板库</Link>

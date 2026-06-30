@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { createPublicMetadata } from "@/lib/seo/metadata";
 import { useCasePages } from "@/lib/seo/use-cases";
@@ -17,7 +18,7 @@ export default function UseCasesPage() {
     <main className="min-h-screen bg-[#f6faf7]">
       <header className="border-b border-emerald-100 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="font-semibold text-slate-950">排版猫</Link>
+          <BrandLogo />
           <nav className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
             <Link href="/tools/topic-generator">免费工具</Link>
             <Link href="/templates">模板库</Link>
