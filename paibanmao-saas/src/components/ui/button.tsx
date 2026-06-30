@@ -21,9 +21,9 @@ const sizeClass = {
 };
 
 const variantClass = {
-  primary: "bg-emerald-600 text-white hover:bg-emerald-700",
-  secondary: "border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50",
-  ghost: "text-slate-600 hover:bg-slate-100",
+  primary: "bg-emerald-600 text-white shadow-sm shadow-emerald-900/10 hover:bg-emerald-700",
+  secondary: "border border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50",
+  ghost: "text-slate-600 hover:bg-emerald-50 hover:text-emerald-800",
 };
 
 export function Button({

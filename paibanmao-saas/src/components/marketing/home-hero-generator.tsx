@@ -62,7 +62,7 @@ export function HomeHeroGenerator() {
   return (
     <>
       <div className="flex flex-col justify-center">
-        <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-sm text-emerald-700">
+        <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800 shadow-sm shadow-emerald-900/[0.03]">
           <Sparkles className="size-4" />
           微信副业创作者的内容增长工作台
         </div>
@@ -71,10 +71,10 @@ export function HomeHeroGenerator() {
           用排版猫把公众号文章、小绿书、搜一搜、问一问和朋友圈一次性生成出来，适合副业号主、个人 IP 和小团队做微信内容矩阵。
         </p>
 
-        <div className="mt-8 rounded-lg border border-emerald-100 bg-white p-3 shadow-sm">
+        <div className="mt-8 rounded-lg border border-emerald-300 bg-white p-3 shadow-md shadow-emerald-900/[0.06]">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
-              className="min-h-12 flex-1 rounded-lg border border-slate-200 px-4 text-base outline-none transition focus:border-emerald-400"
+              className="min-h-12 flex-1 rounded-lg border border-emerald-200 bg-[#fbfffc] px-4 text-base outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white"
               onChange={(event) => setTopic(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -109,7 +109,7 @@ export function HomeHeroGenerator() {
         </div>
       </div>
 
-      <Card className="border-emerald-100 shadow-sm">
+      <Card className="border-emerald-300 bg-white shadow-md shadow-emerald-900/[0.06]">
         <CardHeader>
           <CardTitle>{preview ? preview.title : "生成结果预览"}</CardTitle>
         </CardHeader>
@@ -118,12 +118,12 @@ export function HomeHeroGenerator() {
             <>
               <p className="text-sm leading-6 text-slate-600">{preview.summary}</p>
               {preview.blocks.map((block) => (
-                <div key={`${block.label}-${block.content}`} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
+                <div key={`${block.label}-${block.content}`} className="rounded-lg border border-emerald-200 bg-[#f5fbf7] px-4 py-3 text-sm">
                   <div className="font-medium text-emerald-700">{block.label}</div>
                   <div className="mt-1 leading-6 text-slate-700">{block.content}</div>
                 </div>
               ))}
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
                 {preview.loginHint}
               </div>
               <Button asChild className="w-full">
@@ -132,7 +132,7 @@ export function HomeHeroGenerator() {
             </>
           ) : (
             sampleOutputs.map((item) => (
-              <div key={item} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              <div key={item} className="rounded-lg border border-emerald-200 bg-[#f5fbf7] px-4 py-3 text-sm text-slate-700">
                 {item}
               </div>
             ))

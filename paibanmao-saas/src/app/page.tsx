@@ -26,8 +26,8 @@ const freeTools = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
-      <header className="border-b border-emerald-100 bg-white/85 backdrop-blur">
+    <main className="min-h-screen bg-[#f4fbf6]">
+      <header className="border-b border-emerald-200 bg-white/92 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold text-slate-950">
             <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500 text-white">排</span>
@@ -54,7 +54,7 @@ export default function HomePage() {
         <HomeHeroGenerator />
       </section>
 
-      <section className="border-y border-emerald-100 bg-white py-14">
+      <section className="border-y border-emerald-200 bg-white py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-col gap-2">
             <h2 className="text-2xl font-semibold text-slate-950">五个入口一起做，不浪费每个选题</h2>
@@ -62,7 +62,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 md:grid-cols-5">
             {contentEntries.map((entry) => (
-              <Card key={entry.id} className="border-slate-100">
+              <Card key={entry.id} className="border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-[#fbfffc] hover:shadow-md hover:shadow-emerald-900/[0.05]">
                 <CardHeader>
                   <CardTitle className="text-base">{entry.label}</CardTitle>
                 </CardHeader>
@@ -73,7 +73,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 py-14">
+      <section className="border-b border-emerald-200 bg-[#edf9f1] py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-col gap-2">
             <h2 className="text-2xl font-semibold text-slate-950">先用免费工具试一个入口</h2>
@@ -83,7 +83,7 @@ export default function HomePage() {
             {freeTools.map((tool) => (
               <Link
                 key={tool.href}
-                className="rounded-lg border border-slate-100 bg-white p-4 transition hover:border-emerald-200 hover:shadow-sm"
+                className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03] transition hover:border-emerald-300 hover:bg-[#fbfffc] hover:shadow-md"
                 href={tool.href}
               >
                 <h3 className="font-semibold text-slate-950">{tool.label}</h3>
@@ -94,7 +94,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-emerald-100 bg-white py-14">
+      <section className="border-t border-emerald-200 bg-white py-14">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <h2 className="text-2xl font-semibold text-slate-950">从模板开始，少在空白页前耗着</h2>
@@ -110,7 +110,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {["公众号痛点解决型长文", "小绿书 6 页图文脚本", "一个选题五入口发布"].map((item) => (
-              <div key={item} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+              <div key={item} className="rounded-lg border border-emerald-200 bg-[#f5fbf7] p-4 shadow-sm shadow-emerald-900/[0.03]">
                 <h3 className="font-semibold text-slate-950">{item}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">适合微信副业创作者快速搭建可发布内容结构。</p>
               </div>
