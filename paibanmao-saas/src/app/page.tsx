@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HomeHeroGenerator } from "@/components/marketing/home-hero-generator";
 import { contentEntries } from "@/lib/content/entries";
 import { createPublicMetadata } from "@/lib/seo/metadata";
@@ -23,6 +22,14 @@ const freeTools = [
   { href: "/tools/moments-copy-generator", label: "朋友圈文案生成器", desc: "生成更自然的私域转发文案。" },
   { href: "/tools/compliance-checker", label: "发布前检查", desc: "检查标题风险、AI 味和 CTA 突兀感。" },
 ];
+
+const entryHrefs: Record<string, string> = {
+  wechat_article: "/dashboard/generate?entry=wechat_article",
+  green_note: "/tools/green-note-generator",
+  search: "/tools/search-keyword-helper",
+  question: "/tools/question-answer-generator",
+  moments: "/tools/moments-copy-generator",
+};
 
 export default function HomePage() {
   return (
@@ -62,12 +69,14 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 md:grid-cols-5">
             {contentEntries.map((entry) => (
-              <Card key={entry.id} className="border-emerald-200 bg-white shadow-sm transition hover:border-emerald-300 hover:bg-[#fbfffc] hover:shadow-md hover:shadow-emerald-900/[0.05]">
-                <CardHeader>
-                  <CardTitle className="text-base">{entry.label}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm leading-6 text-slate-600">{entry.summary}</CardContent>
-              </Card>
+              <Link
+                key={entry.id}
+                href={entryHrefs[entry.id] || "/dashboard/generate"}
+                className="group rounded-lg border border-emerald-400 bg-[#e6f8ed] p-5 shadow-sm shadow-emerald-900/[0.06] transition hover:border-emerald-600 hover:bg-[#d7f1e1] hover:shadow-md hover:shadow-emerald-900/[0.1]"
+              >
+                <h3 className="text-base font-semibold text-slate-950 transition group-hover:text-emerald-900">{entry.label}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-700">{entry.summary}</p>
+              </Link>
             ))}
           </div>
         </div>
@@ -83,11 +92,11 @@ export default function HomePage() {
             {freeTools.map((tool) => (
               <Link
                 key={tool.href}
-                className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03] transition hover:border-emerald-300 hover:bg-[#fbfffc] hover:shadow-md"
+                className="group rounded-lg border border-emerald-400 bg-[#e3f7eb] p-4 shadow-sm shadow-emerald-900/[0.06] transition hover:border-emerald-600 hover:bg-[#d2efdf] hover:shadow-md hover:shadow-emerald-900/[0.1]"
                 href={tool.href}
               >
-                <h3 className="font-semibold text-slate-950">{tool.label}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{tool.desc}</p>
+                <h3 className="font-semibold text-slate-950 transition group-hover:text-emerald-900">{tool.label}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{tool.desc}</p>
               </Link>
             ))}
           </div>
