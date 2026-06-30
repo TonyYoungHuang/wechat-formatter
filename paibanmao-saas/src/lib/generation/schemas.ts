@@ -14,6 +14,15 @@ export const imagePromptSchema = z.object({
   style: z.string().trim().max(80).default("清爽微信绿色工作台风格"),
 });
 
+export const imageGenerationSchema = z.object({
+  prompts: z.array(z.string().trim().min(10).max(2000)).min(1).max(9),
+  model: z.string().trim().min(2).max(120).optional(),
+  size: z.enum(["1024x1024", "1536x1024", "1024x1536"]).default("1024x1536"),
+  quality: z.enum(["auto", "high", "medium", "low"]).default("auto"),
+  responseFormat: z.enum(["url", "b64_json"]).default("url"),
+  outputFormat: z.enum(["png", "jpeg", "webp"]).default("png"),
+});
+
 export const rewriteContentSchema = z.object({
   accountProfileId: z.string().optional(),
   title: z.string().trim().max(160).optional(),

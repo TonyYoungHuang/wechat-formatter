@@ -12,16 +12,16 @@ export type AiProviderConfig = {
 };
 
 export function getDefaultAiProvider(): AiProviderConfig {
-  const model = process.env.AI_DEFAULT_MODEL || "gpt-4.1-mini";
+  const model = process.env.REQUESTY_TEXT_MODEL || process.env.AI_DEFAULT_MODEL || "openai/gpt-4o-mini";
 
   return {
     type: "openai-compatible",
-    name: process.env.AI_DEFAULT_PROVIDER || "openai-compatible",
-    baseUrl: process.env.AI_OPENAI_COMPATIBLE_BASE_URL || "",
-    apiKey: process.env.AI_OPENAI_COMPATIBLE_API_KEY || "",
+    name: process.env.AI_DEFAULT_PROVIDER || "requesty",
+    baseUrl: process.env.REQUESTY_BASE_URL || process.env.AI_OPENAI_COMPATIBLE_BASE_URL || "https://router.requesty.ai/v1",
+    apiKey: process.env.REQUESTY_API_KEY || process.env.AI_OPENAI_COMPATIBLE_API_KEY || "",
     model,
     modelName: model,
-    apiKeyRef: "AI_OPENAI_COMPATIBLE_API_KEY",
+    apiKeyRef: process.env.REQUESTY_API_KEY ? "REQUESTY_API_KEY" : "AI_OPENAI_COMPATIBLE_API_KEY",
     source: "environment",
   };
 }

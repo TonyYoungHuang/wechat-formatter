@@ -20,11 +20,25 @@ function warnEnv(key, message = `${key} is not configured.`) {
   addCheck({ key, ok: configured(key), level: "warn", message });
 }
 
+function configuredAny(keys) {
+  return keys.some((key) => configured(key));
+}
+
 requireEnv("DATABASE_URL", "PostgreSQL DATABASE_URL is required.");
 requireEnv("REDIS_URL", production ? "REDIS_URL is required in production for queues and health checks." : "REDIS_URL is recommended for queued generation.");
-requireEnv("AI_OPENAI_COMPATIBLE_BASE_URL", "AI model-router base URL is required for paid generation.");
-requireEnv("AI_OPENAI_COMPATIBLE_API_KEY", "AI model-router API key is required for paid generation.");
-requireEnv("AI_DEFAULT_MODEL", "AI_DEFAULT_MODEL should name the default OpenAI-compatible model.");
+addCheck({
+  key: "REQUESTY_BASE_URL",
+  ok: configuredAny(["REQUESTY_BASE_URL", "AI_OPENAI_COMPATIBLE_BASE_URL"]),
+  level: "warn",
+  message: "REQUESTY_BASE_URL is recommended; default is https://router.requesty.ai/v1 when omitted.",
+});
+addCheck({
+  key: "REQUESTY_API_KEY",
+  ok: configuredAny(["REQUESTY_API_KEY", "AI_OPENAI_COMPATIBLE_API_KEY"]),
+  message: "REQUESTY_API_KEY is required for Requesty text and image generation.",
+});
+warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is openai/gpt-4o-mini.");
+warnEnv("REQUESTY_IMAGE_MODEL", "REQUESTY_IMAGE_MODEL is optional; default is openai/gpt-image-2.");
 
 if (!configured("SITE_ADMIN_EMAIL") && !configured("SITE_ADMIN_EMAILS")) {
   addCheck({

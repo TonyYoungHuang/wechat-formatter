@@ -63,10 +63,11 @@ type PaymentConfigStatus = {
 };
 
 const defaultProviderModels: ProviderModelConfig[] = [
-  { name: "内容生成模型", modelId: "gpt-4.1-mini", purpose: "content", active: true },
-  { name: "选题生成模型", modelId: "gpt-4.1-mini", purpose: "topic", active: true },
-  { name: "降低 AI 味模型", modelId: "gpt-4.1-mini", purpose: "rewrite", active: true },
-  { name: "图片提示词模型", modelId: "gpt-4.1-mini", purpose: "image", active: true },
+  { name: "内容生成模型", modelId: "openai/gpt-4o-mini", purpose: "content", active: true },
+  { name: "选题生成模型", modelId: "openai/gpt-4o-mini", purpose: "topic", active: true },
+  { name: "降低 AI 味模型", modelId: "openai/gpt-4o-mini", purpose: "rewrite", active: true },
+  { name: "图片提示词模型", modelId: "openai/gpt-4o-mini", purpose: "image", active: true },
+  { name: "小绿书 image2 生图模型", modelId: "openai/gpt-image-2", purpose: "image_generation", active: true },
 ];
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -81,9 +82,9 @@ export function SettingsWorkbench() {
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentConfigStatus | null>(null);
   const [prompts, setPrompts] = useState<PromptConfig[]>([]);
-  const [name, setName] = useState("default-router");
-  const [baseUrl, setBaseUrl] = useState("https://example-model-router.com/v1");
-  const [apiKeyRef, setApiKeyRef] = useState("AI_OPENAI_COMPATIBLE_API_KEY");
+  const [name, setName] = useState("requesty");
+  const [baseUrl, setBaseUrl] = useState("https://router.requesty.ai/v1");
+  const [apiKeyRef, setApiKeyRef] = useState("REQUESTY_API_KEY");
   const [models, setModels] = useState<ProviderModelConfig[]>(defaultProviderModels);
   const [message, setMessage] = useState("");
 
@@ -95,9 +96,9 @@ export function SettingsWorkbench() {
         fetch("/api/admin/payment-settings").then((response) => readJson<PaymentConfigStatus>(response)),
       ]);
       setStatus(providerData);
-      setName(providerData.provider.name || "default-router");
-      setBaseUrl(providerData.provider.baseUrl || "https://example-model-router.com/v1");
-      setApiKeyRef(providerData.provider.apiKeyRef || "AI_OPENAI_COMPATIBLE_API_KEY");
+      setName(providerData.provider.name || "requesty");
+      setBaseUrl(providerData.provider.baseUrl || "https://router.requesty.ai/v1");
+      setApiKeyRef(providerData.provider.apiKeyRef || "REQUESTY_API_KEY");
       setModels(providerData.provider.models?.length ? providerData.provider.models : defaultProviderModels);
       setPrompts(promptData.prompts);
       setPaymentStatus(paymentData);

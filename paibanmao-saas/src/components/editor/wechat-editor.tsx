@@ -6,6 +6,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { CheckCircle2, Copy, Download, FileCode2, Images, Loader2, Save, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,22 @@ type EntryDraft = {
 type ImagePromptResult = {
   output: {
     prompts: string[];
+  };
+};
+
+type GeneratedImage = {
+  prompt: string;
+  url?: string;
+  b64Json?: string;
+  mimeType?: string;
+  revisedPrompt?: string;
+};
+
+type ImageGenerationResult = {
+  output: {
+    images: GeneratedImage[];
+    provider: string;
+    model: string;
   };
 };
 
@@ -194,6 +211,34 @@ function getImagePrompts(variant?: Variant) {
   return Array.isArray(prompts) ? prompts.filter((item): item is string => typeof item === "string") : [];
 }
 
+function getGeneratedImages(variant?: Variant) {
+  const images = variant?.metadata?.generatedImages;
+  if (!Array.isArray(images)) {
+    return [];
+  }
+
+  return images.filter((item): item is GeneratedImage => {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const image = item as GeneratedImage;
+    return typeof image.prompt === "string" && (typeof image.url === "string" || typeof image.b64Json === "string");
+  });
+}
+
+function getImageSrc(image: GeneratedImage) {
+  if (image.url) {
+    return image.url;
+  }
+
+  return image.b64Json ? `data:${image.mimeType || "image/png"};base64,${image.b64Json}` : "";
+}
+
+function getImageShareText(image: GeneratedImage) {
+  return image.url || getImageSrc(image);
+}
+
 function getKeywords(variant?: Variant) {
   const keywords = variant?.metadata?.keywords;
   return Array.isArray(keywords) ? keywords.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
@@ -259,12 +304,14 @@ export function WechatEditor() {
   const [greenBody, setGreenBody] = useState("");
   const [greenPageCount, setGreenPageCount] = useState<3 | 6 | 9>(3);
   const [imagePromptDraft, setImagePromptDraft] = useState("");
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [imageScene, setImageScene] = useState("green_note_pages");
   const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
   const [entryDrafts, setEntryDrafts] = useState<Record<string, EntryDraft>>(() => getDefaultDrafts());
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
   const [generatingPrompts, setGeneratingPrompts] = useState(false);
+  const [generatingImages, setGeneratingImages] = useState(false);
   const [rewriting, setRewriting] = useState(false);
 
   const editor = useEditor({
@@ -305,6 +352,7 @@ export function WechatEditor() {
         setGreenBody(greenNote?.body || "");
         setGreenPageCount(getGreenNotePageCount(greenNote));
         setImagePromptDraft(getImagePrompts(greenNote).join("\n\n"));
+        setGeneratedImages(getGeneratedImages(greenNote));
         editor.commands.setContent(content);
         setHtml(content);
         setNotice("已载入内容项目。");
@@ -423,11 +471,54 @@ export function WechatEditor() {
     }
   }
 
+  async function generateGreenNoteImages() {
+    if (!imagePrompts.length) {
+      setNotice("请先生成或填写小绿书图片提示词。");
+      return;
+    }
+
+    setGeneratingImages(true);
+    try {
+      const data = await readJson<ImageGenerationResult>(
+        await fetch("/api/generate/images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompts: imagePrompts,
+            size: "1024x1536",
+            quality: "auto",
+            responseFormat: "url",
+            outputFormat: "png",
+          }),
+        }),
+      );
+      setGeneratedImages(data.output.images);
+      setNotice(`已使用 ${data.output.model} 生成 ${data.output.images.length} 张小绿书图片。`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "小绿书图片生成失败。");
+    } finally {
+      setGeneratingImages(false);
+    }
+  }
+
+  async function copyGeneratedImage(image: GeneratedImage, index: number) {
+    await navigator.clipboard.writeText(getImageShareText(image));
+    setNotice(`第 ${index + 1} 张图片地址已复制。`);
+  }
+
+  async function copyAllGeneratedImages() {
+    await navigator.clipboard.writeText(generatedImages.map(getImageShareText).filter(Boolean).join("\n"));
+    setNotice("全部图片地址已复制。");
+  }
+
   async function copyGreenNote() {
     const promptSection = imagePrompts.length
       ? ["", `图片页提示词（${greenPageCount} 页结构）`, ...imagePrompts.map((prompt, index) => `第 ${index + 1} 页：${prompt}`)].join("\n")
       : "";
-    await navigator.clipboard.writeText(`${greenTitle}\n\n${greenBody}${promptSection}`.trim());
+    const imageSection = generatedImages.length
+      ? ["", "已生成图片", ...generatedImages.map((image, index) => `第 ${index + 1} 张：${getImageShareText(image)}`)].join("\n")
+      : "";
+    await navigator.clipboard.writeText(`${greenTitle}\n\n${greenBody}${promptSection}${imageSection}`.trim());
     setNotice("小绿书文案已复制。");
   }
 
@@ -465,6 +556,7 @@ export function WechatEditor() {
               ...(variant.metadata || {}),
               pages: greenPageCount,
               imagePrompts,
+              generatedImages,
               editedAt: new Date().toISOString(),
             },
           };
@@ -637,11 +729,43 @@ export function WechatEditor() {
                 {generatingPrompts ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
                 生成图片提示词
               </Button>
+              <Button className="w-full" onClick={generateGreenNoteImages} disabled={generatingImages || !imagePrompts.length}>
+                {generatingImages ? <Loader2 className="size-4 animate-spin" /> : <Images className="size-4" />}
+                用 image2 生成图片
+              </Button>
               <textarea
                 className="min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 outline-none focus:border-emerald-400"
                 onChange={(event) => setImagePromptDraft(event.target.value)}
                 value={imagePromptDraft}
               />
+              {generatedImages.length ? (
+                <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-medium text-slate-900">已生成图片</h3>
+                    <button className="text-xs text-emerald-700" onClick={copyAllGeneratedImages} type="button">
+                      复制全部
+                    </button>
+                  </div>
+                  <div className="grid gap-3">
+                    {generatedImages.map((image, index) => {
+                      const src = getImageSrc(image);
+                      return (
+                        <div key={`${image.prompt}-${index}`} className="rounded-md bg-white p-2">
+                          {src ? (
+                            <Image alt={`小绿书生成图 ${index + 1}`} className="h-auto w-full rounded-md border border-slate-100 object-cover" height={360} src={src} unoptimized width={240} />
+                          ) : null}
+                          <div className="mt-2 flex items-start justify-between gap-2 text-xs leading-5 text-slate-600">
+                            <span className="line-clamp-2">{image.revisedPrompt || image.prompt}</span>
+                            <button className="shrink-0 text-emerald-700" onClick={() => copyGeneratedImage(image, index)} type="button">
+                              复制
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
