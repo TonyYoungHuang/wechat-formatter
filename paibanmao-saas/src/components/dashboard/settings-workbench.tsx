@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Plus, Save, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,6 +87,9 @@ export function SettingsWorkbench() {
   const [apiKeyRef, setApiKeyRef] = useState("REQUESTY_API_KEY");
   const [models, setModels] = useState<ProviderModelConfig[]>(defaultProviderModels);
   const [message, setMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   async function load() {
     try {
@@ -192,6 +195,28 @@ export function SettingsWorkbench() {
     }
   }
 
+  async function changePassword() {
+    setChangingPassword(true);
+    setMessage("");
+
+    try {
+      await readJson(
+        await fetch("/api/auth/password/change", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        }),
+      );
+      setCurrentPassword("");
+      setNewPassword("");
+      setMessage("登录密码已修改。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "修改密码失败。");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -200,6 +225,44 @@ export function SettingsWorkbench() {
       </div>
 
       {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="size-5 text-emerald-700" />
+            修改登录密码
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">当前密码</span>
+              <input
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                placeholder="输入当前密码"
+                type="password"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">新密码</span>
+              <input
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                minLength={8}
+                placeholder="至少 8 位"
+                type="password"
+              />
+            </label>
+            <Button onClick={changePassword} disabled={changingPassword || !currentPassword || newPassword.length < 8}>
+              {changingPassword ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              保存密码
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

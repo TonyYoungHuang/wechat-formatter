@@ -10,6 +10,7 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
+        SITE_ADMIN_EMAIL: "guan113@126.com",
         PATH: "/opt/node-v22.13.1-linux-x64/bin:" + process.env.PATH,
       },
       max_memory_restart: "768M",

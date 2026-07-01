@@ -23,3 +23,8 @@ export const passwordResetSchema = z.object({
   token: z.string().trim().min(20).max(256),
   password: z.string().min(8).max(128),
 });
+
+export const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
