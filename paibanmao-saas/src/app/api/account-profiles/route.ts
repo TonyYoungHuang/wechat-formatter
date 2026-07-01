@@ -11,6 +11,12 @@ export async function GET() {
     const profiles = await prisma.accountProfile.findMany({
       where: { workspaceId: current.workspace.id },
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+      include: {
+        knowledgeItems: {
+          orderBy: { updatedAt: "desc" },
+          take: 20,
+        },
+      },
     });
 
     return NextResponse.json({ profiles });

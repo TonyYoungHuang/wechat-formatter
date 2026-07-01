@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { z } from "zod";
 
+import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
 import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
 import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
@@ -58,6 +59,7 @@ export async function runFiveEntryGeneration(input: {
   const scoped = await resolveFiveEntryGenerationScope(workspaceId, payload);
   const accountProfile = scoped.accountProfile;
   const scopedPayload = scoped.payload;
+  const knowledgeContext = await getAccountKnowledgeContext(accountProfile.id);
 
   if (existingJobId) {
     await prisma.generationJob.updateMany({
@@ -80,7 +82,9 @@ export async function runFiveEntryGeneration(input: {
     commonCta: accountProfile.commonCta || "未填写",
     forbiddenWords: accountProfile.forbiddenWords.join(", ") || "无",
     sampleText: accountProfile.sampleText || "无",
+    knowledgeBase: knowledgeContext,
   });
+  const renderedPrompt = appendKnowledgeContext(promptTemplate.rendered, knowledgeContext);
 
   let generationSource = "fallback";
   let aiError: string | null = null;
@@ -98,7 +102,7 @@ export async function runFiveEntryGeneration(input: {
         topic: scopedPayload.topic,
         goal: scopedPayload.goal,
         accountProfile,
-        prompt: promptTemplate.rendered,
+        prompt: renderedPrompt,
       });
       variants = aiResult.variants;
       tokenInput = aiResult.tokenInput;
@@ -136,6 +140,7 @@ export async function runFiveEntryGeneration(input: {
         version: promptTemplate.version,
         source: promptTemplate.source,
       },
+      knowledgeContext,
     } as Prisma.InputJsonValue;
     const jobOutput = {
       variants,

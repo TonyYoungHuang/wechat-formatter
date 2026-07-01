@@ -156,6 +156,7 @@ model Workspace {
   ctaSnippets      CtaSnippet[]
   contentTemplates ContentTemplate[]
   activationCodeRedemptions ActivationCodeRedemption[]
+  knowledgeItems   AccountKnowledgeItem[]
 }
 
 model WorkspaceMember {
@@ -296,6 +297,27 @@ model AccountProfile {
   calendarItems ContentCalendarItem[]
   ctaSnippets   CtaSnippet[]
   contentTemplates ContentTemplate[]
+  knowledgeItems AccountKnowledgeItem[]
+}
+
+model AccountKnowledgeItem {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  accountProfileId String
+  title            String
+  sourceType       String   @default("note")
+  content          String
+  tags             String[]
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountProfile AccountProfile @relation(fields: [accountProfileId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, updatedAt])
+  @@index([accountProfileId, active])
+  @@index([sourceType])
 }
 
 model Topic {

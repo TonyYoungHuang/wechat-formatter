@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
+import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
 import { generateTopicSuggestionsWithAi } from "@/lib/ai/topics";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     const profile = await prisma.accountProfile.findFirstOrThrow({
       where: { id: parsed.data.accountProfileId, workspaceId: current.workspace.id },
     });
+    const knowledgeContext = await getAccountKnowledgeContext(profile.id);
     const promptTemplate = await getActivePromptTemplate("topic_generation", {
       accountName: profile.name,
       niche: profile.niche,
@@ -36,11 +38,13 @@ export async function POST(request: Request) {
       commonCta: profile.commonCta || "未填写",
       forbiddenWords: profile.forbiddenWords.join(", ") || "无",
       sampleText: profile.sampleText || "无",
+      knowledgeBase: knowledgeContext,
       theme: parsed.data.theme,
       monetizationGoal: parsed.data.monetizationGoal,
       avoid: parsed.data.avoid || "无",
       count: parsed.data.count,
     });
+    const renderedPrompt = appendKnowledgeContext(promptTemplate.rendered, knowledgeContext);
 
     let source = "fallback";
     let aiError: string | null = null;
@@ -61,7 +65,7 @@ export async function POST(request: Request) {
         monetizationGoal: parsed.data.monetizationGoal,
         avoid: parsed.data.avoid,
         count: parsed.data.count,
-        prompt: promptTemplate.rendered,
+        prompt: renderedPrompt,
       });
       suggestions = aiResult.suggestions;
       source = `${aiResult.provider}:${aiResult.model}`;
@@ -86,6 +90,7 @@ export async function POST(request: Request) {
             version: promptTemplate.version,
             source: promptTemplate.source,
           },
+          knowledgeContext,
         } as Prisma.InputJsonValue,
         output: { suggestions, source, aiError } as Prisma.InputJsonValue,
         error: aiError,

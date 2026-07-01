@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, PencilLine, Plus, Star, Trash2, X } from "lucide-react";
+import { BookOpen, Copy, PencilLine, Plus, Star, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,17 @@ type AccountProfile = {
   forbiddenWords: string[];
   sampleText?: string | null;
   isDefault: boolean;
+  knowledgeItems?: AccountKnowledgeItem[];
+};
+
+type AccountKnowledgeItem = {
+  id: string;
+  title: string;
+  sourceType: string;
+  content: string;
+  tags: string[];
+  active: boolean;
+  updatedAt: string;
 };
 
 type FormState = {
@@ -51,6 +62,23 @@ const initialForm: FormState = {
   commonCta: "",
   forbiddenWords: "",
   sampleText: "",
+};
+
+const initialKnowledgeForm = {
+  title: "",
+  sourceType: "wechat_article",
+  content: "",
+  tags: "",
+  active: true,
+};
+
+const knowledgeSourceLabels: Record<string, string> = {
+  wechat_article: "公众号旧文",
+  product: "产品/服务",
+  case: "案例/经历",
+  audience: "读者反馈",
+  viewpoint: "常用观点",
+  note: "其他笔记",
 };
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -85,6 +113,9 @@ function profileCompleteness(profile: AccountProfile) {
 export function AccountProfilesWorkbench() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
+  const [selectedKnowledgeProfileId, setSelectedKnowledgeProfileId] = useState("");
+  const [knowledgeForm, setKnowledgeForm] = useState(initialKnowledgeForm);
+  const [editingKnowledgeId, setEditingKnowledgeId] = useState("");
   const [editingProfileId, setEditingProfileId] = useState("");
   const [message, setMessage] = useState("");
 
@@ -92,6 +123,7 @@ export function AccountProfilesWorkbench() {
     try {
       const data = await readJson<{ profiles: AccountProfile[] }>(await fetch("/api/account-profiles"));
       setProfiles(data.profiles);
+      setSelectedKnowledgeProfileId((current) => current || data.profiles[0]?.id || "");
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载账号档案失败。");
@@ -103,6 +135,7 @@ export function AccountProfilesWorkbench() {
       .then((response) => readJson<{ profiles: AccountProfile[] }>(response))
       .then((data) => {
         setProfiles(data.profiles);
+        setSelectedKnowledgeProfileId((current) => current || data.profiles[0]?.id || "");
         setMessage("");
       })
       .catch((error: Error) => setMessage(error.message));
@@ -110,6 +143,10 @@ export function AccountProfilesWorkbench() {
 
   function update(key: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateKnowledge(key: keyof typeof initialKnowledgeForm, value: string | boolean) {
+    setKnowledgeForm((current) => ({ ...current, [key]: value }));
   }
 
   function editProfile(profile: AccountProfile) {
@@ -192,6 +229,92 @@ export function AccountProfilesWorkbench() {
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "删除失败。");
+    }
+  }
+
+  const selectedKnowledgeProfile = profiles.find((profile) => profile.id === selectedKnowledgeProfileId) || profiles[0];
+  const selectedKnowledgeItems = selectedKnowledgeProfile?.knowledgeItems || [];
+
+  function editKnowledge(item: AccountKnowledgeItem) {
+    setEditingKnowledgeId(item.id);
+    setKnowledgeForm({
+      title: item.title,
+      sourceType: item.sourceType,
+      content: item.content,
+      tags: item.tags.join("，"),
+      active: item.active,
+    });
+    setMessage(`正在编辑知识：${item.title}`);
+  }
+
+  function cancelKnowledgeEdit() {
+    setEditingKnowledgeId("");
+    setKnowledgeForm(initialKnowledgeForm);
+  }
+
+  async function saveKnowledge() {
+    if (!selectedKnowledgeProfile) {
+      setMessage("请先创建账号档案。");
+      return;
+    }
+
+    const payload = {
+      ...knowledgeForm,
+      tags: splitList(knowledgeForm.tags),
+    };
+
+    try {
+      await readJson<{ item: AccountKnowledgeItem }>(
+        await fetch(
+          editingKnowledgeId
+            ? `/api/account-profiles/${selectedKnowledgeProfile.id}/knowledge/${editingKnowledgeId}`
+            : `/api/account-profiles/${selectedKnowledgeProfile.id}/knowledge`,
+          {
+            method: editingKnowledgeId ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        ),
+      );
+      setEditingKnowledgeId("");
+      setKnowledgeForm(initialKnowledgeForm);
+      setMessage("账号知识库已更新。");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "保存知识失败。");
+    }
+  }
+
+  async function toggleKnowledge(item: AccountKnowledgeItem) {
+    if (!selectedKnowledgeProfile) return;
+
+    try {
+      await readJson(
+        await fetch(`/api/account-profiles/${selectedKnowledgeProfile.id}/knowledge/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: !item.active }),
+        }),
+      );
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "更新知识状态失败。");
+    }
+  }
+
+  async function removeKnowledge(item: AccountKnowledgeItem) {
+    if (!selectedKnowledgeProfile) return;
+
+    try {
+      await readJson(
+        await fetch(`/api/account-profiles/${selectedKnowledgeProfile.id}/knowledge/${item.id}`, {
+          method: "DELETE",
+        }),
+      );
+      setMessage("知识已删除。");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "删除知识失败。");
     }
   }
 
@@ -280,6 +403,116 @@ export function AccountProfilesWorkbench() {
               {editingProfileId ? "更新档案" : "保存档案"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="size-5 text-emerald-700" />
+                账号知识库
+              </CardTitle>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                把公众号旧文、产品介绍、真实案例、常用观点和读者反馈放进来。生成内容时，排版猫会优先参考这些资料，让文案更像客户自己的账号。
+              </p>
+            </div>
+            <select
+              value={selectedKnowledgeProfile?.id || ""}
+              onChange={(event) => {
+                setSelectedKnowledgeProfileId(event.target.value);
+                cancelKnowledgeEdit();
+              }}
+              className="h-10 rounded-lg border border-emerald-200 bg-white px-3 text-sm outline-none focus:border-emerald-400"
+            >
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name}</option>
+              ))}
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {profiles.length ? (
+            <>
+              <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-600">资料标题</span>
+                  <input value={knowledgeForm.title} onChange={(event) => updateKnowledge("title", event.target.value)} placeholder="例如：我的公众号爆款文章开头写法" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-600">资料类型</span>
+                  <select value={knowledgeForm.sourceType} onChange={(event) => updateKnowledge("sourceType", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+                    {Object.entries(knowledgeSourceLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="block space-y-1 text-sm">
+                <span className="text-slate-600">资料正文</span>
+                <textarea value={knowledgeForm.content} onChange={(event) => updateKnowledge("content", event.target.value)} placeholder="粘贴公众号旧文片段、产品说明、真实案例、常讲观点、读者反馈等。" className="min-h-36 w-full rounded-lg border border-slate-200 px-3 py-2 leading-6 outline-none focus:border-emerald-400" />
+              </label>
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-600">标签</span>
+                  <input value={knowledgeForm.tags} onChange={(event) => updateKnowledge("tags", event.target.value)} placeholder="逗号分隔，例如：开头，转化，读者痛点" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={saveKnowledge} disabled={!knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10}>
+                    {editingKnowledgeId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}
+                    {editingKnowledgeId ? "更新知识" : "添加知识"}
+                  </Button>
+                  {editingKnowledgeId ? <Button variant="secondary" onClick={cancelKnowledgeEdit}>取消</Button> : null}
+                </div>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {selectedKnowledgeItems.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-slate-950">{item.title}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {knowledgeSourceLabels[item.sourceType] || item.sourceType} · {item.active ? "已启用" : "已停用"} · {new Date(item.updatedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-xs ${item.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                        {item.active ? "参与生成" : "不参与"}
+                      </span>
+                    </div>
+                    <p className="mt-3 line-clamp-3 leading-6 text-slate-600">{item.content}</p>
+                    {item.tags.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.tags.map((tag) => (
+                          <span key={tag} className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">{tag}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => editKnowledge(item)}>
+                        <PencilLine className="size-4" />
+                        编辑
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => toggleKnowledge(item)}>
+                        {item.active ? "停用" : "启用"}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeKnowledge(item)}>
+                        <Trash2 className="size-4" />
+                        删除
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {!selectedKnowledgeItems.length ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600 lg:col-span-2">
+                    当前账号还没有知识。先粘贴 1-3 篇公众号旧文片段，或者产品介绍、常用观点，生成内容会更贴近这个账号。
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">请先创建一个账号档案，再添加知识库。</div>
+          )}
         </CardContent>
       </Card>
 
