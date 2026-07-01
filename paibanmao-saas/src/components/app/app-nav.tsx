@@ -2,27 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, CreditCard, FileText, Home, Layers3, MessageSquareText, SearchCheck, Settings, ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
+import { CreditCard, FileText, Home, SearchCheck, Settings, ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "工作台", icon: Home },
   { href: "/dashboard/account-profiles", label: "账号档案", icon: UserRoundCog },
-  { href: "/dashboard/topics", label: "选题库", icon: Layers3 },
   { href: "/dashboard/generate", label: "五入口生成", icon: Sparkles },
   { href: "/dashboard/editor", label: "公众号编辑", icon: FileText },
-  { href: "/dashboard/projects", label: "内容项目", icon: FileText },
-  { href: "/dashboard/calendar", label: "内容日历", icon: CalendarDays },
-  { href: "/dashboard/templates", label: "模板库", icon: Layers3 },
-  { href: "/dashboard/cta-library", label: "CTA 库", icon: MessageSquareText },
   { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
   { href: "/dashboard/billing", label: "会员额度", icon: CreditCard },
   { href: "/dashboard/admin", label: "运营后台", icon: ShieldCheck, adminOnly: true },
   { href: "/dashboard/settings", label: "设置", icon: Settings, adminOnly: true },
 ];
 
-const mobileNavHrefs = new Set(["/dashboard", "/dashboard/topics", "/dashboard/generate", "/dashboard/projects", "/dashboard/billing"]);
+const mobileNavHrefs = new Set(["/dashboard", "/dashboard/account-profiles", "/dashboard/generate", "/dashboard/checks", "/dashboard/billing"]);
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") {

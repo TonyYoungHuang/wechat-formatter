@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { RefreshCcw, ShieldAlert, WalletCards } from "lucide-react";
+import { KeyRound, RefreshCcw, ShieldAlert, WalletCards } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,6 +148,23 @@ export function AdminOperationsWorkbench() {
         <Metric title="近 7 天生成" value={data?.usage.generation.weekly ?? 0} detail={`今日 ${data?.usage.generation.daily ?? 0}`} />
         <Metric title="已支付 GMV" value={money(revenuePaid)} detail={`近 30 天生成 ${data?.usage.generation.monthly ?? 0}`} />
       </div>
+
+      <Card className="border-emerald-300 bg-emerald-50/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="size-5 text-emerald-700" />
+            激活码发放
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm leading-6 text-slate-700 sm:flex-row sm:items-center sm:justify-between">
+          <p>生成入门版和专业版激活码，用于电商平台自动发货。明文激活码只在生成后当次展示，请及时复制保存。</p>
+          <Button asChild>
+            <Link href="/dashboard/billing#activation-codes">
+              生成激活码
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

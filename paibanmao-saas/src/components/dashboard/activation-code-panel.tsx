@@ -169,7 +169,7 @@ export function ActivationCodePanel({ isSiteAdmin }: ActivationCodePanelProps) {
   }, [isSiteAdmin]);
 
   return (
-    <section className="mt-6 space-y-6">
+    <section id="activation-codes" className="mt-6 scroll-mt-24 space-y-6">
       <Card className="border-emerald-300 bg-emerald-50/60">
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
