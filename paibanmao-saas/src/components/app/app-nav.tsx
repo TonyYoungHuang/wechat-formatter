@@ -40,6 +40,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
             .map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
+              const label = isSiteAdmin && item.href === "/dashboard/billing" ? "套餐激活码" : item.label;
 
               return (
                 <Link
@@ -52,7 +53,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
                   )}
                 >
                   <Icon className="size-4" />
-                  <span className="max-w-full truncate">{item.label}</span>
+                  <span className="max-w-full truncate">{label}</span>
                 </Link>
               );
             })}
@@ -66,6 +67,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
       {visibleNavItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);
+        const label = isSiteAdmin && item.href === "/dashboard/billing" ? "套餐与激活码" : item.label;
 
         return (
           <Link
@@ -78,7 +80,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
             )}
           >
             <Icon className="size-4" />
-            {item.label}
+            {label}
           </Link>
         );
       })}

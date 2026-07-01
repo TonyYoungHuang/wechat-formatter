@@ -17,6 +17,8 @@ type Plan = {
   accountProfileLimit: number;
   dailyGenerationLimit: number | null;
   monthlyGenerationLimit: number | null;
+  dailyImageGenerationLimit: number | null;
+  monthlyImageGenerationLimit: number | null;
   advancedChecks: boolean;
 };
 
@@ -31,6 +33,11 @@ type PricingVersion = {
 
 type UsageSummary = {
   generation: {
+    plan: Plan;
+    daily: { used: number; limit: number | null; remaining: number | null };
+    monthly: { used: number; limit: number | null; remaining: number | null };
+  };
+  imageGeneration: {
     plan: Plan;
     daily: { used: number; limit: number | null; remaining: number | null };
     monthly: { used: number; limit: number | null; remaining: number | null };
@@ -201,6 +208,8 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
             accountProfileLimit: plan.accountProfileLimit,
             dailyGenerationLimit: plan.dailyGenerationLimit,
             monthlyGenerationLimit: plan.monthlyGenerationLimit,
+            dailyImageGenerationLimit: plan.dailyImageGenerationLimit,
+            monthlyImageGenerationLimit: plan.monthlyImageGenerationLimit,
             advancedChecks: plan.advancedChecks,
           },
         },
@@ -313,8 +322,10 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-950">会员与额度</h1>
-          <p className="mt-1 text-sm text-slate-600">配置套餐价格、账号档案上限、生成额度，并验证支付订单链路。</p>
+          <h1 className="text-2xl font-semibold text-slate-950">{isSiteAdmin ? "套餐与激活码" : "会员与额度"}</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            {isSiteAdmin ? "配置套餐价格、文字额度、image2 生图额度和激活码发放。" : "查看当前套餐、文字生成额度、image2 生图额度，并输入激活码开通。"}
+          </p>
         </div>
         <Button variant="secondary" onClick={load} disabled={loading}>
           <RefreshCcw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -325,7 +336,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
       {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
 
       {usage ? (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm text-slate-500">当前套餐</CardTitle>
@@ -346,6 +357,22 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
             </CardHeader>
             <CardContent className="text-2xl font-semibold text-slate-950">
               {usage.generation.monthly.used} / {formatLimit(usage.generation.monthly.limit)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-500">今日 image2 生图</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold text-slate-950">
+              {usage.imageGeneration.daily.used} / {formatLimit(usage.imageGeneration.daily.limit)}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-500">本月 image2 生图</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold text-slate-950">
+              {usage.imageGeneration.monthly.used} / {formatLimit(usage.imageGeneration.monthly.limit)}
             </CardContent>
           </Card>
         </div>
@@ -385,6 +412,14 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
                   <span className="text-slate-600">每月生成</span>
                   <input value={plan.monthlyGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { monthlyGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
+                <label className="block space-y-1 text-sm">
+                  <span className="text-slate-600">每日 image2 生图</span>
+                  <input value={plan.dailyImageGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { dailyImageGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                </label>
+                <label className="block space-y-1 text-sm">
+                  <span className="text-slate-600">每月 image2 生图</span>
+                  <input value={plan.monthlyImageGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { monthlyImageGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                </label>
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={plan.advancedChecks} onChange={(event) => updatePlan(plan.code, { advancedChecks: event.target.checked })} />
@@ -413,11 +448,13 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
                   </div>
                   <div className="text-xs text-slate-500">{version.note || "配置更新"}</div>
                 </div>
-                <div className="grid gap-2 text-slate-600 sm:grid-cols-4">
+                <div className="grid gap-2 text-slate-600 sm:grid-cols-3 xl:grid-cols-6">
                   <span>价格：{version.snapshot?.priceCents === null ? "待定" : `¥${((version.snapshot?.priceCents ?? 0) / 100).toFixed(2)}`}</span>
                   <span>档案：{version.snapshot?.accountProfileLimit ?? "-"}</span>
                   <span>每日：{formatLimit(version.snapshot?.dailyGenerationLimit ?? null)}</span>
                   <span>每月：{formatLimit(version.snapshot?.monthlyGenerationLimit ?? null)}</span>
+                  <span>图/日：{formatLimit(version.snapshot?.dailyImageGenerationLimit ?? null)}</span>
+                  <span>图/月：{formatLimit(version.snapshot?.monthlyImageGenerationLimit ?? null)}</span>
                 </div>
                 <div className="text-xs text-slate-500 md:text-right">{new Date(version.createdAt).toLocaleString()}</div>
               </div>
@@ -430,7 +467,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
 
       <Card>
         <CardHeader>
-          <CardTitle>开通会员套餐</CardTitle>
+          <CardTitle>{isSiteAdmin ? "开通会员套餐" : "升级套餐"}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[180px_180px_1fr] md:items-end">
           <label className="space-y-1 text-sm">
@@ -457,7 +494,8 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           {selectedPlanConfig ? (
             <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900 md:col-span-3">
               当前选择：{selectedPlanConfig.name}，价格 {formatMoney(selectedPlanConfig.priceCents)}，账号档案 {selectedPlanConfig.accountProfileLimit} 个，
-              每日生成 {formatLimit(selectedPlanConfig.dailyGenerationLimit)}，每月生成 {formatLimit(selectedPlanConfig.monthlyGenerationLimit)}。
+              每日生成 {formatLimit(selectedPlanConfig.dailyGenerationLimit)}，每月生成 {formatLimit(selectedPlanConfig.monthlyGenerationLimit)}，
+              image2 生图 {formatLimit(selectedPlanConfig.dailyImageGenerationLimit)} / 日，{formatLimit(selectedPlanConfig.monthlyImageGenerationLimit)} / 月。
               {!canCreateOrder ? " 价格配置为待定或免费时不会创建支付订单。" : ""}
             </div>
           ) : null}
@@ -527,7 +565,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </Card>
       ) : null}
 
-      {recentOrders.length ? (
+      {isSiteAdmin && recentOrders.length ? (
         <Card>
           <CardHeader>
             <CardTitle>最近订单</CardTitle>
@@ -562,6 +600,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </Card>
       ) : null}
 
+      {isSiteAdmin ? (
       <Card>
         <CardHeader>
           <CardTitle>发票申请</CardTitle>
@@ -643,6 +682,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           ) : null}
         </CardContent>
       </Card>
+      ) : null}
     </div>
   );
 }
