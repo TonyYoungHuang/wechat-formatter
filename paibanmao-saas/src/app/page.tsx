@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, CircleHelp, Images, Lightbulb, PenLine, Search, ShieldCheck, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ActivationCodeRedeemCard } from "@/components/marketing/activation-code-redeem-card";
 import { HomeHeroGenerator } from "@/components/marketing/home-hero-generator";
 import { PublicFooter, PublicHeader } from "@/components/marketing/public-shell";
 import { contentEntries } from "@/lib/content/entries";
@@ -173,6 +174,9 @@ export default function HomePage() {
                 </Button>
               </div>
             ))}
+          </div>
+          <div className="mt-6">
+            <ActivationCodeRedeemCard />
           </div>
         </div>
       </section>
