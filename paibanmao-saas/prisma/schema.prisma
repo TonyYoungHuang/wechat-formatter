@@ -87,6 +87,7 @@ model User {
   sessions    Session[]
   authTokens   AuthToken[]
   loginAttempts LoginAttempt[]
+  activationCodeRedemptions ActivationCodeRedemption[]
 }
 
 model Session {
@@ -154,6 +155,7 @@ model Workspace {
   invoices         InvoiceRequest[]
   ctaSnippets      CtaSnippet[]
   contentTemplates ContentTemplate[]
+  activationCodeRedemptions ActivationCodeRedemption[]
 }
 
 model WorkspaceMember {
@@ -223,6 +225,50 @@ model Subscription {
   updatedAt   DateTime  @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model ActivationCode {
+  id              String    @id @default(cuid())
+  codeHash        String    @unique
+  codePrefix      String
+  codeSuffix      String
+  planCode        PlanCode
+  status          String    @default("active")
+  maxRedemptions  Int       @default(1)
+  redeemedCount   Int       @default(0)
+  durationDays    Int?
+  batchName       String?
+  source          String?   @default("ecommerce")
+  note            String?
+  expiresAt       DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  redemptions ActivationCodeRedemption[]
+
+  @@index([planCode, status])
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+model ActivationCodeRedemption {
+  id                    String   @id @default(cuid())
+  activationCodeId      String
+  workspaceId           String
+  userId                String
+  planCode              PlanCode
+  beforePlanCode        PlanCode
+  subscriptionExpiresAt DateTime?
+  redeemedAt            DateTime @default(now())
+
+  activationCode ActivationCode @relation(fields: [activationCodeId], references: [id], onDelete: Cascade)
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activationCodeId, workspaceId])
+  @@index([workspaceId, redeemedAt])
+  @@index([userId, redeemedAt])
 }
 
 model AccountProfile {

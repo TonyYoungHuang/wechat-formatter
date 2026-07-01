@@ -96,6 +96,26 @@ export async function getCurrentUser() {
   const membership = session.user.memberships[0];
   if (!membership) return null;
 
+  if (membership.workspace.planCode !== "free") {
+    const subscription = await prisma.subscription.findUnique({
+      where: { workspaceId: membership.workspace.id },
+    });
+
+    if (subscription?.status === "active" && subscription.expiresAt && subscription.expiresAt < new Date()) {
+      await prisma.$transaction([
+        prisma.subscription.update({
+          where: { workspaceId: membership.workspace.id },
+          data: { status: "expired" },
+        }),
+        prisma.workspace.update({
+          where: { id: membership.workspace.id },
+          data: { planCode: "free" },
+        }),
+      ]);
+      membership.workspace.planCode = "free";
+    }
+  }
+
   return {
     user: session.user,
     workspace: membership.workspace,

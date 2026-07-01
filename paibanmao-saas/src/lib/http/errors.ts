@@ -24,6 +24,10 @@ function businessErrorStatus(message: string) {
     return 400;
   }
 
+  if (message.includes("激活码")) {
+    return 400;
+  }
+
   return null;
 }
 
