@@ -1,9 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
 
-function compactContent(value: string, maxLength: number) {
-  return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
-}
-
 export async function getAccountKnowledgeContext(accountProfileId: string) {
   const items = await prisma.accountKnowledgeItem.findMany({
     where: { accountProfileId, active: true },
@@ -21,8 +17,8 @@ export async function getAccountKnowledgeContext(accountProfileId: string) {
       return [
         `资料 ${index + 1}: ${item.title}`,
         `类型: ${item.sourceType}`,
+        `原文字数: ${item.contentCharCount}`,
         tags,
-        `内容: ${compactContent(item.content, 900)}`,
       ].join("\n");
     })
     .join("\n\n");
@@ -39,6 +35,6 @@ export function appendKnowledgeContext(prompt: string, knowledgeContext: string)
     "账号知识库:",
     knowledgeContext,
     "",
-    "使用方式: 优先吸收账号知识库里的真实观点、产品细节、案例和表达习惯，但不要生硬照抄；不要编造知识库里没有的成绩、数据和经历。",
+    "使用方式: 这些是由客户原文和历史生成内容提取出的标签画像。优先吸收标签里的真实观点、产品细节、案例方向和表达习惯，但不要编造标签里没有的成绩、数据和经历。",
   ].join("\n");
 }

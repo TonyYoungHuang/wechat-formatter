@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
+import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -44,8 +45,9 @@ export async function PATCH(request: Request, context: RouteContext) {
       return errorResponse("Project payload is invalid.");
     }
 
-    await prisma.contentProject.findFirstOrThrow({
+    const existingProject = await prisma.contentProject.findFirstOrThrow({
       where: { id, workspaceId: current.workspace.id },
+      select: { accountProfileId: true, title: true },
     });
 
     const project = await prisma.$transaction(async (tx) => {
@@ -53,7 +55,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         await tx.contentVariant.deleteMany({ where: { projectId: id } });
       }
 
-      return tx.contentProject.update({
+      const updated = await tx.contentProject.update({
         where: { id },
         data: {
           title: parsed.data.title,
@@ -75,6 +77,17 @@ export async function PATCH(request: Request, context: RouteContext) {
         },
         include: { variants: true },
       });
+
+      if (parsed.data.variants) {
+        await recordGeneratedContentTags(tx, {
+          workspaceId: current.workspace.id,
+          accountProfileId: existingProject.accountProfileId,
+          projectTitle: parsed.data.title || existingProject.title,
+          variants: parsed.data.variants,
+        });
+      }
+
+      return updated;
     });
 
     return NextResponse.json({ project });

@@ -29,6 +29,8 @@ type AccountKnowledgeItem = {
   title: string;
   sourceType: string;
   content: string;
+  contentDigest?: string | null;
+  contentCharCount: number;
   tags: string[];
   active: boolean;
   updatedAt: string;
@@ -79,6 +81,7 @@ const knowledgeSourceLabels: Record<string, string> = {
   audience: "读者反馈",
   viewpoint: "常用观点",
   note: "其他笔记",
+  generated_content: "生成内容标签",
 };
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -240,11 +243,11 @@ export function AccountProfilesWorkbench() {
     setKnowledgeForm({
       title: item.title,
       sourceType: item.sourceType,
-      content: item.content,
+      content: "",
       tags: item.tags.join("，"),
       active: item.active,
     });
-    setMessage(`正在编辑知识：${item.title}`);
+    setMessage(`正在编辑知识标签：${item.title}。原文不会回显，也没有保存在服务器。`);
   }
 
   function cancelKnowledgeEdit() {
@@ -415,7 +418,7 @@ export function AccountProfilesWorkbench() {
                 账号知识库
               </CardTitle>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                把公众号旧文、产品介绍、真实案例、常用观点和读者反馈放进来。生成内容时，排版猫会优先参考这些资料，让文案更像客户自己的账号。
+                粘贴公众号旧文、产品介绍、真实案例、常用观点和读者反馈后，系统只提取标签和内容指纹，不保存原文。生成内容时，排版猫会参考这些标签画像。
               </p>
             </div>
             <select
@@ -438,7 +441,7 @@ export function AccountProfilesWorkbench() {
               <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
                 <label className="space-y-1 text-sm">
                   <span className="text-slate-600">资料标题</span>
-                  <input value={knowledgeForm.title} onChange={(event) => updateKnowledge("title", event.target.value)} placeholder="例如：我的公众号爆款文章开头写法" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                  <input value={knowledgeForm.title} onChange={(event) => updateKnowledge("title", event.target.value)} placeholder="例如：我的公众号旧文标签" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
                 <label className="space-y-1 text-sm">
                   <span className="text-slate-600">资料类型</span>
@@ -450,12 +453,12 @@ export function AccountProfilesWorkbench() {
                 </label>
               </div>
               <label className="block space-y-1 text-sm">
-                <span className="text-slate-600">资料正文</span>
-                <textarea value={knowledgeForm.content} onChange={(event) => updateKnowledge("content", event.target.value)} placeholder="粘贴公众号旧文片段、产品说明、真实案例、常讲观点、读者反馈等。" className="min-h-36 w-full rounded-lg border border-slate-200 px-3 py-2 leading-6 outline-none focus:border-emerald-400" />
+                <span className="text-slate-600">原文输入，仅用于提取标签，不会保存</span>
+                <textarea value={knowledgeForm.content} onChange={(event) => updateKnowledge("content", event.target.value)} placeholder="粘贴公众号旧文片段、产品说明、真实案例、常讲观点、读者反馈等。保存后服务器只保留标签、字数和指纹。" className="min-h-36 w-full rounded-lg border border-slate-200 px-3 py-2 leading-6 outline-none focus:border-emerald-400" />
               </label>
               <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                 <label className="space-y-1 text-sm">
-                  <span className="text-slate-600">标签</span>
+                  <span className="text-slate-600">手动补充标签</span>
                   <input value={knowledgeForm.tags} onChange={(event) => updateKnowledge("tags", event.target.value)} placeholder="逗号分隔，例如：开头，转化，读者痛点" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -480,12 +483,16 @@ export function AccountProfilesWorkbench() {
                         {item.active ? "参与生成" : "不参与"}
                       </span>
                     </div>
-                    <p className="mt-3 line-clamp-3 leading-6 text-slate-600">{item.content}</p>
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      已标签化，不保存原文。原文字数：{item.contentCharCount || 0}
+                      {item.contentDigest ? ` · 指纹：${item.contentDigest.slice(0, 10)}...` : ""}
+                    </p>
                     {item.tags.length ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {item.tags.map((tag) => (
+                        {item.tags.slice(0, 24).map((tag) => (
                           <span key={tag} className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">{tag}</span>
                         ))}
+                        {item.tags.length > 24 ? <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-400">+{item.tags.length - 24}</span> : null}
                       </div>
                     ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -505,7 +512,7 @@ export function AccountProfilesWorkbench() {
                 ))}
                 {!selectedKnowledgeItems.length ? (
                   <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600 lg:col-span-2">
-                    当前账号还没有知识。先粘贴 1-3 篇公众号旧文片段，或者产品介绍、常用观点，生成内容会更贴近这个账号。
+                    当前账号还没有标签。先粘贴 1-3 篇公众号旧文片段，或者产品介绍、常用观点，系统会转成标签保存。
                   </div>
                 ) : null}
               </div>

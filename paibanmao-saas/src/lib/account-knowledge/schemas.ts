@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const knowledgeSourceTypes = ["wechat_article", "product", "case", "audience", "viewpoint", "note"] as const;
+export const knowledgeSourceTypes = ["wechat_article", "product", "case", "audience", "viewpoint", "note", "generated_content"] as const;
 
 export const accountKnowledgeItemSchema = z.object({
   title: z.string().trim().min(1).max(80),

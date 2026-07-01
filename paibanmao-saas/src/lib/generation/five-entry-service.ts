@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import type { z } from "zod";
 
 import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
+import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
 import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
 import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
@@ -184,6 +185,13 @@ export async function runFiveEntryGeneration(input: {
         key: "generation",
         quantity: 1,
       },
+    });
+
+    await recordGeneratedContentTags(tx, {
+      workspaceId,
+      accountProfileId: accountProfile.id,
+      projectTitle: scopedPayload.topic,
+      variants,
     });
 
     if (scopedPayload.topicId) {

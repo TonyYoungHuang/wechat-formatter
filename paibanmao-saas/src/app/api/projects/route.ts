@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
+import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -71,23 +72,32 @@ export async function POST(request: Request) {
       });
     }
 
-    const project = await prisma.contentProject.create({
-      data: {
+    const project = await prisma.$transaction(async (tx) => {
+      const created = await tx.contentProject.create({
+        data: {
+          workspaceId: current.workspace.id,
+          accountProfileId: parsed.data.accountProfileId,
+          topicId: parsed.data.topicId,
+          title: parsed.data.title,
+          status: parsed.data.status,
+          variants: {
+            create: parsed.data.variants.map((variant) => ({
+              entry: variant.entry,
+              title: variant.title,
+              body: variant.body,
+              metadata: variant.metadata as Prisma.InputJsonValue | undefined,
+            })),
+          },
+        },
+        include: { variants: true },
+      });
+      await recordGeneratedContentTags(tx, {
         workspaceId: current.workspace.id,
         accountProfileId: parsed.data.accountProfileId,
-        topicId: parsed.data.topicId,
-        title: parsed.data.title,
-        status: parsed.data.status,
-        variants: {
-          create: parsed.data.variants.map((variant) => ({
-            entry: variant.entry,
-            title: variant.title,
-            body: variant.body,
-            metadata: variant.metadata as Prisma.InputJsonValue | undefined,
-          })),
-        },
-      },
-      include: { variants: true },
+        projectTitle: parsed.data.title,
+        variants: parsed.data.variants,
+      });
+      return created;
     });
 
     return NextResponse.json({ project }, { status: 201 });

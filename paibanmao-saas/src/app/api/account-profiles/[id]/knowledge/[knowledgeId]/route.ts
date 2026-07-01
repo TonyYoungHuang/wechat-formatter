@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { accountKnowledgeItemPatchSchema } from "@/lib/account-knowledge/schemas";
+import { buildKnowledgeTags } from "@/lib/account-knowledge/tagging";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -29,11 +31,25 @@ export async function PATCH(request: Request, context: RouteContext) {
       return errorResponse("知识库更新内容格式不正确。");
     }
 
-    await assertKnowledgeItem(current.workspace.id, id, knowledgeId);
+    const existing = await assertKnowledgeItem(current.workspace.id, id, knowledgeId);
+    const data: Prisma.AccountKnowledgeItemUpdateInput = { ...parsed.data };
+
+    if (parsed.data.content !== undefined || parsed.data.tags !== undefined || parsed.data.title !== undefined || parsed.data.sourceType !== undefined) {
+      const tagging = buildKnowledgeTags({
+        title: parsed.data.title ?? existing.title,
+        sourceType: parsed.data.sourceType ?? existing.sourceType,
+        content: parsed.data.content ?? "",
+        manualTags: parsed.data.tags ?? existing.tags,
+      });
+      data.content = "";
+      data.contentDigest = tagging.contentDigest ?? existing.contentDigest;
+      data.contentCharCount = tagging.contentCharCount || existing.contentCharCount;
+      data.tags = tagging.tags;
+    }
 
     const item = await prisma.accountKnowledgeItem.update({
       where: { id: knowledgeId },
-      data: parsed.data,
+      data,
     });
 
     return NextResponse.json({ item });

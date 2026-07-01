@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { accountKnowledgeItemSchema } from "@/lib/account-knowledge/schemas";
+import { buildKnowledgeTags } from "@/lib/account-knowledge/tagging";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -44,10 +45,22 @@ export async function POST(request: Request, context: RouteContext) {
       where: { id, workspaceId: current.workspace.id },
       select: { id: true },
     });
+    const tagging = buildKnowledgeTags({
+      title: parsed.data.title,
+      sourceType: parsed.data.sourceType,
+      content: parsed.data.content,
+      manualTags: parsed.data.tags,
+    });
 
     const item = await prisma.accountKnowledgeItem.create({
       data: {
-        ...parsed.data,
+        title: parsed.data.title,
+        sourceType: parsed.data.sourceType,
+        content: "",
+        contentDigest: tagging.contentDigest,
+        contentCharCount: tagging.contentCharCount,
+        tags: tagging.tags,
+        active: parsed.data.active,
         workspaceId: current.workspace.id,
         accountProfileId: id,
       },

@@ -306,7 +306,9 @@ model AccountKnowledgeItem {
   accountProfileId String
   title            String
   sourceType       String   @default("note")
-  content          String
+  content          String   @default("")
+  contentDigest    String?
+  contentCharCount Int      @default(0)
   tags             String[]
   active           Boolean  @default(true)
   createdAt        DateTime @default(now())
