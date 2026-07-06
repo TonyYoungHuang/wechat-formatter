@@ -324,7 +324,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">{isSiteAdmin ? "套餐与激活码" : "会员与额度"}</h1>
           <p className="mt-1 text-sm text-slate-600">
-            {isSiteAdmin ? "配置套餐价格、文字额度、AI 生图额度和激活码发放。" : "查看当前套餐、文字生成额度、AI 生图额度，并输入激活码开通。"}
+            {isSiteAdmin ? "配置套餐价格、文字额度、Gemini 生图额度和激活码发放。" : "查看当前套餐、文字生成额度、Gemini 生图额度，并输入激活码开通。"}
           </p>
         </div>
         <Button variant="secondary" onClick={load} disabled={loading}>
@@ -361,7 +361,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-slate-500">今日 AI 生图</CardTitle>
+              <CardTitle className="text-sm text-slate-500">今日 Gemini 生图</CardTitle>
             </CardHeader>
             <CardContent className="text-2xl font-semibold text-slate-950">
               {usage.imageGeneration.daily.used} / {formatLimit(usage.imageGeneration.daily.limit)}
@@ -369,7 +369,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-slate-500">本月 AI 生图</CardTitle>
+              <CardTitle className="text-sm text-slate-500">本月 Gemini 生图</CardTitle>
             </CardHeader>
             <CardContent className="text-2xl font-semibold text-slate-950">
               {usage.imageGeneration.monthly.used} / {formatLimit(usage.imageGeneration.monthly.limit)}
@@ -413,11 +413,11 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
                   <input value={plan.monthlyGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { monthlyGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
                 <label className="block space-y-1 text-sm">
-                  <span className="text-slate-600">每日 AI 生图</span>
+                  <span className="text-slate-600">每日 Gemini 生图</span>
                   <input value={plan.dailyImageGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { dailyImageGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
                 <label className="block space-y-1 text-sm">
-                  <span className="text-slate-600">每月 AI 生图</span>
+                  <span className="text-slate-600">每月 Gemini 生图</span>
                   <input value={plan.monthlyImageGenerationLimit ?? ""} onChange={(event) => updatePlan(plan.code, { monthlyImageGenerationLimit: toNullableNumber(event.target.value) })} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
                 </label>
               </div>
@@ -495,7 +495,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
             <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900 md:col-span-3">
               当前选择：{selectedPlanConfig.name}，价格 {formatMoney(selectedPlanConfig.priceCents)}，账号档案 {selectedPlanConfig.accountProfileLimit} 个，
               每日生成 {formatLimit(selectedPlanConfig.dailyGenerationLimit)}，每月生成 {formatLimit(selectedPlanConfig.monthlyGenerationLimit)}，
-              AI 生图 {formatLimit(selectedPlanConfig.dailyImageGenerationLimit)} / 日，{formatLimit(selectedPlanConfig.monthlyImageGenerationLimit)} / 月。
+              Gemini 生图 {formatLimit(selectedPlanConfig.dailyImageGenerationLimit)} / 日，{formatLimit(selectedPlanConfig.monthlyImageGenerationLimit)} / 月。
               {!canCreateOrder ? " 价格配置为待定或免费时不会创建支付订单。" : ""}
             </div>
           ) : null}

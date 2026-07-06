@@ -54,12 +54,12 @@ function formatGenerationLimit(daily: number | null, monthly: number | null) {
 
 function formatImageGenerationLimit(daily: number | null, monthly: number | null) {
   if (daily === 0 || monthly === 0) {
-    return "AI 图片模型生图：0 张，仅提供图片提示词";
+    return "Gemini 图片模型生图：0 张，仅提供图片提示词";
   }
 
   const dailyText = daily === null ? "不限日次数" : `${daily} 张/天`;
   const monthlyText = monthly === null ? "不限月次数" : `${monthly} 张/月`;
-  return `AI 图片模型生图：${dailyText}，${monthlyText}`;
+  return `Gemini 图片模型生图：${dailyText}，${monthlyText}`;
 }
 
 function getPlanAction(priceCents: number | null) {

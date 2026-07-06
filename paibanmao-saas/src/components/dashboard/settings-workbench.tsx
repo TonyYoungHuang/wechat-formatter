@@ -67,7 +67,7 @@ const defaultProviderModels: ProviderModelConfig[] = [
   { name: "选题生成模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "topic", active: true },
   { name: "降低 AI 味模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "rewrite", active: true },
   { name: "图片提示词模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "image", active: true },
-  { name: "小绿书 AI 生图模型", modelId: "vertex/gemini-2.5-flash-image", purpose: "image_generation", active: true },
+  { name: "小绿书 Gemini 生图模型", modelId: "vertex/gemini-2.5-flash-image", purpose: "image_generation", active: true },
 ];
 
 async function readJson<T>(response: Response): Promise<T> {

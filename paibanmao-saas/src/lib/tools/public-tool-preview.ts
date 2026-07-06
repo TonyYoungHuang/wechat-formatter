@@ -45,7 +45,7 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
           block("图片提示词", "3:4 竖版，浅绿色微信工作台风格，清爽信息卡片，中文标题醒目，留白充足。"),
           block("结尾 CTA", "想要完整脚本，可以先保存这篇，再按自己的账号定位改写。"),
         ],
-        loginHint: "登录后可生成 3/6/9 页脚本、逐页图片提示词，并继续用 AI 图片模型生成图片。",
+        loginHint: "登录后可生成 3/6/9 页脚本、逐页图片提示词，并继续用 Gemini 图片模型生成图片。",
       };
     case "search":
       return {

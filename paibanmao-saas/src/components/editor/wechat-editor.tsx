@@ -692,7 +692,7 @@ export function WechatEditor() {
 
   async function generateGreenNoteImages() {
     if (!imageGenerationEnabled) {
-      setNotice("图片生成点数包即将上线，当前套餐暂不包含 AI 生图。你可以先复制图片提示词。");
+      setNotice("图片生成点数包即将上线，当前套餐暂不包含 Gemini 生图。你可以先复制图片提示词。");
       return;
     }
 
@@ -1063,7 +1063,7 @@ export function WechatEditor() {
               </Button>
               <Button className="w-full" onClick={generateGreenNoteImages} disabled={generatingImages || !imagePrompts.length || !imageGenerationEnabled}>
                 {generatingImages ? <Loader2 className="size-4 animate-spin" /> : <Images className="size-4" />}
-                {imageGenerationEnabled ? "用 AI 图片模型生成图片" : "AI 生图点数包即将上线"}
+                {imageGenerationEnabled ? "用 Gemini 图片模型生成图片" : "Gemini 生图点数包即将上线"}
               </Button>
               <textarea
                 className="min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 outline-none focus:border-emerald-400"

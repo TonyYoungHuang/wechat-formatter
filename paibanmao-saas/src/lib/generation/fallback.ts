@@ -158,6 +158,6 @@ export function buildImagePrompts(topic: string, scene: string, style: string, p
     style,
     prompts,
     imageGenerationReady: false,
-    nextStep: "当前先生成图片提示词；开通 AI 生图后可将 prompts 数组逐条发送给图片生成模型。",
+    nextStep: "当前先生成图片提示词；开通 Gemini 生图后可将 prompts 数组逐条发送给图片生成模型。",
   };
 }
