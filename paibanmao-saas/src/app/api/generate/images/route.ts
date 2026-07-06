@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     }
 
     if (!imageGenerationEnabled()) {
-      return errorResponse("图片生成点数包即将上线，当前套餐暂不包含 image2 生图。你可以先使用图片提示词。", 403);
+      return errorResponse("图片生成点数包即将上线，当前套餐暂不包含 AI 生图。你可以先使用图片提示词。", 403);
     }
 
     const imageCount = parsed.data.prompts.length;

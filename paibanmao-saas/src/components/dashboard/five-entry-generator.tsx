@@ -46,14 +46,7 @@ type GenerationJob = {
   type: string;
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   output?: Record<string, unknown> | null;
-  error?: string | null;
-  tokenInput: number;
-  tokenOutput: number;
   createdAt: string;
-  promptTemplate?: {
-    key: string;
-    version: number;
-  } | null;
 };
 
 const goals = [
@@ -130,24 +123,22 @@ function getStringList(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
-function getJobSource(job: GenerationJob) {
-  const source = job.output?.source;
-  if (typeof source === "string") {
-    return source;
-  }
-
-  const provider = job.output?.provider;
-  const model = job.output?.model;
-  if (typeof provider === "string" && typeof model === "string") {
-    return `${provider}:${model}`;
-  }
-
-  return "-";
-}
-
 function getJobProjectId(job: GenerationJob) {
   const projectId = job.output?.projectId;
   return typeof projectId === "string" ? projectId : "";
+}
+
+function getJobUserMessage(job: GenerationJob) {
+  if (job.status === "succeeded") {
+    return "内容已生成，可以继续编辑、复制或发布前检查。";
+  }
+  if (job.status === "failed") {
+    return "这次生成没有完成，请稍后重试；如果多次失败，可以联系微信客服。";
+  }
+  if (job.status === "running") {
+    return "正在生成，请稍等片刻。";
+  }
+  return "任务已提交，等待开始生成。";
 }
 
 function formatJobType(type: string) {
@@ -651,7 +642,7 @@ export function FiveEntryGenerator() {
           {jobs.slice(0, 8).map((job) => {
             const projectId = getJobProjectId(job);
             return (
-              <div key={job.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm lg:grid-cols-[150px_120px_1fr_160px] lg:items-center">
+              <div key={job.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm lg:grid-cols-[150px_120px_1fr_120px] lg:items-center">
                 <div>
                   <div className="font-medium text-slate-950">{formatJobType(job.type)}</div>
                   <div className="mt-1 text-xs text-slate-500">{new Date(job.createdAt).toLocaleString()}</div>
@@ -660,11 +651,7 @@ export function FiveEntryGenerator() {
                   {statusLabels[job.status]}
                 </span>
                 <div className="min-w-0 text-slate-600">
-                  <div className="truncate">来源：{getJobSource(job)}</div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    Prompt：{job.promptTemplate ? `${job.promptTemplate.key} v${job.promptTemplate.version}` : "-"} · Token：{job.tokenInput}/{job.tokenOutput}
-                  </div>
-                  {job.error ? <div className="mt-1 truncate text-xs text-red-600">{job.error}</div> : null}
+                  <div className={job.status === "failed" ? "text-red-600" : "text-slate-600"}>{getJobUserMessage(job)}</div>
                 </div>
                 <div className="flex gap-2 lg:justify-end">
                   {projectId ? (
@@ -672,9 +659,6 @@ export function FiveEntryGenerator() {
                       <Link href={`/dashboard/editor?projectId=${projectId}`}>去编辑</Link>
                     </Button>
                   ) : null}
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={`/api/generation-jobs/${job.id}`}>详情</Link>
-                  </Button>
                 </div>
               </div>
             );

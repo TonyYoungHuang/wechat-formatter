@@ -335,7 +335,7 @@ export function ComplianceWorkbench() {
                     <p className="mt-1 text-sm leading-6 text-emerald-900">{result.aiReview.editorSummary}</p>
                     {result.aiReviewMeta ? (
                       <p className="mt-1 text-xs text-emerald-700">
-                        {result.aiReviewMeta.fallback ? "本地规则审稿" : `${result.aiReviewMeta.provider} · ${result.aiReviewMeta.model}`}
+                        {result.aiReviewMeta.fallback ? "本地规则审稿" : "AI 审稿已完成"}
                         {result.aiReviewMeta.aiError ? ` · ${result.aiReviewMeta.aiError}` : ""}
                       </p>
                     ) : null}

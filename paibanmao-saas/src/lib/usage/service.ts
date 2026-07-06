@@ -113,11 +113,11 @@ export async function assertCanUseImageGeneration(workspaceId: string, planCode:
   const summary = await getImageGenerationUsageSummary(workspaceId, planCode);
 
   if (summary.daily.limit !== null && summary.daily.used + quantity > summary.daily.limit) {
-    throw new Error(`Current plan allows ${summary.daily.limit} image2 images per day.`);
+    throw new Error(`Current plan allows ${summary.daily.limit} AI images per day.`);
   }
 
   if (summary.monthly.limit !== null && summary.monthly.used + quantity > summary.monthly.limit) {
-    throw new Error(`Current plan allows ${summary.monthly.limit} image2 images per month.`);
+    throw new Error(`Current plan allows ${summary.monthly.limit} AI images per month.`);
   }
 }
 

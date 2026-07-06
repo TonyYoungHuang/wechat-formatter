@@ -37,8 +37,8 @@ addCheck({
   ok: configuredAny(["REQUESTY_API_KEY", "AI_OPENAI_COMPATIBLE_API_KEY"]),
   message: "REQUESTY_API_KEY is required for Requesty text and image generation.",
 });
-warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is anthropic/claude-3-5-sonnet-latest.");
-warnEnv("REQUESTY_IMAGE_MODEL", "REQUESTY_IMAGE_MODEL is optional; default is openai/gpt-image-2.");
+warnEnv("REQUESTY_TEXT_MODEL", "REQUESTY_TEXT_MODEL is optional; default is bedrock/claude-sonnet-4-5.");
+warnEnv("REQUESTY_IMAGE_MODEL", "REQUESTY_IMAGE_MODEL is optional; default is vertex/gemini-2.5-flash-image.");
 warnEnv("HEALTH_ALERT_WEBHOOK_URL", "HEALTH_ALERT_WEBHOOK_URL is recommended for production ops verification alerts.");
 warnEnv("BACKUP_DIR", "BACKUP_DIR is optional; default database backups are written to ./backups.");
 

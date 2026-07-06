@@ -161,7 +161,7 @@ const promptTemplates = [
 const providerName = process.env.AI_DEFAULT_PROVIDER || "requesty";
 const providerBaseUrl = process.env.AI_OPENAI_COMPATIBLE_BASE_URL || process.env.REQUESTY_BASE_URL;
 const providerApiKey = process.env.AI_OPENAI_COMPATIBLE_API_KEY || process.env.REQUESTY_API_KEY;
-const providerModel = process.env.AI_DEFAULT_MODEL || process.env.REQUESTY_TEXT_MODEL || "anthropic/claude-3-5-sonnet-latest";
+const providerModel = process.env.AI_DEFAULT_MODEL || process.env.REQUESTY_TEXT_MODEL || "bedrock/claude-sonnet-4-5";
 const providerApiKeyRef = process.env.REQUESTY_API_KEY ? "REQUESTY_API_KEY" : "AI_OPENAI_COMPATIBLE_API_KEY";
 const providerModelPurposes = ["content", "topic", "rewrite", "image"];
 

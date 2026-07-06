@@ -137,6 +137,7 @@ export function AccountProfilesWorkbench() {
   const [message, setMessage] = useState("");
   const [generatingProfile, setGeneratingProfile] = useState(false);
   const [savingKnowledge, setSavingKnowledge] = useState(false);
+  const [showAdvancedProfileFields, setShowAdvancedProfileFields] = useState(false);
   const knowledgeSubmitButtonRef = useRef<HTMLButtonElement | null>(null);
 
   async function load(options: { keepMessage?: boolean } = {}) {
@@ -173,6 +174,7 @@ export function AccountProfilesWorkbench() {
 
   function editProfile(profile: AccountProfile) {
     setEditingProfileId(profile.id);
+    setShowAdvancedProfileFields(true);
     setForm({
       name: profile.name,
       type: profile.type,
@@ -241,6 +243,7 @@ export function AccountProfilesWorkbench() {
         }),
       );
       setEditingProfileId("");
+      setShowAdvancedProfileFields(true);
       setForm({
         ...data.profile,
         monetizationMethods: data.profile.monetizationMethods.join("，"),
@@ -249,7 +252,7 @@ export function AccountProfilesWorkbench() {
       setMessage(
         data.fallback
           ? "已用本地规则生成账号档案草稿。你可以检查后保存；配置模型后会更贴近你的描述。"
-          : `已使用 ${data.model} 生成账号档案草稿，请检查后保存。`,
+          : "AI 已生成账号档案草稿，请检查后保存。",
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "生成账号档案失败。");
@@ -479,23 +482,19 @@ export function AccountProfilesWorkbench() {
                 取消编辑
               </Button>
             ) : null}
+            <Button size="sm" variant="secondary" type="button" onClick={() => setShowAdvancedProfileFields((value) => !value)}>
+              {showAdvancedProfileFields ? "收起高级设置" : "展开高级设置"}
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-sm leading-6 text-emerald-900">
+            简单模式只需要写清楚：账号名称、内容领域、目标读者、产品服务、人设和读者痛点。其他字段可以让 AI 先补，后续再进高级设置微调。
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1 text-sm">
               <span className="text-slate-600">账号名称</span>
               <input value={form.name} onChange={(event) => update("name", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-600">账号类型</span>
-              <select value={form.type} onChange={(event) => update("type", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
-                <option value="wechat_official">公众号</option>
-                <option value="green_note">小绿书方向</option>
-                <option value="question_host">问一问身份</option>
-                <option value="personal_ip">个人 IP</option>
-                <option value="local_business">本地商家</option>
-              </select>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-600">内容领域</span>
@@ -509,10 +508,6 @@ export function AccountProfilesWorkbench() {
               <span className="text-slate-600">产品/服务</span>
               <input value={form.productOrService} onChange={(event) => update("productOrService", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
             </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-600">变现方式</span>
-              <input value={form.monetizationMethods} onChange={(event) => update("monetizationMethods", event.target.value)} placeholder="资料包，咨询，课程" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-            </label>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <label className="space-y-1 text-sm">
@@ -524,18 +519,36 @@ export function AccountProfilesWorkbench() {
               <textarea value={form.audiencePainPoints} onChange={(event) => update("audiencePainPoints", event.target.value)} className="min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400" />
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-slate-600">语气风格</span>
-              <textarea value={form.tone} onChange={(event) => update("tone", event.target.value)} className="min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400" />
-            </label>
-            <label className="space-y-1 text-sm">
               <span className="text-slate-600">常用 CTA</span>
               <textarea value={form.commonCta} onChange={(event) => update("commonCta", event.target.value)} className="min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-emerald-400" />
             </label>
-            <label className="space-y-1 text-sm lg:col-span-2">
-              <span className="text-slate-600">禁用词 / 禁用表达</span>
-              <input value={form.forbiddenWords} onChange={(event) => update("forbiddenWords", event.target.value)} placeholder="逗号分隔，例如：暴富，稳赚，唯一" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-            </label>
           </div>
+          {showAdvancedProfileFields ? (
+            <div className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-4 md:grid-cols-2">
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-600">账号类型</span>
+                <select value={form.type} onChange={(event) => update("type", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400">
+                  <option value="wechat_official">公众号</option>
+                  <option value="green_note">小绿书方向</option>
+                  <option value="question_host">问一问身份</option>
+                  <option value="personal_ip">个人 IP</option>
+                  <option value="local_business">本地商家</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-600">变现方式</span>
+                <input value={form.monetizationMethods} onChange={(event) => update("monetizationMethods", event.target.value)} placeholder="资料包，咨询，课程" className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-600">语气风格</span>
+                <textarea value={form.tone} onChange={(event) => update("tone", event.target.value)} className="min-h-20 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-emerald-400" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-600">禁用词 / 禁用表达</span>
+                <textarea value={form.forbiddenWords} onChange={(event) => update("forbiddenWords", event.target.value)} placeholder="逗号分隔，例如：暴富，稳赚，唯一" className="min-h-20 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-emerald-400" />
+              </label>
+            </div>
+          ) : null}
           <div className="flex justify-end">
             <Button onClick={saveProfile} disabled={!form.name || !form.niche || !form.persona || !form.audience || !form.audiencePainPoints}>
               {editingProfileId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}

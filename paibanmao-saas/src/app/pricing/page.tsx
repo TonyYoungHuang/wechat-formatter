@@ -54,12 +54,12 @@ function formatGenerationLimit(daily: number | null, monthly: number | null) {
 
 function formatImageGenerationLimit(daily: number | null, monthly: number | null) {
   if (daily === 0 || monthly === 0) {
-    return "image2 模型生图：0 张，仅提供图片提示词";
+    return "AI 图片模型生图：0 张，仅提供图片提示词";
   }
 
   const dailyText = daily === null ? "不限日次数" : `${daily} 张/天`;
   const monthlyText = monthly === null ? "不限月次数" : `${monthly} 张/月`;
-  return `image2 模型生图：${dailyText}，${monthlyText}`;
+  return `AI 图片模型生图：${dailyText}，${monthlyText}`;
 }
 
 function getPlanAction(priceCents: number | null) {
@@ -104,7 +104,7 @@ export default async function PricingPage() {
         <p className="text-sm font-medium text-emerald-700">排版猫套餐</p>
         <h1 className="mt-3 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">价格</h1>
         <p className="mt-5 text-lg leading-8 text-slate-600">
-          新网站上线促销中，文字内容统一使用 Claude 3.5 Sonnet 生成；入门版和专业版按当前优惠价开通，原价会在套餐卡片中用删除线标出。
+          新网站上线促销中，文字内容统一使用 Claude Sonnet 生成；入门版和专业版按当前优惠价开通，原价会在套餐卡片中用删除线标出。
         </p>
         {fallback ? (
           <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -122,7 +122,7 @@ export default async function PricingPage() {
               <p className="text-base leading-7 text-slate-600">{plan.description}</p>
               <PlanPrice code={plan.code} priceCents={plan.priceCents} />
               <ul className="space-y-2 text-base leading-7 text-slate-600">
-                <li>Claude 3.5 Sonnet 文字生成</li>
+                <li>Claude Sonnet 文字生成</li>
                 <li>{plan.accountProfileLimit} 个账号档案</li>
                 <li>{formatGenerationLimit(plan.dailyGenerationLimit, plan.monthlyGenerationLimit)}</li>
                 <li>{formatImageGenerationLimit(plan.dailyImageGenerationLimit, plan.monthlyImageGenerationLimit)}</li>

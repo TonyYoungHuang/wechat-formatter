@@ -27,7 +27,7 @@ function requestyApiKey() {
 }
 
 function requestyImageModel(model?: string) {
-  return model || process.env.REQUESTY_IMAGE_MODEL || process.env.AI_IMAGE_MODEL || "openai/gpt-image-2";
+  return model || process.env.REQUESTY_IMAGE_MODEL || process.env.AI_IMAGE_MODEL || "vertex/gemini-2.5-flash-image";
 }
 
 function siteHeaders() {

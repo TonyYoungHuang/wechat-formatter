@@ -24,7 +24,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
 - `REQUESTY_BASE_URL` points to `https://router.requesty.ai/v1` unless a compatible Requesty endpoint changes.
 - `REQUESTY_API_KEY` is configured in the hosting provider and is not exposed to the browser.
 - `REQUESTY_TEXT_MODEL` is set, for example `openai/gpt-4o-mini`.
-- `REQUESTY_IMAGE_MODEL` is set to the selected image2 model, for example `openai/gpt-image-2`.
+- `REQUESTY_IMAGE_MODEL` is set to the selected Requesty image model, for example `vertex/gemini-2.5-flash-image`.
 - Admin Settings has at least five active model purposes:
   - `content`
   - `topic`
@@ -40,7 +40,7 @@ This checklist is for the first paid beta of Paibanmao. It focuses on the parts 
   - Save edited WeChat article HTML and green-note image prompts back to a project.
   - Use the editor to lower AI tone.
   - Generate green-note image prompts.
-  - Generate green-note images through Requesty image2 and copy the generated image links.
+  - Generate green-note images through the configured Requesty image model and copy the generated image links.
   - Save and fetch a compliance report for a generated project.
   - Add a project to the content calendar and mark it published.
   - Record project metrics and confirm the project moves to reviewed.

@@ -69,7 +69,7 @@ const pricingCards = [
     originalPrice: "",
     badge: "先体验",
     description: "适合先试一次排版猫的五入口生成能力。",
-    features: ["Claude 3.5 Sonnet 文字生成", "每天 1 次五入口内容生成", "1 个账号档案", "图片提示词", "image2 模型生图：0 张"],
+    features: ["Claude Sonnet 文字生成", "每天 1 次五入口内容生成", "1 个账号档案", "图片提示词", "AI 图片模型生图：0 张"],
   },
   {
     name: "入门版",
@@ -77,7 +77,7 @@ const pricingCards = [
     originalPrice: "¥29.00",
     badge: "新网站促销",
     description: "适合一个人运营多个微信副业账号。",
-    features: ["Claude 3.5 Sonnet 文字生成", "每月 150 次五入口内容生成", "3 个账号档案", "image2 模型生图：3 张/天，60 张/月", "每天最多做 1 组小绿书图文"],
+    features: ["Claude Sonnet 文字生成", "每月 150 次五入口内容生成", "3 个账号档案", "AI 图片模型生图：3 张/天，60 张/月", "每天最多做 1 组小绿书图文"],
   },
   {
     name: "专业版",
@@ -85,7 +85,7 @@ const pricingCards = [
     originalPrice: "¥99.00",
     badge: "新网站促销",
     description: "适合高频创作者和小团队做微信内容矩阵。",
-    features: ["Claude 3.5 Sonnet 文字生成", "每月 500 次五入口内容生成", "10 个账号档案", "image2 模型生图：10 张/天，300 张/月", "每天最多做 3 组左右小绿书图文", "高级发布前检查"],
+    features: ["Claude Sonnet 文字生成", "每月 500 次五入口内容生成", "10 个账号档案", "AI 图片模型生图：10 张/天，300 张/月", "每天最多做 3 组左右小绿书图文", "高级发布前检查"],
   },
 ];
 
@@ -140,9 +140,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-col gap-3">
             <p className="text-sm font-semibold text-emerald-700">套餐价格</p>
-            <h2 className="text-2xl font-semibold text-slate-950">Claude 3.5 Sonnet 文字生成 + image2 模型生图</h2>
+            <h2 className="text-2xl font-semibold text-slate-950">Claude Sonnet 文字生成 + AI 图片模型生图</h2>
             <p className="max-w-3xl text-base leading-7 text-slate-600">
-              新网站上线促销中，文字内容统一使用 Claude 3.5 Sonnet 生成，套餐内同时包含微信五入口内容生成和小绿书 image2 生图额度。免费版只提供图片提示词，不包含真生图。
+              新网站上线促销中，文字内容统一使用 Claude Sonnet 生成，套餐内同时包含微信五入口内容生成和小绿书 AI 生图额度。免费版只提供图片提示词，不包含真生图。
             </p>
           </div>
           <div className="grid items-stretch gap-4 lg:grid-cols-3">

@@ -63,11 +63,11 @@ type PaymentConfigStatus = {
 };
 
 const defaultProviderModels: ProviderModelConfig[] = [
-  { name: "内容生成模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "content", active: true },
-  { name: "选题生成模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "topic", active: true },
-  { name: "降低 AI 味模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "rewrite", active: true },
-  { name: "图片提示词模型", modelId: "anthropic/claude-3-5-sonnet-latest", purpose: "image", active: true },
-  { name: "小绿书 image2 生图模型", modelId: "openai/gpt-image-2", purpose: "image_generation", active: true },
+  { name: "内容生成模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "content", active: true },
+  { name: "选题生成模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "topic", active: true },
+  { name: "降低 AI 味模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "rewrite", active: true },
+  { name: "图片提示词模型", modelId: "bedrock/claude-sonnet-4-5", purpose: "image", active: true },
+  { name: "小绿书 AI 生图模型", modelId: "vertex/gemini-2.5-flash-image", purpose: "image_generation", active: true },
 ];
 
 async function readJson<T>(response: Response): Promise<T> {

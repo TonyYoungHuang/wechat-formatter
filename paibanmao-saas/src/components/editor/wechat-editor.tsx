@@ -474,6 +474,7 @@ export function WechatEditor() {
   const [generatingImages, setGeneratingImages] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [layouting, setLayouting] = useState(false);
+  const [showMoreEditorTools, setShowMoreEditorTools] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -620,7 +621,7 @@ export function WechatEditor() {
       setNotice(
         data.fallback
           ? `已用本地规则完成排版。${data.output.notes.join("；")}`
-          : `已使用 ${data.output.model} 完成 AI 精排：${data.output.notes.join("；")}`,
+          : `AI 精排已完成：${data.output.notes.join("；")}`,
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "AI 精排失败。");
@@ -691,7 +692,7 @@ export function WechatEditor() {
 
   async function generateGreenNoteImages() {
     if (!imageGenerationEnabled) {
-      setNotice("图片生成点数包即将上线，当前套餐暂不包含 image2 生图。你可以先复制图片提示词。");
+      setNotice("图片生成点数包即将上线，当前套餐暂不包含 AI 生图。你可以先复制图片提示词。");
       return;
     }
 
@@ -716,7 +717,7 @@ export function WechatEditor() {
         }),
       );
       setGeneratedImages(data.output.images);
-      setNotice(`已使用 ${data.output.model} 生成 ${data.output.images.length} 张小绿书图片。`);
+      setNotice(`已生成 ${data.output.images.length} 张小绿书图片。`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "小绿书图片生成失败。");
     } finally {
@@ -840,7 +841,7 @@ export function WechatEditor() {
       const nextHtml = textToHtml(data.output.body);
       editor.commands.setContent(nextHtml);
       setHtml(nextHtml);
-      setNotice(data.fallback ? "已用本地规则降低 AI 味；配置模型后可获得更自然的改写。" : `已使用 ${data.output.model} 完成自然改写。`);
+      setNotice(data.fallback ? "已用本地规则降低 AI 味；配置模型后可获得更自然的改写。" : "已完成自然改写。");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "自然改写失败。");
     } finally {
@@ -1062,7 +1063,7 @@ export function WechatEditor() {
               </Button>
               <Button className="w-full" onClick={generateGreenNoteImages} disabled={generatingImages || !imagePrompts.length || !imageGenerationEnabled}>
                 {generatingImages ? <Loader2 className="size-4 animate-spin" /> : <Images className="size-4" />}
-                {imageGenerationEnabled ? "用 image2 生成图片" : "image2 生图点数包即将上线"}
+                {imageGenerationEnabled ? "用 AI 图片模型生成图片" : "AI 生图点数包即将上线"}
               </Button>
               <textarea
                 className="min-h-[420px] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 outline-none focus:border-emerald-400"
@@ -1167,34 +1168,45 @@ export function WechatEditor() {
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           保存到项目
         </Button>
-        <Button className="w-full" onClick={copyHtml} variant="secondary" disabled={mode !== "wechat_article"}>
+        <Button className="w-full" onClick={copyHtml} disabled={mode !== "wechat_article"}>
           <FileCode2 className="size-4" />
           复制到公众号后台
-        </Button>
-        <Button className="w-full" onClick={copyText} variant="secondary" disabled={!getCurrentPlainText().trim()}>
-          <Copy className="size-4" />
-          复制当前纯文本
-        </Button>
-        <Button className="w-full" onClick={copyMarkdown} variant="secondary" disabled={mode !== "wechat_article"}>
-          <Copy className="size-4" />
-          复制 Markdown
         </Button>
         <Button className="w-full" onClick={rewriteCurrentContent} variant="secondary" disabled={mode !== "wechat_article" || rewriting || loading}>
           {rewriting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
           降低 AI 味
         </Button>
-        <Button className="w-full" onClick={downloadHtml} variant="secondary" disabled={mode !== "wechat_article"}>
-          <Download className="size-4" />
-          下载 HTML
-        </Button>
-        <Button className="w-full" onClick={copyGreenNote} variant="secondary" disabled={mode !== "green_note" || !greenBody.trim()}>
-          <Images className="size-4" />
-          复制小绿书文案
-        </Button>
         <Button className="w-full" onClick={runCheck} variant="secondary" disabled={!getCurrentPlainText().trim()}>
           <CheckCircle2 className="size-4" />
           发布前检查
         </Button>
+        <button
+          className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+          onClick={() => setShowMoreEditorTools((value) => !value)}
+          type="button"
+        >
+          {showMoreEditorTools ? "收起更多工具" : "更多导出工具"}
+        </button>
+        {showMoreEditorTools ? (
+          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-2">
+            <Button className="w-full" onClick={copyText} variant="secondary" disabled={!getCurrentPlainText().trim()}>
+              <Copy className="size-4" />
+              复制当前纯文本
+            </Button>
+            <Button className="w-full" onClick={copyMarkdown} variant="secondary" disabled={mode !== "wechat_article"}>
+              <Copy className="size-4" />
+              复制 Markdown
+            </Button>
+            <Button className="w-full" onClick={downloadHtml} variant="secondary" disabled={mode !== "wechat_article"}>
+              <Download className="size-4" />
+              下载 HTML
+            </Button>
+            <Button className="w-full" onClick={copyGreenNote} variant="secondary" disabled={mode !== "green_note" || !greenBody.trim()}>
+              <Images className="size-4" />
+              复制小绿书文案
+            </Button>
+          </div>
+        ) : null}
         {notice ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p> : null}
         <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">
           当前入口：{getEntryLabel(mode)}
