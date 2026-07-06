@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
 import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
 import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
+import { buildKnowledgeTagsWithAi } from "@/lib/ai/knowledge-tags";
 import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
 import { getContentGoalStrategy } from "@/lib/generation/goals";
@@ -120,6 +121,13 @@ export async function runFiveEntryGeneration(input: {
     }
   }
 
+  const generatedContentTagging = await buildKnowledgeTagsWithAi({
+    title: `生成内容标签：${scopedPayload.topic}`,
+    sourceType: "generated_content",
+    content: variants.map((variant) => `${variant.entry}\n${variant.title}\n${variant.body}`).join("\n\n"),
+    manualTags: ["系统生成", "自动标签", goalStrategy.label],
+  });
+
   return prisma.$transaction(async (tx) => {
     const project = await tx.contentProject.create({
       data: {
@@ -198,6 +206,7 @@ export async function runFiveEntryGeneration(input: {
       accountProfileId: accountProfile.id,
       projectTitle: scopedPayload.topic,
       variants,
+      precomputedTagging: generatedContentTagging,
     });
 
     if (scopedPayload.topicId) {

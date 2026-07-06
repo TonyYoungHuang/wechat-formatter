@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { accountKnowledgeItemSchema } from "@/lib/account-knowledge/schemas";
-import { buildKnowledgeTags } from "@/lib/account-knowledge/tagging";
+import { buildKnowledgeTagsWithAi } from "@/lib/ai/knowledge-tags";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -45,7 +45,7 @@ export async function POST(request: Request, context: RouteContext) {
       where: { id, workspaceId: current.workspace.id },
       select: { id: true },
     });
-    const tagging = buildKnowledgeTags({
+    const tagging = await buildKnowledgeTagsWithAi({
       title: parsed.data.title,
       sourceType: parsed.data.sourceType,
       content: parsed.data.content,

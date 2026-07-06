@@ -94,6 +94,8 @@ export function buildKnowledgeTags(input: {
   };
 }
 
+export type KnowledgeTaggingResult = ReturnType<typeof buildKnowledgeTags>;
+
 type VariantLike = {
   entry: string;
   title: string;
@@ -107,15 +109,18 @@ export async function recordGeneratedContentTags(
     accountProfileId: string;
     projectTitle: string;
     variants: VariantLike[];
+    precomputedTagging?: KnowledgeTaggingResult;
   },
 ) {
   const combined = input.variants.map((variant) => `${variant.entry}\n${variant.title}\n${variant.body}`).join("\n\n");
-  const tagging = buildKnowledgeTags({
-    title: `生成内容标签：${input.projectTitle}`,
-    sourceType: "generated_content",
-    content: combined,
-    manualTags: ["系统生成", "自动标签"],
-  });
+  const tagging =
+    input.precomputedTagging ??
+    buildKnowledgeTags({
+      title: `生成内容标签：${input.projectTitle}`,
+      sourceType: "generated_content",
+      content: combined,
+      manualTags: ["系统生成", "自动标签"],
+    });
 
   if (!tagging.tags.length) return;
 

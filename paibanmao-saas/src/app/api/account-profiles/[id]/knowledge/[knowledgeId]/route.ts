@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
 import { accountKnowledgeItemPatchSchema } from "@/lib/account-knowledge/schemas";
-import { buildKnowledgeTags } from "@/lib/account-knowledge/tagging";
+import { buildKnowledgeTagsWithAi } from "@/lib/ai/knowledge-tags";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -35,7 +35,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const data: Prisma.AccountKnowledgeItemUpdateInput = { ...parsed.data };
 
     if (parsed.data.content !== undefined || parsed.data.tags !== undefined || parsed.data.title !== undefined || parsed.data.sourceType !== undefined) {
-      const tagging = buildKnowledgeTags({
+      const tagging = await buildKnowledgeTagsWithAi({
         title: parsed.data.title ?? existing.title,
         sourceType: parsed.data.sourceType ?? existing.sourceType,
         content: parsed.data.content ?? "",
