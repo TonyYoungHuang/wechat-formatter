@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BookOpen, Copy, PencilLine, Plus, Star, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BookOpen, Copy, Loader2, PencilLine, Plus, Sparkles, Star, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +49,19 @@ type FormState = {
   commonCta: string;
   forbiddenWords: string;
   sampleText: string;
+};
+
+type SuggestedProfile = Omit<FormState, "monetizationMethods" | "forbiddenWords"> & {
+  monetizationMethods: string[];
+  forbiddenWords: string[];
+};
+
+type SuggestProfileResult = {
+  profile: SuggestedProfile;
+  provider: string;
+  model: string;
+  fallback?: boolean;
+  aiError?: string | null;
 };
 
 const initialForm: FormState = {
@@ -120,14 +133,20 @@ export function AccountProfilesWorkbench() {
   const [knowledgeForm, setKnowledgeForm] = useState(initialKnowledgeForm);
   const [editingKnowledgeId, setEditingKnowledgeId] = useState("");
   const [editingProfileId, setEditingProfileId] = useState("");
+  const [profileIdea, setProfileIdea] = useState("");
   const [message, setMessage] = useState("");
+  const [generatingProfile, setGeneratingProfile] = useState(false);
+  const [savingKnowledge, setSavingKnowledge] = useState(false);
+  const knowledgeSubmitButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  async function load() {
+  async function load(options: { keepMessage?: boolean } = {}) {
     try {
       const data = await readJson<{ profiles: AccountProfile[] }>(await fetch("/api/account-profiles"));
       setProfiles(data.profiles);
       setSelectedKnowledgeProfileId((current) => current || data.profiles[0]?.id || "");
-      setMessage("");
+      if (!options.keepMessage) {
+        setMessage("");
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载账号档案失败。");
     }
@@ -201,6 +220,44 @@ export function AccountProfilesWorkbench() {
     }
   }
 
+  async function suggestProfile() {
+    if (generatingProfile) {
+      return;
+    }
+
+    if (profileIdea.trim().length < 2) {
+      setMessage("请先用一句话描述你的账号方向，例如：我想做世界杯历史故事公众号。");
+      return;
+    }
+
+    setGeneratingProfile(true);
+    setMessage("正在生成账号档案草稿，会自动填入下方表单。");
+    try {
+      const data = await readJson<SuggestProfileResult>(
+        await fetch("/api/account-profiles/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idea: profileIdea }),
+        }),
+      );
+      setEditingProfileId("");
+      setForm({
+        ...data.profile,
+        monetizationMethods: data.profile.monetizationMethods.join("，"),
+        forbiddenWords: data.profile.forbiddenWords.join("，"),
+      });
+      setMessage(
+        data.fallback
+          ? "已用本地规则生成账号档案草稿。你可以检查后保存；配置模型后会更贴近你的描述。"
+          : `已使用 ${data.model} 生成账号档案草稿，请检查后保存。`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "生成账号档案失败。");
+    } finally {
+      setGeneratingProfile(false);
+    }
+  }
+
   async function duplicateProfile(id: string) {
     try {
       await readJson(await fetch(`/api/account-profiles/${id}/duplicate`, { method: "POST" }));
@@ -260,14 +317,23 @@ export function AccountProfilesWorkbench() {
       setMessage("请先创建账号档案。");
       return;
     }
+    if (savingKnowledge) {
+      return;
+    }
+    if (!knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10) {
+      setMessage("请先填写资料标题，并粘贴至少 10 个字的内容用于提取标签。");
+      return;
+    }
 
     const payload = {
       ...knowledgeForm,
       tags: splitList(knowledgeForm.tags),
     };
 
+    setSavingKnowledge(true);
+    setMessage("正在提取标签，只保存标签、字数和内容指纹，不保存原文。");
     try {
-      await readJson<{ item: AccountKnowledgeItem }>(
+      const data = await readJson<{ item: AccountKnowledgeItem }>(
         await fetch(
           editingKnowledgeId
             ? `/api/account-profiles/${selectedKnowledgeProfile.id}/knowledge/${editingKnowledgeId}`
@@ -281,12 +347,32 @@ export function AccountProfilesWorkbench() {
       );
       setEditingKnowledgeId("");
       setKnowledgeForm(initialKnowledgeForm);
-      setMessage("账号知识库已更新。");
-      await load();
+      const sampleTags = data.item.tags.slice(0, 8).join("、");
+      setMessage(`已提取 ${data.item.tags.length} 个标签并写入账号画像：${sampleTags || "暂无标签，请补充更具体的内容或手动标签"}。原文未保存。`);
+      await load({ keepMessage: true });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "保存知识失败。");
+    } finally {
+      setSavingKnowledge(false);
     }
   }
+
+  useEffect(() => {
+    const button = knowledgeSubmitButtonRef.current;
+    if (!button) {
+      return;
+    }
+
+    const handleClick = (event: MouseEvent) => {
+      event.preventDefault();
+      void saveKnowledge();
+    };
+
+    button.addEventListener("click", handleClick);
+    return () => button.removeEventListener("click", handleClick);
+    // Native listener is a fallback for this primary action button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingKnowledgeId, knowledgeForm, savingKnowledge, selectedKnowledgeProfile?.id]);
 
   async function toggleKnowledge(item: AccountKnowledgeItem) {
     if (!selectedKnowledgeProfile) return;
@@ -331,7 +417,57 @@ export function AccountProfilesWorkbench() {
         <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{profiles.length} 个档案</div>
       </div>
 
-      {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{message}</div> : null}
+      {message ? (
+        <div aria-live="polite" data-testid="account-profile-message" className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          {message}
+        </div>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-5 text-emerald-600" />
+            AI 辅助创建账号档案
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-600">用一句话描述你的账号方向</span>
+              <textarea
+                className="min-h-24 w-full rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2 leading-6 outline-none focus:border-emerald-400"
+                onChange={(event) => setProfileIdea(event.target.value)}
+                placeholder="例如：我想做一个讲世界杯历史故事的公众号，面向喜欢足球和人物故事的普通读者，后面想卖资料包或社群。"
+                value={profileIdea}
+              />
+            </label>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-medium text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-60"
+              disabled={generatingProfile || profileIdea.trim().length < 2}
+              onClick={suggestProfile}
+              title="根据你的账号想法自动生成定位、人设、读者、痛点、语气和 CTA。"
+              type="button"
+            >
+              {generatingProfile ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {generatingProfile ? "生成中..." : "生成档案草稿"}
+            </button>
+          </div>
+          <div className="grid gap-3 text-sm leading-6 text-slate-600 md:grid-cols-3">
+            <div className="rounded-lg border border-slate-100 bg-white p-3">
+              <div className="font-medium text-slate-900">1. 先说方向</div>
+              <p className="mt-1">写你想做什么账号、面向谁、以后怎么变现。</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white p-3">
+              <div className="font-medium text-slate-900">2. AI 补齐画像</div>
+              <p className="mt-1">自动生成定位、人设、读者痛点、语气和常用 CTA。</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white p-3">
+              <div className="font-medium text-slate-900">3. 检查后保存</div>
+              <p className="mt-1">草稿会填入下方表单，你可以改完再保存。</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -438,35 +574,43 @@ export function AccountProfilesWorkbench() {
         <CardContent className="space-y-4">
           {profiles.length ? (
             <>
-              <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
-                <label className="space-y-1 text-sm">
-                  <span className="text-slate-600">资料标题</span>
-                  <input value={knowledgeForm.title} onChange={(event) => updateKnowledge("title", event.target.value)} placeholder="例如：我的公众号旧文标签" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+              <div className="space-y-4">
+                <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
+                  <label className="space-y-1 text-sm">
+                    <span className="text-slate-600">资料标题</span>
+                    <input value={knowledgeForm.title} onChange={(event) => updateKnowledge("title", event.target.value)} placeholder="例如：我的公众号旧文标签" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="text-slate-600">资料类型</span>
+                    <select value={knowledgeForm.sourceType} onChange={(event) => updateKnowledge("sourceType", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+                      {Object.entries(knowledgeSourceLabels).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label className="block space-y-1 text-sm">
+                  <span className="text-slate-600">原文输入，仅用于提取标签，不会保存</span>
+                  <textarea value={knowledgeForm.content} onChange={(event) => updateKnowledge("content", event.target.value)} placeholder="粘贴公众号旧文片段、产品说明、真实案例、常讲观点、读者反馈等。保存后服务器只保留标签、字数和指纹。" className="min-h-36 w-full rounded-lg border border-slate-200 px-3 py-2 leading-6 outline-none focus:border-emerald-400" />
                 </label>
-                <label className="space-y-1 text-sm">
-                  <span className="text-slate-600">资料类型</span>
-                  <select value={knowledgeForm.sourceType} onChange={(event) => updateKnowledge("sourceType", event.target.value)} className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
-                    {Object.entries(knowledgeSourceLabels).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <label className="block space-y-1 text-sm">
-                <span className="text-slate-600">原文输入，仅用于提取标签，不会保存</span>
-                <textarea value={knowledgeForm.content} onChange={(event) => updateKnowledge("content", event.target.value)} placeholder="粘贴公众号旧文片段、产品说明、真实案例、常讲观点、读者反馈等。保存后服务器只保留标签、字数和指纹。" className="min-h-36 w-full rounded-lg border border-slate-200 px-3 py-2 leading-6 outline-none focus:border-emerald-400" />
-              </label>
-              <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-                <label className="space-y-1 text-sm">
-                  <span className="text-slate-600">手动补充标签</span>
-                  <input value={knowledgeForm.tags} onChange={(event) => updateKnowledge("tags", event.target.value)} placeholder="逗号分隔，例如：开头，转化，读者痛点" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={saveKnowledge} disabled={!knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10}>
-                    {editingKnowledgeId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}
-                    {editingKnowledgeId ? "更新知识" : "添加知识"}
-                  </Button>
-                  {editingKnowledgeId ? <Button variant="secondary" onClick={cancelKnowledgeEdit}>取消</Button> : null}
+                <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                  <label className="space-y-1 text-sm">
+                    <span className="text-slate-600">手动补充标签</span>
+                    <input value={knowledgeForm.tags} onChange={(event) => updateKnowledge("tags", event.target.value)} placeholder="逗号分隔，例如：开头，转化，读者痛点" className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400" />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      ref={knowledgeSubmitButtonRef}
+                      data-testid="knowledge-submit"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-60"
+                      disabled={savingKnowledge || !knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10}
+                      type="button"
+                    >
+                      {editingKnowledgeId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}
+                      {savingKnowledge ? "提取标签中..." : editingKnowledgeId ? "更新知识" : "添加知识"}
+                    </button>
+                    {editingKnowledgeId ? <Button type="button" variant="secondary" onClick={cancelKnowledgeEdit}>取消</Button> : null}
+                  </div>
                 </div>
               </div>
               <div className="grid gap-3 lg:grid-cols-2">

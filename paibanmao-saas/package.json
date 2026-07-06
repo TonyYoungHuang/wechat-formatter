@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && node scripts/button-audit.mjs",
     "check:env": "node scripts/env-check.mjs",
     "ops:verify": "node scripts/ops-verify.mjs",
     "backup:db": "node scripts/backup-postgres.mjs",

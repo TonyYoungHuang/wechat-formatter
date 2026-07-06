@@ -31,6 +31,16 @@ function businessErrorStatus(message: string) {
   return null;
 }
 
+function localizeErrorMessage(message: string) {
+  const labels: Record<string, string> = {
+    "Create an account profile first.": "请先创建一个账号档案。账号档案会告诉 AI：你是谁、写给谁、用什么语气写。",
+    "A valid topic is required.": "请先输入一个明确的选题。",
+    "Please sign in first.": "请先登录。",
+    "Request failed.": "请求失败，请稍后重试。",
+  };
+  return labels[message] || message;
+}
+
 function prismaErrorCode(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     return error.code;
@@ -46,11 +56,11 @@ function prismaErrorCode(error: unknown) {
 
 export function mapApiError(error: unknown) {
   if (error instanceof Error && error.message === "UNAUTHENTICATED") {
-    return errorResponse("Please sign in first.", 401);
+    return errorResponse("请先登录。", 401);
   }
 
   if (error instanceof Error && error.message === "FORBIDDEN") {
-    return errorResponse("You do not have permission to perform this action.", 403);
+    return errorResponse("你没有权限执行这个操作。", 403);
   }
 
   const code = prismaErrorCode(error);
@@ -73,9 +83,9 @@ export function mapApiError(error: unknown) {
   const status = businessErrorStatus(message);
 
   if (status) {
-    return errorResponse(message, status);
+    return errorResponse(localizeErrorMessage(message), status);
   }
 
   logger.error("Unhandled API error", { error });
-  return errorResponse(process.env.NODE_ENV === "production" ? "Request failed." : message, 500);
+  return errorResponse(process.env.NODE_ENV === "production" ? "请求失败，请稍后重试。" : localizeErrorMessage(message), 500);
 }

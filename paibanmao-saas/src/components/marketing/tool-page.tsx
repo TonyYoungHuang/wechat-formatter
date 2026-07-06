@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
 
 import { PublicPageShell } from "@/components/marketing/public-shell";
 import { UsageStepsFlow } from "@/components/marketing/usage-steps-flow";
-import { Button } from "@/components/ui/button";
+import { ToolUnlockCard } from "@/components/marketing/tool-unlock-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToolPreviewForm } from "@/components/marketing/tool-preview-form";
 import type { PublicToolKind } from "@/lib/tools/public-tool-preview";
@@ -158,22 +157,7 @@ export function ToolPage({
             </CardContent>
           </Card>
         </div>
-        <Card className="border-emerald-300 shadow-md shadow-emerald-900/[0.05]">
-          <CardHeader>
-            <CardTitle>登录后解锁</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-base leading-7 text-slate-600">
-            {unlocks.map((item) => (
-              <p key={item} className="flex gap-2">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                <span>{item}</span>
-              </p>
-            ))}
-            <Button asChild className="mt-2 w-full">
-              <Link href="/register">免费注册</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <ToolUnlockCard unlocks={unlocks} />
       </div>
       <section className="mt-10 border-t border-emerald-200 pt-8">
         <h2 className="text-2xl font-semibold text-slate-950">怎么使用这个工具</h2>

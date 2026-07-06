@@ -6,6 +6,7 @@ import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
 import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
 import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
+import { getContentGoalStrategy } from "@/lib/generation/goals";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
 import { getActivePromptTemplate } from "@/lib/prompts/service";
 import { assertCanUseGeneration } from "@/lib/usage/service";
@@ -61,6 +62,7 @@ export async function runFiveEntryGeneration(input: {
   const accountProfile = scoped.accountProfile;
   const scopedPayload = scoped.payload;
   const knowledgeContext = await getAccountKnowledgeContext(accountProfile.id);
+  const goalStrategy = getContentGoalStrategy(scopedPayload.goal);
 
   if (existingJobId) {
     await prisma.generationJob.updateMany({
@@ -72,6 +74,10 @@ export async function runFiveEntryGeneration(input: {
   const promptTemplate = await getActivePromptTemplate("five_entry_generation", {
     topic: scopedPayload.topic,
     goal: scopedPayload.goal,
+    goalLabel: goalStrategy.label,
+    goalStrategy: goalStrategy.strategy,
+    goalRequirements: goalStrategy.requirements.join("\n"),
+    goalCta: goalStrategy.cta,
     accountName: accountProfile.name,
     niche: accountProfile.niche,
     persona: accountProfile.persona,

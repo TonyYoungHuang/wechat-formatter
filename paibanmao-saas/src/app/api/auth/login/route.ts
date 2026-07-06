@@ -8,7 +8,7 @@ import { errorResponse } from "@/lib/http/errors";
 export async function POST(request: Request) {
   const parsed = loginSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return errorResponse("Email and password are required.");
+    return errorResponse("请填写正确邮箱和密码。");
   }
 
   const ipAddress = getRequestIp(request);
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       success: false,
       reason: "invalid_credentials",
     });
-    return errorResponse("Email or password is incorrect.", 401);
+    return errorResponse("邮箱或密码不正确。", 401);
   }
 
   await createSession(user.id);

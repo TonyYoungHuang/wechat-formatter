@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSiteAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
-import { defaultPromptTemplates, upsertPromptTemplate } from "@/lib/prompts/service";
+import { defaultPromptTemplates, defaultPromptTemplateVersions, upsertPromptTemplate } from "@/lib/prompts/service";
 
 const promptPatchSchema = z.object({
   prompts: z.record(
@@ -26,12 +26,14 @@ export async function GET() {
 
     const activeByKey = Object.keys(defaultPromptTemplates).map((key) => {
       const active = templates.find((template) => template.key === key && template.active);
+      const defaultVersion = defaultPromptTemplateVersions[key] ?? 0;
+      const useActive = Boolean(active && active.version >= defaultVersion);
       return {
         key,
-        version: active?.version ?? 0,
-        content: active?.content ?? defaultPromptTemplates[key],
-        active: active?.active ?? true,
-        source: active ? "database" : "default",
+        version: useActive ? active?.version ?? 0 : defaultVersion,
+        content: useActive ? active?.content ?? "" : defaultPromptTemplates[key],
+        active: useActive ? active?.active ?? true : true,
+        source: useActive ? "database" : active ? "default_newer_than_database" : "default",
       };
     });
 

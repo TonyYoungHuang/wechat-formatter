@@ -1,4 +1,5 @@
 import type { ContentEntry } from "@/lib/content/entries";
+import { getContentGoalStrategy } from "@/lib/generation/goals";
 
 type AccountProfileLike = {
   name: string;
@@ -22,21 +23,29 @@ export function buildFallbackFiveEntry(input: {
   goal: string;
   accountProfile: AccountProfileLike;
 }): GeneratedVariant[] {
-  const { topic, accountProfile } = input;
-  const cta = accountProfile.commonCta || "如果你也在做公众号副业，可以先从一个小选题开始测试。";
+  const { topic, accountProfile, goal } = input;
+  const goalStrategy = getContentGoalStrategy(goal);
+  const cta = accountProfile.commonCta || goalStrategy.cta;
   const audience = accountProfile.audience || "微信副业创作者";
   const niche = accountProfile.niche || "微信内容增长";
   const tone = accountProfile.tone || "自然、直接";
   const product = accountProfile.productOrService || "资料包、咨询或轻课程";
+  const goalChecklist = goalStrategy.requirements.map((item, index) => `${index + 1}. ${item}`);
 
   return [
     {
       entry: "wechat_article",
-      title: `${topic}: 给${audience}的一份实操拆解`,
+      title: `${topic}: 给${audience}的一份${goalStrategy.label}向拆解`,
       body: [
         `# ${topic}`,
         "",
         `这篇文章面向${audience}，用${tone}的方式讲清楚这个问题。`,
+        "",
+        "## 这次内容目标",
+        goalStrategy.strategy,
+        "",
+        "## 这次必须做到",
+        ...goalChecklist,
         "",
         "## 为什么这个选题值得写",
         `它和「${niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。读者缺的通常不是信息，而是一套能马上执行的小步骤。`,
@@ -52,21 +61,22 @@ export function buildFallbackFiveEntry(input: {
         "## 结尾 CTA",
         cta,
       ].join("\n"),
-      metadata: { format: "markdown", export: "wechat_html" },
+      metadata: { format: "markdown", export: "wechat_html", goal: goalStrategy.label },
     },
     {
       entry: "green_note",
-      title: `${topic}: 先做这 3 步`,
+      title: `${topic}: ${goalStrategy.label}版 3 页图文`,
       body: [
         `适合小绿书的短图文结构: ${topic}`,
         "",
         "第 1 页: 一句话点出痛点。",
-        "第 2 页: 告诉读者为什么现在适合开始测试。",
-        "第 3 页: 给一个最小行动清单。",
+        `第 2 页: 围绕「${goalStrategy.label}」给出一个具体判断。`,
+        "第 3 页: 给一个最小行动清单和自然 CTA。",
         "",
-        `短文案: ${audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口，观察哪里更容易获得收藏、评论和私信。`,
+        `短文案: ${audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口。这个版本重点服务「${goalStrategy.label}」目标: ${goalStrategy.strategy}`,
       ].join("\n"),
       metadata: {
+        goal: goalStrategy.label,
         pages: 3,
         imagePrompts: [
           `轻微信绿色工作台风格封面，3:4 竖版，主题「${topic}」，大标题区域清晰，浅绿色与白色留白，适合中文短图文`,
@@ -84,13 +94,16 @@ export function buildFallbackFiveEntry(input: {
         `- ${niche}怎么做`,
         `- ${audience}公众号副业`,
         "",
+        "内容目标承接:",
+        goalStrategy.strategy,
+        "",
         "搜索型标题建议:",
         `普通人做${topic}，先解决这 3 个问题`,
         "",
         "摘要前 100 字建议:",
         `本文用一篇文章讲清「${topic}」的可执行步骤，适合${audience}参考。`,
       ].join("\n"),
-      metadata: { keywords: [topic, niche, audience] },
+      metadata: { keywords: [topic, `${niche}怎么做`, `${audience}公众号副业`], goal: goalStrategy.label },
     },
     {
       entry: "question",
@@ -102,7 +115,7 @@ export function buildFallbackFiveEntry(input: {
         "",
         `可以从「${topic}」这个方向开始测试。${cta}`,
       ].join("\n"),
-      metadata: { answerTone: accountProfile.tone },
+      metadata: { answerTone: accountProfile.tone, goal: goalStrategy.label },
     },
     {
       entry: "moments",
@@ -113,8 +126,10 @@ export function buildFallbackFiveEntry(input: {
         "我越来越觉得，做公众号副业不是每天硬写长文，而是把一个好选题拆成公众号、小绿书、搜一搜、问一问和朋友圈。",
         "",
         "这样一个内容资产能用很多次，也更适合普通人慢慢积累。",
+        "",
+        goalStrategy.cta,
       ].join("\n"),
-      metadata: { cta },
+      metadata: { cta, goal: goalStrategy.label },
     },
   ];
 }

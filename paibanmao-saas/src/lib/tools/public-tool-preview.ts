@@ -33,18 +33,7 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
 
   switch (kind) {
     case "topic":
-      return {
-        title: "选题预览",
-        summary: `围绕「${input}」，先给你 5 个适合微信内容矩阵的选题方向。`,
-        blocks: [
-          block("公众号", `${input}: 普通人真正应该先做的 3 件事`),
-          block("小绿书", `3 张图讲清「${input}」的新手路线`),
-          block("搜一搜", `${input}怎么做？适合新手的步骤和避坑`),
-          block("问一问", `现在做「${input}」还来得及吗？`),
-          block("朋友圈", `我把「${input}」拆成了一套更容易开始的小计划。`),
-        ],
-        loginHint: "登录后可保存到选题库，并一键生成五入口完整内容。",
-      };
+      return buildTopicPreview(input);
     case "green_note":
       return {
         title: "小绿书图文预览",
@@ -96,6 +85,71 @@ export function generatePublicToolPreview(kind: PublicToolKind, rawInput: string
     case "compliance":
       return buildCompliancePreview(input);
   }
+}
+
+function buildTopicPreview(input: string): PublicToolPreview {
+  const topic = extractTopic(input);
+  const audience = extractAudience(input);
+  const monetization = extractMonetization(input);
+  const reader = audience || "普通创作者";
+  const product = monetization || "资料包、咨询或私域服务";
+
+  return {
+    title: "选题预览",
+    summary: `我先把你的输入拆成一个更适合发布的方向：写给「${reader}」的「${topic}」内容，可以自然承接到${product}。`,
+    blocks: [
+      block("公众号", `${reader}做${topic}，先别急着追热点，先跑通这 3 个小步骤`),
+      block("小绿书", `3 张图讲清：${reader}从 0 开始做${topic}，第一周可以做什么`),
+      block("搜一搜", `${topic}新手怎么开始？适合${reader}的步骤、成本和避坑`),
+      block("问一问", `${reader}现在做${topic}还来得及吗？先看这几个判断标准`),
+      block("朋友圈", `最近把${topic}这件事拆了一遍，发现真正难的不是开始，而是找到一个能坚持的小切口。`),
+    ],
+    loginHint: "登录后可保存到选题库，并一键生成五入口完整内容。",
+  };
+}
+
+function extractTopic(input: string) {
+  const cleaned = input
+    .replace(/目标读者是.+?(，|,|。|；|;|$)/g, "")
+    .replace(/读者是.+?(，|,|。|；|;|$)/g, "")
+    .replace(/想(转化|卖|引流|变现).+?(，|,|。|；|;|$)/g, "")
+    .replace(/适合.+?(，|,|。|；|;|$)/g, "")
+    .replace(/[。；;]/g, "，")
+    .split(/[，,]/)
+    .map((item) => item.trim())
+    .find((item) => item.length >= 2);
+
+  const fallback = input.split(/[，,。；;]/)[0]?.trim() || input;
+  return truncatePhrase(cleaned || fallback, 18);
+}
+
+function extractAudience(input: string) {
+  const patterns = [
+    /目标读者是([^，,。；;]+)/,
+    /读者是([^，,。；;]+)/,
+    /面向([^，,。；;]+)/,
+    /写给([^，,。；;]+)/,
+    /适合([^，,。；;]+)/,
+  ];
+  const matched = patterns.map((pattern) => input.match(pattern)?.[1]?.trim()).find(Boolean);
+  return matched ? truncatePhrase(matched, 18) : "";
+}
+
+function extractMonetization(input: string) {
+  const patterns = [
+    /想转化([^，,。；;]+)/,
+    /转化([^，,。；;]+)/,
+    /卖([^，,。；;]+)/,
+    /变现([^，,。；;]+)/,
+    /引流到([^，,。；;]+)/,
+  ];
+  const matched = patterns.map((pattern) => input.match(pattern)?.[1]?.trim()).find(Boolean);
+  return matched ? truncatePhrase(matched, 20) : "";
+}
+
+function truncatePhrase(value: string, maxLength: number) {
+  const cleaned = value.replace(/[「」"']/g, "").trim();
+  return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength)}...` : cleaned;
 }
 
 function buildCompliancePreview(input: string): PublicToolPreview {

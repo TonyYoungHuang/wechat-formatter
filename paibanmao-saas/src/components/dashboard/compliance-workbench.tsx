@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, SearchCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,30 +53,54 @@ async function readJson<T>(response: Response): Promise<T> {
   return payload;
 }
 
-function getInitialProjectId() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return new URLSearchParams(window.location.search).get("projectId") || "";
+function nextPaint() {
+  return new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
-function getInitialSearchParam(key: string) {
-  if (typeof window === "undefined") {
-    return "";
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("检查等待时间过长，请稍后重试，或先复制内容人工复核。");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  return new URLSearchParams(window.location.search).get(key) || "";
 }
 
 export function ComplianceWorkbench() {
-  const [projectId, setProjectId] = useState(getInitialProjectId);
+  const [projectId, setProjectId] = useState("");
   const [project, setProject] = useState<Project | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState("");
-  const [title, setTitle] = useState(() => getInitialSearchParam("title"));
-  const [content, setContent] = useState(() => getInitialSearchParam("content"));
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [result, setResult] = useState<CheckResult | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [projectLoading, setProjectLoading] = useState(false);
+  const checkButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const initialProjectId = params.get("projectId") || "";
+
+      setProjectId((current) => current || initialProjectId);
+      setTitle((current) => current || params.get("title") || "");
+      setContent((current) => current || params.get("content") || "");
+      if (initialProjectId) {
+        void loadProject(initialProjectId);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (projectId) {
@@ -135,12 +159,22 @@ export function ComplianceWorkbench() {
   }
 
   async function runCheck() {
+    if (loading) {
+      return;
+    }
+    if (content.trim().length < 1) {
+      setMessage("请先粘贴要检查的标题或正文。");
+      return;
+    }
+
     setLoading(true);
-    setMessage("");
+    setResult(null);
+    setMessage("正在检查标题风险、AI 味、搜一搜适配和 CTA 自然度。");
+    await nextPaint();
     try {
       const selectedVariant = project?.variants.find((item) => item.id === selectedVariantId);
       const data = await readJson<CheckResult>(
-        await fetch("/api/compliance/check", {
+        await fetchWithTimeout("/api/compliance/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -149,7 +183,7 @@ export function ComplianceWorkbench() {
             title: title || undefined,
             content,
           }),
-        }),
+        }, 30000),
       );
       setResult(data);
       setMessage(data.report ? "检查完成，报告已保存到项目。" : "检查完成。");
@@ -159,6 +193,23 @@ export function ComplianceWorkbench() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const button = checkButtonRef.current;
+    if (!button) {
+      return;
+    }
+
+    const handleClick = (event: MouseEvent) => {
+      event.preventDefault();
+      void runCheck();
+    };
+
+    button.addEventListener("click", handleClick);
+    return () => button.removeEventListener("click", handleClick);
+    // Native listener is a fallback for this primary action button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, loading, projectId, selectedVariantId, title]);
 
   return (
     <div className="space-y-6">
@@ -216,11 +267,19 @@ export function ComplianceWorkbench() {
             placeholder="粘贴公众号正文、小绿书文案或问一问回答"
           />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">{message || "排版猫提供发布前辅助检查，不构成法律意见，也不保证平台审核结果。"}</p>
-            <Button onClick={runCheck} disabled={loading || content.trim().length < 1}>
+            <p aria-live="polite" data-testid="compliance-message" className="text-sm text-slate-500">
+              {message || "排版猫提供发布前辅助检查，不构成法律意见，也不保证平台审核结果。"}
+            </p>
+            <button
+              ref={checkButtonRef}
+              data-testid="compliance-submit"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-60"
+              disabled={loading || content.trim().length < 1}
+              type="button"
+            >
               {loading ? <Loader2 className="size-4 animate-spin" /> : <SearchCheck className="size-4" />}
-              运行检查
-            </Button>
+              {loading ? "检查中..." : "运行检查"}
+            </button>
           </div>
         </CardContent>
       </Card>

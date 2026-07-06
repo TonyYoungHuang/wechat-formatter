@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useAuthStatus } from "@/components/marketing/use-auth-status";
 import type { PublicToolKind, PublicToolPreview } from "@/lib/tools/public-tool-preview";
 
 export function ToolPreviewForm({
@@ -19,7 +20,8 @@ export function ToolPreviewForm({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const trimmedInput = input.trim();
-  const continuation = buildContinuation(kind, trimmedInput);
+  const { signedIn } = useAuthStatus();
+  const continuation = buildContinuation(kind, trimmedInput, signedIn);
 
   async function generatePreview() {
     if (trimmedInput.length < 2 || loading) {
@@ -89,12 +91,12 @@ export function ToolPreviewForm({
   );
 }
 
-function buildContinuation(kind: PublicToolKind, input: string) {
+function buildContinuation(kind: PublicToolKind, input: string, signedIn: boolean) {
   const nextPath = kind === "compliance" ? `/dashboard/checks?content=${encodeURIComponent(input)}` : `/dashboard/generate?topic=${encodeURIComponent(input)}`;
   const params = new URLSearchParams({ next: nextPath });
 
   return {
-    href: `/register?${params.toString()}`,
-    label: kind === "compliance" ? "注册后保存检查报告" : "注册后生成完整内容包",
+    href: signedIn ? nextPath : `/register?${params.toString()}`,
+    label: signedIn ? (kind === "compliance" ? "去工作台保存检查报告" : "去工作台生成完整内容包") : kind === "compliance" ? "注册后保存检查报告" : "注册后生成完整内容包",
   };
 }

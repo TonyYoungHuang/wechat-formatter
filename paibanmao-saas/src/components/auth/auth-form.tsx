@@ -111,7 +111,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               ) : null}
               {message ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</div> : null}
               {devVerificationLink ? <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地邮箱验证链接：{devVerificationLink}</div> : null}
-              <Button className="w-full" disabled={loading}>
+              <Button className="w-full" disabled={loading} type="submit">
                 {loading ? <Loader2 className="size-4 animate-spin" /> : isRegister ? <UserPlus className="size-4" /> : <LogIn className="size-4" />}
                 {isRegister ? "创建账号" : "登录"}
               </Button>

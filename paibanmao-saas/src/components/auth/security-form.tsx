@@ -98,7 +98,7 @@ export function SecurityForm({ mode }: { mode: Mode }) {
             {mode !== "forgot-password" && !token ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">链接缺少 token，请重新申请。</div> : null}
             {message ? <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</div> : null}
             {devLink ? <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地测试链接：{devLink}</div> : null}
-            <Button className="w-full" disabled={loading || (mode !== "forgot-password" && !token)}>
+            <Button className="w-full" disabled={loading || (mode !== "forgot-password" && !token)} type="submit">
               {loading ? <Loader2 className="size-4 animate-spin" /> : icon}
               {title}
             </Button>

@@ -10,12 +10,12 @@ import { errorResponse } from "@/lib/http/errors";
 export async function POST(request: Request) {
   const parsed = registerSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return errorResponse("Valid registration details are required.");
+    return errorResponse("请填写昵称、有效邮箱和至少 8 位密码。");
   }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
-    return errorResponse("This email is already registered.", 409);
+    return errorResponse("这个邮箱已经注册，请直接登录。", 409);
   }
 
   const result = await prisma.$transaction(async (tx) => {

@@ -7,7 +7,26 @@ import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { CheckCircle2, Copy, Download, FileCode2, Images, Loader2, Save, WandSparkles } from "lucide-react";
+import {
+  Bold,
+  CheckCircle2,
+  Copy,
+  Download,
+  FileCode2,
+  Heading1,
+  Heading2,
+  Images,
+  List,
+  ListOrdered,
+  Loader2,
+  Palette,
+  Pilcrow,
+  Quote,
+  RemoveFormatting,
+  Save,
+  SeparatorHorizontal,
+  WandSparkles,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
@@ -65,6 +84,8 @@ type RewriteResult = {
   aiError?: string | null;
 };
 
+type WechatLayoutTemplateId = "clean" | "deep" | "private" | "checklist";
+
 const starterContent = `
 <h1>普通人做公众号副业还有机会吗？</h1>
 <p>这是一篇公众号文章草稿。你可以在这里编辑正文，然后复制公众号 HTML 到微信公众平台。</p>
@@ -74,6 +95,33 @@ const starterContent = `
 
 const editableEntries = contentEntries.filter((entry) => !["wechat_article", "green_note"].includes(entry.id));
 const imageGenerationEnabled = process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "true" || process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "1";
+
+const wechatLayoutTemplates: Array<{
+  id: WechatLayoutTemplateId;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "clean",
+    label: "清爽长文",
+    description: "适合常规公众号文章，标题、正文和小标题层次清楚。",
+  },
+  {
+    id: "deep",
+    label: "深度观点",
+    description: "适合观点文，开头增加导读引用，正文更有专栏感。",
+  },
+  {
+    id: "private",
+    label: "私域转化",
+    description: "适合带咨询、资料包、社群引导的内容，结尾 CTA 更醒目。",
+  },
+  {
+    id: "checklist",
+    label: "教程清单",
+    description: "适合步骤、方法、避坑清单，把连续短句整理成列表。",
+  },
+];
 
 function escapeHtml(value: string) {
   return value
@@ -101,6 +149,99 @@ function textToHtml(value: string) {
       return `<p>${escapeHtml(trimmed).replaceAll("\n", "<br />")}</p>`;
     })
     .join("\n");
+}
+
+function isLikelySubheading(block: string) {
+  const plainBlock = block.replace(/\s+/g, "");
+  return plainBlock.length <= 24 && !/[。！？!?；;，,、]$/.test(plainBlock);
+}
+
+function textToListHtml(block: string) {
+  const items = block
+    .split(/\n|[；;]/)
+    .map((line) => line.replace(/^[-*•\d.、\s]+/, "").trim())
+    .filter(Boolean);
+
+  if (items.length < 2) {
+    return "";
+  }
+
+  return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function renderWechatBlock(block: string, index: number, templateId: WechatLayoutTemplateId) {
+  const safeBlock = escapeHtml(block).replaceAll("\n", "<br />");
+
+  if (index === 0) {
+    return `<h1>${safeBlock}</h1>`;
+  }
+
+  if (isLikelySubheading(block)) {
+    return `<h2>${safeBlock}</h2>`;
+  }
+
+  if (templateId === "checklist") {
+    const listHtml = textToListHtml(block);
+    if (listHtml) {
+      return listHtml;
+    }
+  }
+
+  return `<p>${safeBlock}</p>`;
+}
+
+function textToWechatLayout(value: string, templateId: WechatLayoutTemplateId = "clean") {
+  const blocks = value
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (!blocks.length) {
+    return starterContent;
+  }
+
+  const [title, intro, ...rest] = blocks;
+  const renderedBody = blocks.map((block, index) => renderWechatBlock(block, index, templateId));
+
+  if (templateId === "deep") {
+    const body = [
+      renderWechatBlock(title, 0, templateId),
+      intro ? `<blockquote>${escapeHtml(intro).replaceAll("\n", "<br />")}</blockquote>` : "",
+      ...rest.map((block, index) => renderWechatBlock(block, index + 2, templateId)),
+    ].filter(Boolean);
+    return body.join("\n");
+  }
+
+  if (templateId === "private") {
+    if (blocks.length <= 1) {
+      return renderedBody.join("\n");
+    }
+
+    const last = blocks.at(-1);
+    const body = renderedBody.slice(0, -1);
+    return [
+      ...body,
+      "<hr />",
+      last ? `<blockquote><strong>最后提醒：</strong><br />${escapeHtml(last).replaceAll("\n", "<br />")}</blockquote>` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (templateId === "checklist") {
+    return renderedBody.join("\n");
+  }
+
+  return renderedBody.join("\n");
+}
+
+function toolbarButtonClass(active = false) {
+  return [
+    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition",
+    active
+      ? "border-emerald-500 bg-emerald-600 text-white shadow-sm"
+      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800",
+  ].join(" ");
 }
 
 function htmlToText(value: string) {
@@ -308,6 +449,7 @@ export function WechatEditor() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [imageScene, setImageScene] = useState("green_note_pages");
   const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
+  const [layoutTemplate, setLayoutTemplate] = useState<WechatLayoutTemplateId>("clean");
   const [entryDrafts, setEntryDrafts] = useState<Record<string, EntryDraft>>(() => getDefaultDrafts());
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
@@ -328,7 +470,7 @@ export function WechatEditor() {
     editorProps: {
       attributes: {
         class:
-          "min-h-[560px] rounded-lg border border-slate-200 bg-white px-5 py-4 text-base leading-8 outline-none prose-headings:font-semibold",
+          "min-h-[560px] rounded-lg border border-emerald-100 bg-white px-5 py-4 text-base leading-8 outline-none focus:border-emerald-300 [&_blockquote]:my-5 [&_blockquote]:rounded-r-lg [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-300 [&_blockquote]:bg-emerald-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-emerald-950 [&_h1]:mb-5 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:leading-10 [&_h2]:mb-3 [&_h2]:mt-7 [&_h2]:border-l-4 [&_h2]:border-emerald-400 [&_h2]:pl-3 [&_h2]:text-xl [&_h2]:font-semibold [&_hr]:my-7 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-dashed [&_hr]:border-emerald-200 [&_li]:my-1 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-4 [&_strong]:rounded [&_strong]:bg-emerald-50 [&_strong]:px-1 [&_strong]:font-semibold [&_strong]:text-emerald-900 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6",
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -409,7 +551,25 @@ export function WechatEditor() {
   async function copyHtml() {
     if (!editor) return;
     await navigator.clipboard.writeText(editor.getHTML());
-    setNotice("公众号 HTML 已复制。");
+    setNotice("已复制公众号排版内容。下一步：打开微信公众平台图文编辑器，在正文区域直接粘贴。");
+  }
+
+  function applyWechatLayout() {
+    if (!editor) {
+      return;
+    }
+
+    const text = editor.getText().trim();
+    if (text.length < 2) {
+      setNotice("请先粘贴或生成公众号正文，再使用一键排版。");
+      return;
+    }
+
+    const nextHtml = textToWechatLayout(text, layoutTemplate);
+    editor.commands.setContent(nextHtml);
+    setHtml(nextHtml);
+    const template = wechatLayoutTemplates.find((item) => item.id === layoutTemplate);
+    setNotice(`已套用「${template?.label || "清爽长文"}」排版模板，可继续微调标题、引用和列表，再复制到公众号后台。`);
   }
 
   async function copyText() {
@@ -673,7 +833,109 @@ export function WechatEditor() {
           ))}
         </div>
         {mode === "wechat_article" ? (
-          <EditorContent editor={editor} />
+          <div className="space-y-3">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">公众号发布步骤</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">生成内容后，先在这里完成排版，再复制到微信公众平台正文编辑区。</p>
+                </div>
+                <a className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-200 bg-white px-4 text-sm font-medium text-emerald-700 hover:bg-emerald-50" href="/dashboard/generate">
+                  返回五入口生成
+                </a>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                {[
+                  ["1", "生成公众号正文"],
+                  ["2", "一键排版或手动调整"],
+                  ["3", "复制到公众号后台"],
+                  ["4", "微信后台粘贴并预览"],
+                ].map(([step, label]) => (
+                  <div className="rounded-lg border border-emerald-100 bg-white px-3 py-3 text-sm" key={step}>
+                    <div className="mb-2 flex size-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">{step}</div>
+                    <div className="font-medium text-slate-900">{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-emerald-100 bg-white p-3">
+              <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">公众号排版</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">先选一个排版模板，再点“一键排版”。选中文本后也可以手动设置标题、引用和列表。</p>
+                </div>
+                <Button onClick={applyWechatLayout} disabled={!editor} type="button">
+                  <WandSparkles className="size-4" />
+                  一键排版
+                </Button>
+              </div>
+              <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-900">
+                  <Palette className="size-4 text-emerald-600" />
+                  排版模板
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {wechatLayoutTemplates.map((template) => (
+                    <button
+                      className={`rounded-lg border p-3 text-left transition ${
+                        layoutTemplate === template.id
+                          ? "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50/60"
+                      }`}
+                      key={template.id}
+                      onClick={() => setLayoutTemplate(template.id)}
+                      title={template.description}
+                      type="button"
+                    >
+                      <span className="block text-sm font-semibold">{template.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">{template.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className={toolbarButtonClass(editor?.isActive("heading", { level: 1 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} type="button">
+                  <Heading1 className="size-4" />
+                  一级标题
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("heading", { level: 2 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} type="button">
+                  <Heading2 className="size-4" />
+                  二级标题
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("paragraph"))} onClick={() => editor?.chain().focus().setParagraph().run()} type="button">
+                  <Pilcrow className="size-4" />
+                  正文
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("bold"))} onClick={() => editor?.chain().focus().toggleBold().run()} type="button">
+                  <Bold className="size-4" />
+                  加粗
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("blockquote"))} onClick={() => editor?.chain().focus().toggleBlockquote().run()} type="button">
+                  <Quote className="size-4" />
+                  引用
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("bulletList"))} onClick={() => editor?.chain().focus().toggleBulletList().run()} type="button">
+                  <List className="size-4" />
+                  项目符号
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("orderedList"))} onClick={() => editor?.chain().focus().toggleOrderedList().run()} type="button">
+                  <ListOrdered className="size-4" />
+                  编号列表
+                </button>
+                <button className={toolbarButtonClass()} onClick={() => editor?.chain().focus().setHorizontalRule().run()} type="button">
+                  <SeparatorHorizontal className="size-4" />
+                  分割线
+                </button>
+                <button className={toolbarButtonClass()} onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()} type="button">
+                  <RemoveFormatting className="size-4" />
+                  清除格式
+                </button>
+              </div>
+            </div>
+
+            <EditorContent editor={editor} />
+          </div>
         ) : mode === "green_note" ? (
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
             <div className="space-y-3">
@@ -825,15 +1087,26 @@ export function WechatEditor() {
       <aside className="space-y-3 rounded-lg border border-emerald-100 bg-white p-4">
         <div>
           <h2 className="font-semibold text-slate-950">编辑器工具</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">一个项目内统一编辑公众号、小绿书、搜一搜、问一问和朋友圈内容，保存后回到内容项目继续排期和复盘。</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">公众号先在左侧排版，再复制到微信公众平台正文区。小绿书、搜一搜等内容可在上方标签切换。</p>
         </div>
+        {mode === "wechat_article" ? (
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-xs leading-5 text-emerald-800">
+            <div className="font-semibold">复制后怎么用</div>
+            <ol className="mt-2 list-decimal space-y-1 pl-4">
+              <li>点击“复制到公众号后台”。</li>
+              <li>打开微信公众平台，新建图文。</li>
+              <li>在正文编辑区直接粘贴。</li>
+              <li>用微信后台预览，再发布。</li>
+            </ol>
+          </div>
+        ) : null}
         <Button className="w-full" onClick={saveProject} disabled={saving || loading}>
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           保存到项目
         </Button>
         <Button className="w-full" onClick={copyHtml} variant="secondary" disabled={mode !== "wechat_article"}>
           <FileCode2 className="size-4" />
-          复制公众号 HTML
+          复制到公众号后台
         </Button>
         <Button className="w-full" onClick={copyText} variant="secondary" disabled={!getCurrentPlainText().trim()}>
           <Copy className="size-4" />

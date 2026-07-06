@@ -27,10 +27,10 @@ export function WechatSupportWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-4 z-50 sm:bottom-7 sm:right-7">
+    <div className="pointer-events-none fixed bottom-5 right-4 z-50 sm:bottom-7 sm:right-7">
       <div
         className={cn(
-          "mb-3 w-[min(calc(100vw-32px),340px)] rounded-2xl border border-emerald-200 bg-white shadow-2xl shadow-emerald-950/12 transition duration-200",
+          "pointer-events-auto mb-3 w-[min(calc(100vw-32px),340px)] rounded-2xl border border-emerald-200 bg-white shadow-2xl shadow-emerald-950/12 transition duration-200",
           open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
         )}
       >
@@ -90,7 +90,7 @@ export function WechatSupportWidget() {
       <button
         aria-expanded={open}
         aria-label="打开微信客服"
-        className="ml-auto flex h-14 items-center gap-2 rounded-full border border-emerald-300 bg-emerald-600 px-5 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition hover:bg-emerald-700"
+        className="pointer-events-auto ml-auto flex h-14 items-center gap-2 rounded-full border border-emerald-300 bg-emerald-600 px-5 text-sm font-bold text-white shadow-xl shadow-emerald-900/20 transition hover:bg-emerald-700"
         onClick={() => setOpen((value) => !value)}
         type="button"
       >

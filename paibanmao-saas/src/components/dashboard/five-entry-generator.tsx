@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock3, Copy, FolderOpen, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, ArrowRight, CheckCircle2, Clock3, Copy, FolderOpen, HelpCircle, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,19 +72,58 @@ const statusLabels: Record<GenerationJob["status"], string> = {
   cancelled: "已取消",
 };
 
-function getInitialSearchParam(key: string) {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return new URLSearchParams(window.location.search).get(key) || "";
-}
-
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || "Request failed.");
+    throw new Error(normalizeErrorMessage(payload.message || "Request failed."));
   }
   return payload;
+}
+
+function normalizeErrorMessage(message: string) {
+  const labels: Record<string, string> = {
+    "Create an account profile first.": "请先创建一个账号档案。账号档案会告诉 AI：你是谁、写给谁、用什么语气写。",
+    "A valid topic is required.": "请先输入一个明确的选题。",
+    "Request failed.": "请求失败，请稍后重试。",
+  };
+  return labels[message] || message;
+}
+
+function HelpTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <button
+        aria-label="查看说明"
+        className="inline-flex size-5 items-center justify-center rounded-full text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700 focus:outline-none"
+        type="button"
+      >
+        <HelpCircle className="size-4" />
+      </button>
+      <span className="pointer-events-none absolute left-1/2 top-7 z-20 w-64 -translate-x-1/2 rounded-lg border border-emerald-100 bg-white px-3 py-2 text-xs leading-5 text-slate-600 opacity-0 shadow-lg shadow-emerald-900/10 transition group-focus-within:opacity-100 group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function nextPaint() {
+  return new Promise((resolve) => window.setTimeout(resolve, 0));
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("生成等待时间过长，请稍后查看最近生成记录，或改用后台生成。");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function getStringList(value: unknown) {
@@ -125,11 +164,20 @@ function getEntrySummary(entry: ContentEntry) {
   return contentEntries.find((item) => item.id === entry)?.summary || "";
 }
 
+const entryGuides: Record<ContentEntry, string> = {
+  wechat_article: "公众号会生成长文正文、标题摘要、结尾 CTA 和可复制到公众号后台的排版内容。",
+  green_note: "小绿书会生成短图文文案、分页脚本和图片提示词，适合后续配图发布。",
+  search: "搜一搜会生成关键词、搜索型标题、摘要和问答结构，偏微信搜索流量。",
+  question: "问一问会生成问题和回答稿，适合做微信问一问、评论区和私域答疑。",
+  moments: "朋友圈会生成转发理由、个人视角文案、互动话术和私域 CTA。",
+};
+
 export function FiveEntryGenerator() {
   const [profiles, setProfiles] = useState<AccountProfile[]>([]);
-  const [accountProfileId, setAccountProfileId] = useState(() => getInitialSearchParam("accountProfileId"));
-  const [topicId] = useState(() => getInitialSearchParam("topicId"));
-  const [topic, setTopic] = useState(() => getInitialSearchParam("topic"));
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [accountProfileId, setAccountProfileId] = useState("");
+  const [topicId, setTopicId] = useState("");
+  const [topic, setTopic] = useState("");
   const [goal, setGoal] = useState("growth");
   const [activeEntry, setActiveEntry] = useState<ContentEntry>("wechat_article");
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -138,6 +186,19 @@ export function FiveEntryGenerator() {
   const [queueing, setQueueing] = useState(false);
   const [queuedJobId, setQueuedJobId] = useState("");
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const queueButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      setTopic((current) => current || params.get("topic") || "");
+      setTopicId((current) => current || params.get("topicId") || "");
+      setAccountProfileId((current) => current || params.get("accountProfileId") || "");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     fetch("/api/account-profiles")
@@ -146,7 +207,8 @@ export function FiveEntryGenerator() {
         setProfiles(data.profiles);
         setAccountProfileId((current) => current || data.profiles[0]?.id || "");
       })
-      .catch((error: Error) => setMessage(error.message));
+      .catch((error: Error) => setMessage(error.message))
+      .finally(() => setProfilesLoading(false));
     void loadJobs();
   }, []);
 
@@ -165,6 +227,8 @@ export function FiveEntryGenerator() {
   );
   const activeImagePrompts = useMemo(() => getStringList(activeVariant?.metadata?.imagePrompts), [activeVariant]);
   const activeKeywords = useMemo(() => getStringList(activeVariant?.metadata?.keywords), [activeVariant]);
+  const missingProfile = !profilesLoading && profiles.length === 0;
+  const canSubmit = !missingProfile && !loading && !queueing && !queuedJobId && topic.trim().length >= 2;
 
   useEffect(() => {
     if (!queuedJobId) {
@@ -207,11 +271,25 @@ export function FiveEntryGenerator() {
   }, [queuedJobId]);
 
   async function submit() {
+    if (loading || queueing || queuedJobId) {
+      return;
+    }
+    if (topic.trim().length < 2) {
+      setMessage("请先输入一个明确的选题，至少 2 个字。");
+      return;
+    }
+    if (missingProfile) {
+      setMessage("请先创建账号档案，再生成五入口内容。账号档案用于告诉 AI 你的定位、读者和语气。");
+      return;
+    }
+
     setLoading(true);
-    setMessage("");
+    setResult(null);
+    setMessage("正在生成公众号、小绿书、搜一搜、问一问和朋友圈内容，请先别关闭页面。");
+    await nextPaint();
     try {
       const data = await readJson<GenerationResult>(
-        await fetch("/api/generate/five-entry", {
+        await fetchWithTimeout("/api/generate/five-entry", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -220,7 +298,7 @@ export function FiveEntryGenerator() {
             topic,
             goal,
           }),
-        }),
+        }, 90000),
       );
       setResult(data);
       setMessage("已生成并保存为内容项目。");
@@ -233,11 +311,25 @@ export function FiveEntryGenerator() {
   }
 
   async function queueSubmit() {
+    if (loading || queueing || queuedJobId) {
+      return;
+    }
+    if (topic.trim().length < 2) {
+      setMessage("请先输入一个明确的选题，至少 2 个字。");
+      return;
+    }
+    if (missingProfile) {
+      setMessage("请先创建账号档案，再提交后台生成。建好后这里会自动选择默认档案。");
+      return;
+    }
+
     setQueueing(true);
-    setMessage("");
+    setResult(null);
+    setMessage("正在提交后台生成任务，提交成功后会自动刷新结果。");
+    await nextPaint();
     try {
       const data = await readJson<QueuedGenerationResult>(
-        await fetch("/api/generate/five-entry/queue", {
+        await fetchWithTimeout("/api/generate/five-entry/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -246,7 +338,7 @@ export function FiveEntryGenerator() {
             topic,
             goal,
           }),
-        }),
+        }, 20000),
       );
       if (data.queued === false && data.project) {
         setResult({ project: data.project });
@@ -271,11 +363,52 @@ export function FiveEntryGenerator() {
     setMessage("已复制到剪贴板。");
   }
 
+  useEffect(() => {
+    const submitButton = submitButtonRef.current;
+    const queueButton = queueButtonRef.current;
+    if (!submitButton && !queueButton) {
+      return;
+    }
+
+    const handleSubmitClick = (event: MouseEvent) => {
+      event.preventDefault();
+      void submit();
+    };
+    const handleQueueClick = (event: MouseEvent) => {
+      event.preventDefault();
+      void queueSubmit();
+    };
+
+    submitButton?.addEventListener("click", handleSubmitClick);
+    queueButton?.addEventListener("click", handleQueueClick);
+
+    return () => {
+      submitButton?.removeEventListener("click", handleSubmitClick);
+      queueButton?.removeEventListener("click", handleQueueClick);
+    };
+    // Native listeners are a fallback for the primary action buttons; rebind when the submitted values change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountProfileId, goal, loading, queueing, queuedJobId, topic, topicId]);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">五入口生成器</h1>
         <p className="mt-1 text-sm text-slate-600">选择账号档案，输入一个选题，一次生成公众号、小绿书、搜一搜、问一问和朋友圈内容包。</p>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {[
+          ["1", "先建账号档案", "账号档案会告诉 AI：你是谁、写给谁、用什么语气和 CTA。"],
+          ["2", "输入一个选题", "把你想写的主题填进来，再选择这次更偏涨粉、搜索、转化还是信任。"],
+          ["3", "生成后去编辑", "点生成后分别查看五个入口，公众号内容可以去编辑器一键排版。"],
+        ].map(([step, title, description]) => (
+          <div className="rounded-lg border border-emerald-100 bg-white p-4" key={step}>
+            <div className="mb-3 flex size-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">{step}</div>
+            <div className="font-semibold text-slate-950">{title}</div>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+          </div>
+        ))}
       </div>
 
       <Card>
@@ -284,13 +417,17 @@ export function FiveEntryGenerator() {
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[220px_1fr_180px]">
           <label className="space-y-1 text-sm">
-            <span className="text-slate-600">账号档案</span>
+            <span className="inline-flex items-center gap-1 text-slate-600">
+              账号档案
+              <HelpTip text="账号档案相当于你的公众号人设和知识库入口。建好后，生成内容会更像你的账号，而不是通用模板。" />
+            </span>
             <select
               className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
               value={accountProfileId}
               onChange={(event) => setAccountProfileId(event.target.value)}
+              title="选择这次内容使用哪个账号档案。没有档案时需要先创建一个。"
             >
-              <option value="">自动选择默认档案</option>
+              <option value="">{missingProfile ? "还没有账号档案，请先创建" : "自动选择默认档案"}</option>
               {profiles.map((profile) => (
                 <option key={profile.id} value={profile.id}>
                   {profile.name}
@@ -299,20 +436,28 @@ export function FiveEntryGenerator() {
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-600">选题</span>
+            <span className="inline-flex items-center gap-1 text-slate-600">
+              选题
+              <HelpTip text="这里填你想写的主题。建议用一句自然的话，比如：普通人做公众号副业还有机会吗？" />
+            </span>
             <input
               className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
               value={topic}
               onChange={(event) => setTopic(event.target.value)}
               placeholder="例如：普通人做公众号副业还有机会吗"
+              title="输入一个你想生成内容的主题。"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-600">内容目标</span>
+            <span className="inline-flex items-center gap-1 text-slate-600">
+              内容目标
+              <HelpTip text="涨粉会写关注理由；搜索会输出关键词、长尾词、搜索型标题和摘要；转化会写痛点、解决路径和克制 CTA；信任会写边界、适合谁/不适合谁和真实判断；互动会写问题钩子、讨论话术和评论/私信 CTA。" />
+            </span>
             <select
               className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
+              title="选择这次内容更想达成什么目标。不同目标会调用不同后台提示词策略。"
             >
               {goals.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -321,21 +466,52 @@ export function FiveEntryGenerator() {
               ))}
             </select>
           </label>
+          {missingProfile ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 lg:col-span-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex gap-2">
+                  <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+                  <div>
+                    <div className="font-semibold">还没有账号档案，暂时不能生成。</div>
+                    <p className="text-amber-800">先用 1 分钟建立公众号定位、读者、语气和常用 CTA。建好后，回到这里会自动选择默认档案。</p>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="secondary">
+                  <Link href="/dashboard/account-profiles">
+                    去创建账号档案
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">{message || "生成会消耗 1 次额度，结果会自动保存到内容项目。"}</p>
+            <p aria-live="polite" data-testid="five-entry-message" className="text-sm text-slate-500">
+              {message || (missingProfile ? "请先创建账号档案，再生成五入口内容。" : "生成会消耗 1 次额度，结果会自动保存到内容项目。")}
+            </p>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={submit} disabled={loading || queueing || Boolean(queuedJobId) || topic.trim().length < 2}>
+              <button
+                ref={submitButtonRef}
+                data-testid="five-entry-submit"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-60"
+                disabled={!canSubmit}
+                title="立即生成五个入口内容：公众号、小绿书、搜一搜、问一问和朋友圈。生成后会自动保存为内容项目。"
+                type="button"
+              >
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                生成五入口内容
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={queueSubmit}
-                disabled={loading || queueing || Boolean(queuedJobId) || topic.trim().length < 2}
+                {loading ? "生成中..." : "生成五入口内容"}
+              </button>
+              <button
+                ref={queueButtonRef}
+                data-testid="five-entry-queue-submit"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-white px-4 text-sm font-medium text-emerald-800 transition hover:bg-emerald-50 disabled:pointer-events-none disabled:opacity-60"
+                disabled={!canSubmit}
+                title="把生成任务放到后台执行，适合长内容或不想停在当前页面等待时使用。"
+                type="button"
               >
                 {queueing || queuedJobId ? <Loader2 className="size-4 animate-spin" /> : <Clock3 className="size-4" />}
-                后台生成
-              </Button>
+                {queueing || queuedJobId ? "后台生成中..." : "后台生成"}
+              </button>
             </div>
           </div>
         </CardContent>
@@ -349,7 +525,12 @@ export function FiveEntryGenerator() {
               className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left text-sm transition ${
                 activeEntry === entry.id ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
-              onClick={() => setActiveEntry(entry.id)}
+              onClick={() => {
+                setActiveEntry(entry.id);
+                setMessage(result ? `已切换到${entry.label}结果。${entryGuides[entry.id]}` : entryGuides[entry.id]);
+              }}
+              title={entryGuides[entry.id]}
+              type="button"
             >
               <span>{entry.label}</span>
               <span className="text-xs">{result ? "已生成" : "待生成"}</span>

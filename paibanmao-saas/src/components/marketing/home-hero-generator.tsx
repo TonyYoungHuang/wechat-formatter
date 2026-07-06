@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, CircleDollarSign, Loader2, Search, Sparkles }
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuthStatus } from "@/components/marketing/use-auth-status";
 import type { PublicToolPreview } from "@/lib/tools/public-tool-preview";
 
 const sampleOutputs = [
@@ -21,14 +22,20 @@ export function HomeHeroGenerator() {
   const [preview, setPreview] = useState<PublicToolPreview | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const { signedIn } = useAuthStatus();
 
   const registerHref = useMemo(() => {
+    const input = topic.trim();
+    if (signedIn) {
+      return input ? `/dashboard/generate?topic=${encodeURIComponent(input)}` : "/dashboard/generate";
+    }
+
     const params = new URLSearchParams();
-    if (topic.trim()) {
-      params.set("next", `/dashboard/generate?topic=${encodeURIComponent(topic.trim())}`);
+    if (input) {
+      params.set("next", `/dashboard/generate?topic=${encodeURIComponent(input)}`);
     }
     return params.size ? `/register?${params.toString()}` : "/register";
-  }, [topic]);
+  }, [signedIn, topic]);
 
   async function generatePreview() {
     const input = topic.trim();
@@ -127,7 +134,7 @@ export function HomeHeroGenerator() {
                 {preview.loginHint}
               </div>
               <Button asChild className="w-full">
-                <Link href={registerHref}>注册后生成完整内容包</Link>
+                <Link href={registerHref}>{signedIn ? "去工作台生成完整内容包" : "注册后生成完整内容包"}</Link>
               </Button>
             </>
           ) : (

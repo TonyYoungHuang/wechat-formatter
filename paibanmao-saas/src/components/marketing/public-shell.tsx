@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
 
+import { AuthAwarePublicCta, AuthAwarePublicLoginLink } from "@/components/marketing/auth-aware-public-actions";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -12,7 +11,6 @@ const navItems = [
   { href: "/use-cases", label: "场景" },
   { href: "/pricing", label: "价格" },
   { href: "/tutorials", label: "教程" },
-  { href: "/login", label: "登录" },
 ];
 
 export function PublicHeader({
@@ -34,13 +32,9 @@ export function PublicHeader({
               {item.label}
             </Link>
           ))}
+          <AuthAwarePublicLoginLink />
         </nav>
-        <Button asChild>
-          <Link href={ctaHref}>
-            {ctaLabel}
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
+        <AuthAwarePublicCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
       </div>
     </header>
   );

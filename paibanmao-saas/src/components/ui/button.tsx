@@ -50,8 +50,10 @@ export function Button({
     );
   }
 
+  const buttonProps = props as ButtonHTMLAttributes<HTMLButtonElement>;
+
   return (
-    <button className={classes} {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}>
+    <button {...buttonProps} className={classes} type={buttonProps.type || "button"}>
       {children}
     </button>
   );
