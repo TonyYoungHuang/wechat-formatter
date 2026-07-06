@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { reviewComplianceWithAi } from "@/lib/ai/compliance-review";
 import { getCurrentUser, requireCurrentUser } from "@/lib/auth/session";
 import { checkContentCompliance } from "@/lib/compliance/check";
 import { prisma } from "@/lib/db/prisma";
@@ -14,6 +15,16 @@ const schema = z.object({
   content: z.string().min(1).max(50000),
   html: z.string().max(200000).optional(),
 });
+
+function aiIssuesToComplianceIssues(review: Awaited<ReturnType<typeof reviewComplianceWithAi>>["review"]) {
+  return review.issues.map((issue) => ({
+    category: `AI审稿：${issue.category}`,
+    severity: issue.severity,
+    excerpt: issue.excerpt,
+    message: issue.problem,
+    suggestion: issue.replacement ? `${issue.suggestion}\n可替换为：${issue.replacement}` : issue.suggestion,
+  }));
+}
 
 export async function POST(request: Request) {
   try {
@@ -29,9 +40,39 @@ export async function POST(request: Request) {
       advanced: Boolean(plan?.advancedChecks),
       entry: parsed.data.entry,
     });
+    let aiReview: Awaited<ReturnType<typeof reviewComplianceWithAi>> | null = null;
+
+    if (current) {
+      aiReview = await reviewComplianceWithAi({
+        title: parsed.data.title,
+        content: parsed.data.content,
+        entry: parsed.data.entry,
+        ruleSummary: result.summary,
+        ruleIssues: result.issues,
+      });
+      const aiIssues = aiReview.fallback ? [] : aiIssuesToComplianceIssues(aiReview.review);
+      if (aiIssues.length) {
+        result.issues.push(...aiIssues);
+        const scorePenalty = aiIssues.reduce((sum, issue) => sum + (issue.severity === "high" ? 18 : issue.severity === "medium" ? 10 : 5), 0);
+        result.score = Math.max(40, result.score - scorePenalty);
+        result.level = result.score >= 85 ? "可发布" : result.score >= 65 ? "建议修改" : "高风险";
+        result.summary = `${result.summary} AI 主编已补充审稿建议。`;
+      }
+    }
 
     if (!parsed.data.projectId) {
-      return NextResponse.json(result);
+      return NextResponse.json({
+        ...result,
+        aiReview: aiReview?.review,
+        aiReviewMeta: aiReview
+          ? {
+              provider: aiReview.provider,
+              model: aiReview.model,
+              fallback: aiReview.fallback,
+              aiError: aiReview.aiError,
+            }
+          : null,
+      });
     }
 
     if (!current) {
@@ -55,7 +96,19 @@ export async function POST(request: Request) {
       include: { issues: true },
     });
 
-    return NextResponse.json({ ...result, report });
+    return NextResponse.json({
+      ...result,
+      report,
+      aiReview: aiReview?.review,
+      aiReviewMeta: aiReview
+        ? {
+            provider: aiReview.provider,
+            model: aiReview.model,
+            fallback: aiReview.fallback,
+            aiError: aiReview.aiError,
+          }
+        : null,
+    });
   } catch (error) {
     return mapApiError(error);
   }

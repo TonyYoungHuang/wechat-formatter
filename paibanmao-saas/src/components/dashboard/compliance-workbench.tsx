@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, Loader2, SearchCheck } from "lucide-react";
+import { Copy, FileText, Loader2, SearchCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,28 @@ type CheckResult = {
   summary: string;
   issues: Issue[];
   report?: { id: string };
+  aiReview?: {
+    verdict: "可发布" | "建议修改" | "高风险";
+    editorSummary: string;
+    strengths: string[];
+    issues: Array<{
+      category: string;
+      severity: "low" | "medium" | "high";
+      excerpt: string;
+      problem: string;
+      suggestion: string;
+      replacement: string;
+    }>;
+    revisedTitle: string;
+    revisedBody: string;
+    publishChecklist: string[];
+  };
+  aiReviewMeta?: {
+    provider: string;
+    model: string;
+    fallback: boolean;
+    aiError?: string | null;
+  } | null;
 };
 
 type ProjectVariant = {
@@ -71,6 +93,11 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, tim
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+async function copyText(value: string, label: string) {
+  await navigator.clipboard.writeText(value);
+  return `${label}已复制。`;
 }
 
 export function ComplianceWorkbench() {
@@ -169,7 +196,7 @@ export function ComplianceWorkbench() {
 
     setLoading(true);
     setResult(null);
-    setMessage("正在检查标题风险、AI 味、搜一搜适配和 CTA 自然度。");
+    setMessage("AI 主编正在检查标题风险、AI 味、搜一搜适配、CTA 自然度和可替换稿。");
     await nextPaint();
     try {
       const selectedVariant = project?.variants.find((item) => item.id === selectedVariantId);
@@ -183,10 +210,10 @@ export function ComplianceWorkbench() {
             title: title || undefined,
             content,
           }),
-        }, 30000),
+        }, 90000),
       );
       setResult(data);
-      setMessage(data.report ? "检查完成，报告已保存到项目。" : "检查完成。");
+      setMessage(data.aiReview ? (data.report ? "AI 审稿完成，报告已保存到项目。" : "AI 审稿完成。") : data.report ? "检查完成，报告已保存到项目。" : "检查完成。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "检查失败。");
     } finally {
@@ -278,7 +305,7 @@ export function ComplianceWorkbench() {
               type="button"
             >
               {loading ? <Loader2 className="size-4 animate-spin" /> : <SearchCheck className="size-4" />}
-              {loading ? "检查中..." : "运行检查"}
+              {loading ? "AI 审稿中..." : "运行 AI 审稿"}
             </button>
           </div>
         </CardContent>
@@ -300,6 +327,72 @@ export function ComplianceWorkbench() {
               </div>
               <p className="text-sm leading-6 text-slate-600">{result.summary}</p>
             </div>
+            {result.aiReview ? (
+              <div className="space-y-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-900">AI 主编建议：{result.aiReview.verdict}</div>
+                    <p className="mt-1 text-sm leading-6 text-emerald-900">{result.aiReview.editorSummary}</p>
+                    {result.aiReviewMeta ? (
+                      <p className="mt-1 text-xs text-emerald-700">
+                        {result.aiReviewMeta.fallback ? "本地规则审稿" : `${result.aiReviewMeta.provider} · ${result.aiReviewMeta.model}`}
+                        {result.aiReviewMeta.aiError ? ` · ${result.aiReviewMeta.aiError}` : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+                {result.aiReview.strengths.length ? (
+                  <div>
+                    <div className="text-sm font-medium text-emerald-950">值得保留的地方</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {result.aiReview.strengths.map((item) => (
+                        <span key={item} className="rounded-full bg-white px-2 py-1 text-xs text-emerald-800">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="text-sm font-medium text-slate-950">建议标题</div>
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                        onClick={async () => setMessage(await copyText(result.aiReview?.revisedTitle || "", "建议标题"))}
+                      >
+                        <Copy className="size-4" />
+                        复制
+                      </Button>
+                    </div>
+                    <p className="text-sm leading-6 text-slate-700">{result.aiReview.revisedTitle || "标题无需明显调整。"}</p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                    <div className="text-sm font-medium text-slate-950">发布前清单</div>
+                    <ul className="mt-2 space-y-1 text-sm leading-6 text-slate-600">
+                      {result.aiReview.publishChecklist.map((item) => (
+                        <li key={item}>- {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium text-slate-950">可替换稿</div>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                      onClick={async () => setMessage(await copyText(result.aiReview?.revisedBody || "", "可替换稿"))}
+                    >
+                      <Copy className="size-4" />
+                      复制
+                    </Button>
+                  </div>
+                  <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm leading-7 text-slate-700">{result.aiReview.revisedBody || "正文无需明显调整。"}</pre>
+                </div>
+              </div>
+            ) : null}
             <div className="space-y-3">
               {result.issues.map((issue, index) => (
                 <div key={`${issue.category}-${index}`} className="rounded-lg border border-slate-100 bg-white p-4">
