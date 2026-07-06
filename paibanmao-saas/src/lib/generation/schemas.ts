@@ -29,3 +29,9 @@ export const rewriteContentSchema = z.object({
   content: z.string().trim().min(20).max(20000),
   goal: z.enum(["lower_ai_tone", "more_concise", "more_wechat", "stronger_cta"]).default("lower_ai_tone"),
 });
+
+export const wechatLayoutSchema = z.object({
+  title: z.string().trim().max(160).optional(),
+  content: z.string().trim().min(20).max(30000),
+  template: z.enum(["clean", "deep", "private", "checklist", "editorial"]).default("editorial"),
+});

@@ -3,7 +3,7 @@ import type { z } from "zod";
 
 import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
 import { recordGeneratedContentTags } from "@/lib/account-knowledge/tagging";
-import { generateFiveEntryWithAi, isAiProviderConfigured } from "@/lib/ai/five-entry";
+import { generateFiveEntryPlanWithAi, generateFiveEntryWithAi, isAiProviderConfigured, polishFiveEntryWithAi } from "@/lib/ai/five-entry";
 import { buildKnowledgeTagsWithAi } from "@/lib/ai/knowledge-tags";
 import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
@@ -98,6 +98,8 @@ export async function runFiveEntryGeneration(input: {
   let aiError: string | null = null;
   let tokenInput = 0;
   let tokenOutput = 0;
+  let multiStagePlan: Awaited<ReturnType<typeof generateFiveEntryPlanWithAi>>["plan"] | null = null;
+  const generationStages: string[] = ["fallback_draft"];
   let variants = buildFallbackFiveEntry({
     topic: scopedPayload.topic,
     goal: scopedPayload.goal,
@@ -106,18 +108,64 @@ export async function runFiveEntryGeneration(input: {
 
   if (await isAiProviderConfigured()) {
     try {
+      const planResult = await generateFiveEntryPlanWithAi({
+        topic: scopedPayload.topic,
+        goal: scopedPayload.goal,
+        goalStrategy: goalStrategy.strategy,
+        accountProfile,
+        knowledgeContext,
+      });
+      multiStagePlan = planResult.plan;
+      tokenInput += planResult.tokenInput;
+      tokenOutput += planResult.tokenOutput;
+      generationStages.push(`planning:${planResult.provider}:${planResult.model}`);
+    } catch (error) {
+      aiError = `Planning failed: ${error instanceof Error ? error.message : "AI planning failed."}`;
+    }
+
+    try {
+      const planContext = multiStagePlan
+        ? [
+            renderedPrompt,
+            "",
+            "多阶段策划方案:",
+            JSON.stringify(multiStagePlan, null, 2),
+            "",
+            "请严格参考这份策划方案生成五入口内容。每个入口承担自己的任务，不要互相复制。",
+          ].join("\n")
+        : renderedPrompt;
       const aiResult = await generateFiveEntryWithAi({
         topic: scopedPayload.topic,
         goal: scopedPayload.goal,
         accountProfile,
-        prompt: renderedPrompt,
+        prompt: planContext,
       });
       variants = aiResult.variants;
-      tokenInput = aiResult.tokenInput;
-      tokenOutput = aiResult.tokenOutput;
+      tokenInput += aiResult.tokenInput;
+      tokenOutput += aiResult.tokenOutput;
       generationSource = `${aiResult.provider}:${aiResult.model}`;
+      generationStages.push(`draft:${aiResult.provider}:${aiResult.model}`);
+
+      try {
+        const polishResult = await polishFiveEntryWithAi({
+          topic: scopedPayload.topic,
+          goal: scopedPayload.goal,
+          accountProfile,
+          variants,
+          plan: multiStagePlan,
+        });
+        variants = polishResult.variants;
+        tokenInput += polishResult.tokenInput;
+        tokenOutput += polishResult.tokenOutput;
+        generationSource = `${generationSource} -> polish:${polishResult.provider}:${polishResult.model}`;
+        generationStages.push(`polish:${polishResult.provider}:${polishResult.model}`);
+      } catch (error) {
+        const polishError = error instanceof Error ? error.message : "AI polish failed.";
+        aiError = aiError ? `${aiError}; Polish failed: ${polishError}` : `Polish failed: ${polishError}`;
+      }
     } catch (error) {
-      aiError = error instanceof Error ? error.message : "AI generation failed.";
+      const draftError = error instanceof Error ? error.message : "AI generation failed.";
+      aiError = aiError ? `${aiError}; Draft failed: ${draftError}` : draftError;
     }
   }
 
@@ -156,10 +204,13 @@ export async function runFiveEntryGeneration(input: {
         source: promptTemplate.source,
       },
       knowledgeContext,
+      multiStagePlan,
     } as Prisma.InputJsonValue;
     const jobOutput = {
       variants,
       source: generationSource,
+      stages: generationStages,
+      multiStagePlan,
       aiError,
       projectId: project.id,
     } as Prisma.InputJsonValue;

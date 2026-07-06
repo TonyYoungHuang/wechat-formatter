@@ -84,7 +84,19 @@ type RewriteResult = {
   aiError?: string | null;
 };
 
-type WechatLayoutTemplateId = "clean" | "deep" | "private" | "checklist";
+type WechatLayoutTemplateId = "clean" | "deep" | "private" | "checklist" | "editorial";
+
+type WechatLayoutResult = {
+  output: {
+    title: string;
+    html: string;
+    notes: string[];
+    provider: string;
+    model: string;
+  };
+  fallback?: boolean;
+  aiError?: string | null;
+};
 
 const starterContent = `
 <h1>普通人做公众号副业还有机会吗？</h1>
@@ -120,6 +132,11 @@ const wechatLayoutTemplates: Array<{
     id: "checklist",
     label: "教程清单",
     description: "适合步骤、方法、避坑清单，把连续短句整理成列表。",
+  },
+  {
+    id: "editorial",
+    label: "AI 主编精排",
+    description: "自动识别导语、重点句、引用、清单和结尾行动区。",
   },
 ];
 
@@ -456,6 +473,7 @@ export function WechatEditor() {
   const [generatingPrompts, setGeneratingPrompts] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const [rewriting, setRewriting] = useState(false);
+  const [layouting, setLayouting] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -570,6 +588,45 @@ export function WechatEditor() {
     setHtml(nextHtml);
     const template = wechatLayoutTemplates.find((item) => item.id === layoutTemplate);
     setNotice(`已套用「${template?.label || "清爽长文"}」排版模板，可继续微调标题、引用和列表，再复制到公众号后台。`);
+  }
+
+  async function applyAiWechatLayout() {
+    if (!editor) {
+      return;
+    }
+
+    const content = editor.getText().trim();
+    if (content.length < 20) {
+      setNotice("正文至少需要 20 个字，才能使用 AI 精排。");
+      return;
+    }
+
+    setLayouting(true);
+    setNotice("AI 主编正在识别标题、重点句、引用、清单和结尾 CTA。");
+    try {
+      const data = await readJson<WechatLayoutResult>(
+        await fetch("/api/generate/wechat-layout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: getCurrentTitle(),
+            content,
+            template: layoutTemplate,
+          }),
+        }),
+      );
+      editor.commands.setContent(data.output.html);
+      setHtml(data.output.html);
+      setNotice(
+        data.fallback
+          ? `已用本地规则完成排版。${data.output.notes.join("；")}`
+          : `已使用 ${data.output.model} 完成 AI 精排：${data.output.notes.join("；")}`,
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "AI 精排失败。");
+    } finally {
+      setLayouting(false);
+    }
   }
 
   async function copyText() {
@@ -865,10 +922,16 @@ export function WechatEditor() {
                   <h2 className="text-base font-semibold text-slate-950">公众号排版</h2>
                   <p className="mt-1 text-sm leading-6 text-slate-500">先选一个排版模板，再点“一键排版”。选中文本后也可以手动设置标题、引用和列表。</p>
                 </div>
-                <Button onClick={applyWechatLayout} disabled={!editor} type="button">
-                  <WandSparkles className="size-4" />
-                  一键排版
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={applyWechatLayout} disabled={!editor || layouting} type="button" variant="secondary">
+                    <WandSparkles className="size-4" />
+                    一键排版
+                  </Button>
+                  <Button onClick={applyAiWechatLayout} disabled={!editor || layouting} type="button">
+                    {layouting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+                    {layouting ? "AI 精排中..." : "AI 精排"}
+                  </Button>
+                </div>
               </div>
               <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-900">

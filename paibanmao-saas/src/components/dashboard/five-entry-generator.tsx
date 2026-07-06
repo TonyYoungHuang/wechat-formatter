@@ -156,6 +156,7 @@ function formatJobType(type: string) {
     topic_generation: "选题生成",
     image_prompt_generation: "图片提示词",
     ai_tone_rewrite: "自然改写",
+    wechat_layout_generation: "公众号 AI 排版",
   };
   return labels[type] || type;
 }
