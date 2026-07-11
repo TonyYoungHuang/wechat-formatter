@@ -1,18 +1,21 @@
-import { generateJsonWithChat } from "@/lib/ai/chat-json";
-import { getAiProviderCandidates } from "@/lib/ai/provider";
 import {
-  aiArticleStructureSchema,
+  generateJsonWithChat,
+  getFriendlyAiErrorMessage,
+  isFatalAiRequestError,
+} from "./chat-json";
+import { getAiProviderCandidates } from "./provider";
+import {
+  aiArticleLayoutPlanSchema,
   articleBlockText,
   createArticleDocumentFromText,
   createBlockId,
   getWechatTheme,
-  normalizeComparableText,
   renderWechatDocument,
   resolveWechatThemeId,
   type ArticleBlock,
   type ArticleDocument,
   type WechatThemeInput,
-} from "@/lib/wechat-layout";
+} from "../wechat-layout";
 
 export type WechatLayoutTemplate = WechatThemeInput;
 
@@ -21,6 +24,8 @@ type WechatLayoutInput = {
   content: string;
   template: WechatLayoutTemplate;
 };
+
+type LayoutPlan = typeof aiArticleLayoutPlanSchema._output;
 
 function buildOutput(
   document: ArticleDocument,
@@ -68,153 +73,148 @@ export function buildFallbackWechatLayout(input: WechatLayoutInput) {
   });
 }
 
-function buildArticleDocumentFromAi(
-  output: typeof aiArticleStructureSchema._output,
-  input: WechatLayoutInput,
-): ArticleDocument {
-  const blocks = output.blocks.map((block, index): ArticleBlock => {
-    const id = createBlockId(index, block.type);
-    switch (block.type) {
-      case "lead":
-      case "paragraph":
-        return { id, type: block.type, text: block.text };
-      case "heading":
-        return { id, type: "heading", level: block.level, text: block.text };
-      case "quote":
-        return { id, type: "quote", text: block.text, source: block.source };
-      case "callout":
-        return { id, type: "callout", tone: block.tone, title: block.title, text: block.text };
-      case "list":
-        return { id, type: "list", ordered: block.ordered, items: block.items.map((text) => ({ text })) };
-      case "steps":
-        return { id, type: "steps", title: block.title, items: block.items };
-      case "compare":
-        return { id, type: "compare", title: block.title, left: block.left, right: block.right };
-      case "dialogue":
-        return { id, type: "dialogue", title: block.title, items: block.items };
-      case "stat":
-        return { id, type: "stat", value: block.value, label: block.label };
-      case "cta":
-        return { id, type: "cta", title: block.title, text: block.text };
-      case "divider":
-        return { id, type: "divider" };
-      case "byline":
-        return { id, type: "byline", author: block.author, text: block.text };
+function getPlanningType(block: ArticleBlock) {
+  return block.type === "heading" ? `heading${block.level}` : block.type;
+}
+
+export function buildCompactLayoutPrompt(document: ArticleDocument, maxChars = 14000) {
+  const lines: string[] = [];
+  let usedChars = 0;
+
+  document.blocks.forEach((block, index) => {
+    if (["divider", "image", "imageGroup"].includes(block.type)) return;
+    const text = articleBlockText(block).replace(/\s+/g, " ").trim().slice(0, 360);
+    if (!text) return;
+    const line = `[${index}|${getPlanningType(block)}] ${text}`;
+    if (usedChars + line.length > maxChars) return;
+    lines.push(line);
+    usedChars += line.length + 1;
+  });
+
+  return lines.join("\n");
+}
+
+function isConvertibleTextBlock(block: ArticleBlock) {
+  return ["lead", "heading", "paragraph", "quote", "callout", "cta", "byline"].includes(block.type);
+}
+
+function convertTextBlock(block: ArticleBlock, index: number, decision: LayoutPlan["decisions"][number]): ArticleBlock {
+  if (!isConvertibleTextBlock(block)) return block;
+  const text = articleBlockText(block).trim();
+  if (!text) return block;
+
+  switch (decision.type) {
+    case "lead":
+      return { id: createBlockId(index, "lead"), type: "lead", text };
+    case "heading2":
+    case "heading3":
+      if (text.length > 80 || /[。！？!?；;]$/.test(text)) return block;
+      return { id: createBlockId(index, "heading"), type: "heading", level: decision.type === "heading2" ? 2 : 3, text };
+    case "paragraph":
+      return { id: createBlockId(index, "paragraph"), type: "paragraph", text };
+    case "quote":
+      return { id: createBlockId(index, "quote"), type: "quote", text };
+    case "callout":
+      return { id: createBlockId(index, "callout"), type: "callout", tone: decision.tone || "important", text };
+    case "cta":
+      if (!/(关注|私信|留言|评论|咨询|扫码|添加微信|回复关键词|加入社群|领取|点击|转发)/.test(text)) return block;
+      return { id: createBlockId(index, "cta"), type: "cta", title: "下一步", text };
+  }
+}
+
+export function applyCompactLayoutPlan(document: ArticleDocument, plan: LayoutPlan) {
+  const decisions = new Map(plan.decisions.map((decision) => [decision.index, decision]));
+  const maxCallouts = Math.max(1, Math.ceil(document.blocks.map(articleBlockText).join("").length / 700));
+  let leadUsed = false;
+  let calloutsUsed = 0;
+
+  const blocks = document.blocks.map((block, index) => {
+    const decision = decisions.get(index);
+    let next = decision ? convertTextBlock(block, index, decision) : block;
+
+    if (next.type === "lead") {
+      if (leadUsed) {
+        next = { id: createBlockId(index, "paragraph"), type: "paragraph", text: articleBlockText(next) };
+      }
+      leadUsed = true;
     }
+
+    if (next.type === "callout") {
+      if (calloutsUsed >= maxCallouts) {
+        next = { id: createBlockId(index, "paragraph"), type: "paragraph", text: articleBlockText(next) };
+      } else {
+        calloutsUsed += 1;
+      }
+    }
+
+    return next;
   });
 
-  return {
-    version: 1,
-    title: output.title || input.title || "公众号文章",
-    blocks,
-    source: {
-      type: "generated",
-      fingerprint: createArticleDocumentFromText(input.content, { title: input.title }).source.fingerprint,
-    },
-  };
+  return { ...document, blocks };
 }
 
-function shingleCoverage(source: string, candidate: string) {
-  const normalizedSource = normalizeComparableText(source);
-  const normalizedCandidate = normalizeComparableText(candidate);
-  if (!normalizedSource) return 1;
-  if (normalizedSource.length < 4) return normalizedCandidate.includes(normalizedSource) ? 1 : 0;
-
-  const shingles = new Set<string>();
-  for (let index = 0; index < normalizedSource.length - 1; index += 1) {
-    shingles.add(normalizedSource.slice(index, index + 2));
-  }
-  let matches = 0;
-  shingles.forEach((shingle) => {
-    if (normalizedCandidate.includes(shingle)) matches += 1;
-  });
-  return matches / Math.max(shingles.size, 1);
-}
-
-function assertAiPreservedContent(input: WechatLayoutInput, document: ArticleDocument) {
-  let source = normalizeComparableText(input.content);
-  const normalizedTitle = normalizeComparableText(input.title || "");
-  if (normalizedTitle && source.startsWith(normalizedTitle)) {
-    source = source.slice(normalizedTitle.length);
-  }
-  const candidateText = document.blocks.map(articleBlockText).join("\n");
-  const candidate = normalizeComparableText(candidateText);
-  const lengthRatio = candidate.length / Math.max(source.length, 1);
-  const coverage = shingleCoverage(source, candidate);
-
-  if (lengthRatio < 0.72 || lengthRatio > 1.28 || coverage < 0.68) {
-    throw new Error(`AI structure changed too much content (coverage ${coverage.toFixed(2)}, length ${lengthRatio.toFixed(2)}).`);
-  }
-}
-
-export async function generateWechatLayoutWithAi(input: WechatLayoutInput) {
+export async function generateWechatLayoutWithAi(input: WechatLayoutInput, options: { signal?: AbortSignal } = {}) {
   const fallback = buildFallbackWechatLayout(input);
   const candidates = (await getAiProviderCandidates("layout")).filter((config) => config.baseUrl && config.apiKey && config.model);
 
   if (!candidates.length) {
-    return { ...fallback, aiError: "AI provider is not configured." };
+    return { ...fallback, aiError: "Claude 服务尚未配置，请联系管理员。本次不扣生成额度。" };
   }
 
   const selectedTheme = getWechatTheme(input.template);
+  const baseDocument = fallback.document;
+  const compactBlocks = buildCompactLayoutPrompt(
+    baseDocument,
+    Number(process.env.WECHAT_LAYOUT_AI_PROMPT_CHAR_LIMIT || 14000),
+  );
   const prompt = [
-    `用户选择的排版主题：${selectedTheme.name}`,
-    `文章标题：${input.title || "请从原文识别"}`,
+    `排版主题：${selectedTheme.name}`,
+    `文章标题：${baseDocument.title}`,
+    "下面是本地引擎已切分的段落，格式为 [序号|当前类型] 段落预览：",
+    compactBlocks,
     "",
-    "原文：",
-    "-----",
-    input.content.slice(0, 30000),
-    "-----",
-    "",
-    "请只分析结构，不要改写原文。返回字段：title、recommendedThemeId、blocks、notes。",
-    "blocks 可使用：lead、heading(level 2/3)、paragraph、quote、callout、list、steps、compare、dialogue、stat、cta、divider、byline。",
-    "每个正文文字必须来自原文，保持原有顺序；只允许去掉 Markdown 标记、修复空行和把枚举拆成数组。",
-    "不要补充新观点、数据、案例、收益、人物、产品承诺或营销话术。",
-    "全文只能有一个主标题，主标题放 title，不要再放进 blocks。",
-    "大段落用 level 2，小段落用 level 3；不要把每个短句都识别成标题。",
-    "导语最多一个；重点框每 600 字最多两个；CTA 只有原文确实包含行动引导时才能使用。",
-    "普通正文使用 paragraph，不要为了好看滥用 callout、quote、stat 或 divider。",
-    "行业报告主题：原文有数据、对比和来源时优先识别 stat、compare、byline。",
-    "访谈对话主题：原文有问答角色时优先识别 dialogue，金句可以识别为 quote。",
-    "故事叙事主题：保留叙事节奏，少用 callout，章节转折使用 heading 或 divider。",
-    "产品介绍主题：只在原文确有问题、方案、优势和行动引导时使用 compare、callout、cta。",
-    "新闻资讯主题：导语承接核心事件，来源与时间放 byline，不得编造新闻要素。",
-    "notes 用简短中文说明做了哪些结构处理。",
+    "只返回需要调整的段落，不要返回未变化的段落，更不要复述任何原文。",
+    "可选类型：lead、heading2、heading3、paragraph、quote、callout、cta。callout 可附 tone：info、tip、important、warning。",
+    "全文最多一个 lead；标题要克制，不要把完整句子当标题；普通正文保持 paragraph。",
+    "只有原文明确包含行动引导时才用 cta；重点段才用 callout，避免通篇色块。",
+    "列表、步骤、对话、数据和图片等本地已识别类型不要调整。",
+    "返回 JSON：{\"decisions\":[{\"index\":2,\"type\":\"heading2\"}],\"notes\":[\"识别了章节层级\"]}",
   ].join("\n");
 
-  const errors: string[] = [];
-
+  let lastError: unknown;
   for (const config of candidates) {
     try {
       const result = await generateJsonWithChat({
         config,
-        schema: aiArticleStructureSchema,
-        system: [
-          "你是排版猫的微信公众号结构主编。",
-          "你的工作是识别文章结构和信息类型，不是改写文章，也不是生成 HTML。",
-          "你必须尽量完整保留用户原文，让后续确定性排版引擎负责视觉样式。",
-        ].join("\n"),
+        schema: aiArticleLayoutPlanSchema,
+        system: "你是排版猫的微信公众号结构主编。只做段落分类，不改写、不摘要、不复述原文，只输出合法 JSON。",
         prompt,
-        temperature: 0.15,
-        maxTokens: 7000,
-        timeoutMs: Number(process.env.WECHAT_LAYOUT_AI_REQUEST_TIMEOUT_MS || 25000),
+        temperature: 0,
+        maxTokens: Number(process.env.WECHAT_LAYOUT_AI_MAX_TOKENS || 1800),
+        timeoutMs: Number(process.env.WECHAT_LAYOUT_AI_REQUEST_TIMEOUT_MS || 18000),
+        signal: options.signal,
+        autoCache: true,
       });
-      const document = buildArticleDocumentFromAi(result.object, input);
-      assertAiPreservedContent(input, document);
+      const document = applyCompactLayoutPlan(baseDocument, result.object);
+      const notes = result.object.notes.length
+        ? result.object.notes
+        : ["Claude 已完成段落层级判断", "原文由本地结构引擎完整保留"];
 
       return buildOutput(document, selectedTheme.id, {
-        notes: result.object.notes,
+        notes,
         provider: config.name,
         model: config.model,
         tokenInput: result.tokenInput,
         tokenOutput: result.tokenOutput,
       });
     } catch (error) {
-      errors.push(`${config.name}/${config.model}: ${error instanceof Error ? error.message : "unknown error"}`);
+      lastError = error;
+      if (options.signal?.aborted || isFatalAiRequestError(error)) break;
     }
   }
 
   return {
     ...fallback,
-    aiError: errors.join("; "),
+    aiError: getFriendlyAiErrorMessage(lastError),
   };
 }

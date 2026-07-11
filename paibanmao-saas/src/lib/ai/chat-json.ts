@@ -1,13 +1,46 @@
 import { z } from "zod";
 
-import type { AiProviderConfig } from "@/lib/ai/provider";
-import { fetchWithTimeout } from "@/lib/async/timeout";
+import type { AiProviderConfig } from "./provider";
+import { fetchWithTimeout } from "../async/timeout";
 
 export type ChatJsonResult<T> = {
   object: T;
   tokenInput: number;
   tokenOutput: number;
 };
+
+export class AiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AiRequestError";
+    this.status = status;
+  }
+}
+
+export function isFatalAiRequestError(error: unknown) {
+  return error instanceof AiRequestError && [401, 402, 403].includes(error.status);
+}
+
+export function getFriendlyAiErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = error instanceof AiRequestError ? error.status : 0;
+
+  if (status === 402 || /insufficient balance|top up|余额不足/i.test(message)) {
+    return "Claude 服务余额不足，请联系管理员补充 API 额度后重试。本次不扣生成额度。";
+  }
+  if ([401, 403].includes(status) || /unauthorized|invalid api key|authentication/i.test(message)) {
+    return "Claude 服务认证失败，请联系管理员检查 API 配置。本次不扣生成额度。";
+  }
+  if (status === 429 || /rate limit|too many requests/i.test(message)) {
+    return "Claude 服务当前请求较多，请稍后重试。本次不扣生成额度。";
+  }
+  if (/timed out|timeout|aborted/i.test(message)) {
+    return "Claude 精排响应超时，请稍后重试。本次不扣生成额度。";
+  }
+  return "Claude 精排暂未完成，请稍后重试。本次不扣生成额度。";
+}
 
 function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.replace(/\/$/, "");
@@ -65,6 +98,8 @@ export async function generateJsonWithChat<TSchema extends z.ZodTypeAny>(input: 
   temperature: number;
   maxTokens?: number;
   timeoutMs?: number;
+  signal?: AbortSignal;
+  autoCache?: boolean;
 }): Promise<ChatJsonResult<z.infer<TSchema>>> {
   const response = await fetchWithTimeout(
     `${normalizeBaseUrl(input.config.baseUrl)}/chat/completions`,
@@ -95,7 +130,9 @@ export async function generateJsonWithChat<TSchema extends z.ZodTypeAny>(input: 
         ],
         temperature: input.temperature,
         max_tokens: input.maxTokens,
+        ...(input.autoCache === undefined ? {} : { requesty: { auto_cache: input.autoCache } }),
       }),
+      signal: input.signal,
     },
     input.timeoutMs ?? Number(process.env.AI_TEXT_REQUEST_TIMEOUT_MS || 120000),
   );
@@ -112,7 +149,7 @@ export async function generateJsonWithChat<TSchema extends z.ZodTypeAny>(input: 
   };
 
   if (!response.ok) {
-    throw new Error(payload.error?.message || payload.message || `AI request failed with ${response.status}.`);
+    throw new AiRequestError(payload.error?.message || payload.message || `AI request failed with ${response.status}.`, response.status);
   }
 
   const text = extractTextContent(payload.choices?.[0]?.message?.content);

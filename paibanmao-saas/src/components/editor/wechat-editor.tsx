@@ -27,6 +27,7 @@ import {
   Save,
   SeparatorHorizontal,
   WandSparkles,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ type WechatLayoutResult = {
   };
   fallback?: boolean;
   aiError?: string | null;
+  timing?: { totalMs: number };
 };
 
 type ComplianceCheckResult = {
@@ -388,6 +390,7 @@ export function WechatEditor() {
   const [quickPasteText, setQuickPasteText] = useState("");
   const [structuredWechatDocument, setStructuredWechatDocument] = useState<ArticleDocument | null>(null);
   const applyingDocumentRef = useRef(false);
+  const layoutAbortRef = useRef<AbortController | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -412,6 +415,8 @@ export function WechatEditor() {
       }
     },
   });
+
+  useEffect(() => () => layoutAbortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!projectId || !editor) {
@@ -573,6 +578,11 @@ export function WechatEditor() {
     setNotice("已把正文套用为公众号排版。下一步点击“复制到公众号后台”，再粘贴到微信公众平台正文区。");
   }
 
+  function cancelAiWechatLayout() {
+    layoutAbortRef.current?.abort();
+    setNotice("已取消 AI 精排，当前文章和排版保持不变。此次不扣生成额度。");
+  }
+
   async function applyAiWechatLayout() {
     if (!editor) {
       return;
@@ -584,6 +594,9 @@ export function WechatEditor() {
       return;
     }
 
+    const controller = new AbortController();
+    layoutAbortRef.current?.abort();
+    layoutAbortRef.current = controller;
     setLayouting(true);
     setNotice("AI 主编正在识别标题、重点句、引用、清单和结尾 CTA。");
     try {
@@ -596,20 +609,29 @@ export function WechatEditor() {
             content,
             template: layoutTemplate,
           }),
+          signal: controller.signal,
         }),
       );
       if (data.fallback) {
-        setNotice("AI 精排暂未完成，已保留当前文章和排版结构，请稍后重试。本次不扣生成额度。");
+        setNotice(data.aiError || "AI 精排暂未完成，已保留当前文章和排版结构，请稍后重试。本次不扣生成额度。");
         return;
       }
 
       setLayoutTemplate(resolveWechatThemeId(data.output.themeId));
       applyDocumentToEditor(data.output.document);
-      setNotice(`AI 精排已完成：${data.output.notes.join("；")}`);
+      const elapsed = data.timing?.totalMs ? `，用时 ${(data.timing.totalMs / 1000).toFixed(1)} 秒` : "";
+      setNotice(`AI 精排已完成${elapsed}：${data.output.notes.join("；")}`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "AI 精排失败。");
+      if (controller.signal.aborted) {
+        setNotice("已取消 AI 精排，当前文章和排版保持不变。此次不扣生成额度。");
+      } else {
+        setNotice(error instanceof Error ? error.message : "AI 精排失败。");
+      }
     } finally {
-      setLayouting(false);
+      if (layoutAbortRef.current === controller) {
+        layoutAbortRef.current = null;
+        setLayouting(false);
+      }
     }
   }
 
@@ -961,9 +983,14 @@ export function WechatEditor() {
                     <WandSparkles className="size-4" />
                     一键排版
                   </Button>
-                  <Button onClick={applyAiWechatLayout} disabled={!editor || layouting} type="button">
-                    {layouting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
-                    {layouting ? "AI 精排中..." : "AI 精排"}
+                  <Button
+                    onClick={layouting ? cancelAiWechatLayout : applyAiWechatLayout}
+                    disabled={!editor}
+                    type="button"
+                    variant={layouting ? "secondary" : "primary"}
+                  >
+                    {layouting ? <X className="size-4" /> : <WandSparkles className="size-4" />}
+                    {layouting ? "取消精排" : "AI 主编精排"}
                   </Button>
                 </div>
               </div>

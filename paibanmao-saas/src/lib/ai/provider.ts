@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from "../db/prisma";
 
 export type AiProviderConfig = {
   type: "openai-compatible";
@@ -57,9 +57,10 @@ export async function getAiProviderCandidates(purpose = "content"): Promise<AiPr
 
     for (const provider of providers) {
       const preferredModels = provider.models.filter((model) => model.purpose === purpose);
-      const fallbackModels = provider.models.filter((model) => model.purpose !== purpose);
+      const contentFallbackModels = purpose === "content" ? [] : provider.models.filter((model) => model.purpose === "content");
+      const selectedModels = preferredModels.length ? preferredModels : contentFallbackModels;
 
-      for (const model of [...preferredModels, ...fallbackModels]) {
+      for (const model of selectedModels) {
         candidates.push({
           type: "openai-compatible",
           name: provider.name,
@@ -77,19 +78,27 @@ export async function getAiProviderCandidates(purpose = "content"): Promise<AiPr
   }
 
   const environmentFallback = getDefaultAiProvider();
-  const hasSameEnvironmentProvider = candidates.some(
+  const deduplicatedCandidates = candidates.filter(
+    (candidate, index, all) =>
+      all.findIndex(
+        (item) =>
+          item.baseUrl === candidate.baseUrl &&
+          item.apiKeyRef === candidate.apiKeyRef &&
+          item.model === candidate.model,
+      ) === index,
+  );
+  const hasSameEnvironmentProvider = deduplicatedCandidates.some(
     (candidate) =>
-      candidate.source === "environment" ||
-      (candidate.baseUrl === environmentFallback.baseUrl &&
-        candidate.apiKeyRef === environmentFallback.apiKeyRef &&
-        candidate.model === environmentFallback.model),
+      candidate.baseUrl === environmentFallback.baseUrl &&
+      candidate.apiKeyRef === environmentFallback.apiKeyRef &&
+      candidate.model === environmentFallback.model,
   );
 
   if (!hasSameEnvironmentProvider) {
-    candidates.push(environmentFallback);
+    deduplicatedCandidates.push(environmentFallback);
   }
 
-  return candidates;
+  return deduplicatedCandidates;
 }
 
 export async function getAiProviderStatus(purpose = "content") {

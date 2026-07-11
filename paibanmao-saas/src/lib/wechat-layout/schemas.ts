@@ -92,3 +92,14 @@ export const aiArticleStructureSchema = z.object({
   ).min(1).max(240),
   notes: z.array(z.string().min(1).max(160)).min(1).max(8),
 });
+
+export const aiArticleLayoutPlanSchema = z.object({
+  decisions: z.array(
+    z.object({
+      index: z.number().int().min(0).max(299),
+      type: z.enum(["lead", "heading2", "heading3", "paragraph", "quote", "callout", "cta"]),
+      tone: z.enum(["info", "tip", "important", "warning"]).optional(),
+    }),
+  ).max(120),
+  notes: z.array(z.string().min(1).max(120)).max(4).optional().default([]),
+});
