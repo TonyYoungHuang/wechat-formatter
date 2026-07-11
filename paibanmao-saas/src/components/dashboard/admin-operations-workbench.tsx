@@ -43,10 +43,20 @@ type AdminOrder = {
   provider: string;
   amountCents: number;
   status: string;
+  providerOrderId?: string | null;
+  providerTradeNo?: string | null;
   paidAt?: string | null;
+  expiresAt: string;
   createdAt: string;
-  workspace?: { id: string; name: string; planCode: PlanCode; riskStatus: string };
-  callbacks: Array<{ status: string; message?: string | null; createdAt: string }>;
+  updatedAt: string;
+  workspace?: {
+    id: string;
+    name: string;
+    planCode: PlanCode;
+    riskStatus: string;
+    members?: Array<{ user: { email: string; name: string } }>;
+  };
+  callbacks: Array<{ status: string; eventType?: string | null; providerTradeNo?: string | null; message?: string | null; createdAt: string }>;
 };
 
 type AdminOperationsPayload = {
@@ -75,6 +85,80 @@ async function readJson<T>(response: Response): Promise<T> {
 
 function money(cents: number | null | undefined) {
   return `¥${((cents ?? 0) / 100).toFixed(2)}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatShortDateTime(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function paymentStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "待支付",
+    paid: "已付款",
+    failed: "支付失败",
+    cancelled: "已取消",
+    expired: "已过期",
+    refunded: "已退款",
+  };
+  return labels[status] || status;
+}
+
+function paymentStatusClass(status: string) {
+  if (status === "paid") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (status === "refunded") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  if (status === "failed" || status === "cancelled" || status === "expired") {
+    return "border-red-100 bg-red-50 text-red-700";
+  }
+  return "border-slate-200 bg-white text-slate-600";
+}
+
+function providerLabel(provider: string) {
+  const labels: Record<string, string> = {
+    wechat: "微信支付",
+    alipay: "支付宝",
+    manual: "人工补单",
+  };
+  return labels[provider] || provider;
+}
+
+function getOrderTradeNo(order: AdminOrder) {
+  return order.providerTradeNo || order.providerOrderId || order.callbacks[0]?.providerTradeNo || "-";
+}
+
+function getOrderCustomer(order: AdminOrder) {
+  return order.workspace?.members?.map((member) => member.user.email).filter(Boolean).join("，") || "-";
+}
+
+function getOrderOptionLabel(order: AdminOrder) {
+  const workspaceName = order.workspace?.name || order.workspaceId;
+  return `${paymentStatusLabel(order.status)} · ${money(order.amountCents)} · ${formatShortDateTime(order.paidAt || order.createdAt)} · ${workspaceName}`;
 }
 
 export function AdminOperationsWorkbench() {
@@ -126,6 +210,7 @@ export function AdminOperationsWorkbench() {
   const revenuePaid = data?.revenue.byStatus.find((item) => item.status === "paid")?._sum.amountCents ?? 0;
   const activeUsers = data?.users.filter((user) => user.sessions.length > 0).length ?? 0;
   const riskWorkspaces = data?.workspaces.filter((workspace) => workspace.riskStatus !== "normal") ?? [];
+  const selectedOrder = data?.orders.find((order) => order.id === selectedOrderId) ?? null;
 
   return (
     <div className="space-y-6">
@@ -159,7 +244,7 @@ export function AdminOperationsWorkbench() {
         <CardContent className="flex flex-col gap-3 text-sm leading-6 text-slate-700 sm:flex-row sm:items-center sm:justify-between">
           <p>生成入门版和专业版激活码，用于电商平台自动发货。明文激活码只在生成后当次展示，请及时复制保存。</p>
           <Button asChild>
-            <Link href="/dashboard/billing#activation-codes">
+            <Link href="#activation-codes">
               生成激活码
             </Link>
           </Button>
@@ -219,15 +304,45 @@ export function AdminOperationsWorkbench() {
             <CardTitle>订单总览</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {data?.orders.slice(0, 12).map((order) => (
-              <button key={order.id} className="w-full rounded-lg border border-slate-100 bg-slate-50 p-3 text-left text-sm hover:border-emerald-200" onClick={() => setSelectedOrderId(order.id)} type="button">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="break-all font-medium text-slate-950">{order.id}</span>
-                  <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-600">{order.status}</span>
-                </div>
-                <div className="mt-2 text-xs text-slate-500">{order.workspace?.name || order.workspaceId} · {order.provider} · {money(order.amountCents)}</div>
-              </button>
-            ))}
+            {data?.orders.slice(0, 12).map((order) => {
+              const latestCallback = order.callbacks[0];
+              return (
+                <button
+                  key={order.id}
+                  className={`w-full rounded-lg border p-3 text-left text-sm transition hover:border-emerald-300 ${
+                    selectedOrderId === order.id ? "border-emerald-300 bg-emerald-50/60" : "border-slate-100 bg-slate-50"
+                  }`}
+                  onClick={() => setSelectedOrderId(order.id)}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs text-slate-500">订单号</div>
+                      <div className="mt-1 break-all font-medium text-slate-950">{order.id}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2 py-1 text-xs ${paymentStatusClass(order.status)}`}>
+                      {paymentStatusLabel(order.status)}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                    <OrderMeta label="客户邮箱" value={getOrderCustomer(order)} />
+                    <OrderMeta label="订单金额" value={money(order.amountCents)} />
+                    <OrderMeta label="付款状态" value={paymentStatusLabel(order.status)} />
+                    <OrderMeta label="退款状态" value={order.status === "refunded" ? "已标记退款" : "无退款记录"} />
+                    <OrderMeta label="付款时间" value={formatDateTime(order.paidAt)} />
+                    <OrderMeta label="创建时间" value={formatDateTime(order.createdAt)} />
+                    <OrderMeta label="支付渠道" value={providerLabel(order.provider)} />
+                    <OrderMeta label="交易单号" value={getOrderTradeNo(order)} />
+                    <OrderMeta
+                      label="回调状态"
+                      value={latestCallback ? `${latestCallback.status} · ${formatDateTime(latestCallback.createdAt)}` : "暂无回调"}
+                    />
+                    <OrderMeta label="工作区" value={order.workspace?.name || order.workspaceId} />
+                  </div>
+                </button>
+              );
+            })}
           </CardContent>
         </Card>
       </div>
@@ -235,31 +350,44 @@ export function AdminOperationsWorkbench() {
       <div className="grid gap-4 xl:grid-cols-3">
         <OperationCard title="人工补单" icon={<WalletCards className="size-5 text-emerald-600" />}>
           <SelectWorkspace data={data} value={selectedWorkspaceId} onChange={setSelectedWorkspaceId} />
-          <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value as PlanCode)} className="h-10 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+          <select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value as PlanCode)} className="h-10 w-full min-w-0 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
             <option value="free">免费版</option>
             <option value="starter">入门版</option>
             <option value="pro">专业版</option>
           </select>
-          <Button onClick={() => runAction({ action: "manual_comp", workspaceId: selectedWorkspaceId, planCode: selectedPlan, note }, "人工补单已完成。")} disabled={!selectedWorkspaceId}>开通/调整套餐</Button>
+          <Button className="w-full" onClick={() => runAction({ action: "manual_comp", workspaceId: selectedWorkspaceId, planCode: selectedPlan, note }, "人工补单已完成。")} disabled={!selectedWorkspaceId}>开通/调整套餐</Button>
         </OperationCard>
 
         <OperationCard title="退款标记" icon={<WalletCards className="size-5 text-amber-600" />}>
-          <select value={selectedOrderId} onChange={(event) => setSelectedOrderId(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+          <select value={selectedOrderId} onChange={(event) => setSelectedOrderId(event.target.value)} className="h-10 w-full min-w-0 truncate rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400">
             {data?.orders.map((order) => (
-              <option key={order.id} value={order.id}>{order.status} · {order.workspace?.name || order.workspaceId} · {money(order.amountCents)}</option>
+              <option key={order.id} value={order.id}>
+                {getOrderOptionLabel(order)}
+              </option>
             ))}
           </select>
-          <Button variant="secondary" onClick={() => runAction({ action: "refund_order", orderId: selectedOrderId, note }, "订单已标记退款。")} disabled={!selectedOrderId}>标记退款</Button>
+          {selectedOrder ? (
+            <div className="min-w-0 rounded-lg border border-amber-100 bg-amber-50/60 p-3 text-xs leading-5 text-slate-700">
+              <div className="font-medium text-slate-950">当前选中订单</div>
+              <div className="mt-2 grid gap-1">
+                <span className="truncate">客户：{getOrderCustomer(selectedOrder)}</span>
+                <span className="truncate">状态：{paymentStatusLabel(selectedOrder.status)} / {providerLabel(selectedOrder.provider)} / {money(selectedOrder.amountCents)}</span>
+                <span className="truncate">时间：付款 {formatDateTime(selectedOrder.paidAt)}，创建 {formatDateTime(selectedOrder.createdAt)}</span>
+                <span className="truncate">交易单号：{getOrderTradeNo(selectedOrder)}</span>
+              </div>
+            </div>
+          ) : null}
+          <Button className="w-full" variant="secondary" onClick={() => runAction({ action: "refund_order", orderId: selectedOrderId, note }, "订单已标记退款。")} disabled={!selectedOrderId}>标记退款</Button>
         </OperationCard>
 
         <OperationCard title="风控封禁" icon={<ShieldAlert className="size-5 text-red-600" />}>
           <SelectWorkspace data={data} value={selectedWorkspaceId} onChange={setSelectedWorkspaceId} />
-          <select value={riskStatus} onChange={(event) => setRiskStatus(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+          <select value={riskStatus} onChange={(event) => setRiskStatus(event.target.value)} className="h-10 w-full min-w-0 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
             <option value="normal">恢复正常</option>
             <option value="watch">观察</option>
             <option value="blocked">封禁</option>
           </select>
-          <Button variant="secondary" onClick={() => runAction({ action: "risk_update", workspaceId: selectedWorkspaceId, riskStatus, riskNote: note || null }, "风控状态已更新。")} disabled={!selectedWorkspaceId}>更新风控</Button>
+          <Button className="w-full" variant="secondary" onClick={() => runAction({ action: "risk_update", workspaceId: selectedWorkspaceId, riskStatus, riskNote: note || null }, "风控状态已更新。")} disabled={!selectedWorkspaceId}>更新风控</Button>
         </OperationCard>
       </div>
 
@@ -295,18 +423,30 @@ function Metric({ title, value, detail }: { title: string; value: string | numbe
 
 function OperationCard({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <Card>
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">{icon}{title}</CardTitle>
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0">{icon}</span>
+          <span className="truncate">{title}</span>
+        </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-3">{children}</CardContent>
+      <CardContent className="grid min-w-0 gap-3">{children}</CardContent>
     </Card>
+  );
+}
+
+function OrderMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md bg-white px-2 py-1.5">
+      <div className="text-[11px] text-slate-400">{label}</div>
+      <div className="mt-0.5 break-words font-medium text-slate-700">{value}</div>
+    </div>
   );
 }
 
 function SelectWorkspace({ data, value, onChange }: { data: AdminOperationsPayload | null; value: string; onChange: (value: string) => void }) {
   return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
+    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full min-w-0 truncate rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400">
       {data?.workspaces.map((workspace) => (
         <option key={workspace.id} value={workspace.id}>{workspace.name} · {workspace.planCode}</option>
       ))}

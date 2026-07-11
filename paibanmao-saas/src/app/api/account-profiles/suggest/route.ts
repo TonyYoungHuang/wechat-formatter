@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { generateAccountProfileDraftWithAi } from "@/lib/ai/account-profile";
+import { buildFallbackAccountProfileDraft, generateAccountProfileDraftWithAi } from "@/lib/ai/account-profile";
+import { withTimeout } from "@/lib/async/timeout";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 
@@ -18,7 +19,17 @@ export async function POST(request: Request) {
       return errorResponse("请先输入你的账号想法，至少 2 个字。");
     }
 
-    const result = await generateAccountProfileDraftWithAi({ idea: parsed.data.idea });
+    const result = await withTimeout(
+      generateAccountProfileDraftWithAi({ idea: parsed.data.idea }),
+      Number(process.env.ACCOUNT_PROFILE_SUGGEST_TIMEOUT_MS || 18000),
+      "账号档案 AI 辅助生成超时，已先给出基础档案。",
+    ).catch((error) => ({
+      profile: buildFallbackAccountProfileDraft(parsed.data.idea),
+      provider: "fallback",
+      model: "local-rules",
+      fallback: true,
+      aiError: error instanceof Error ? error.message : "账号档案 AI 辅助生成超时，已先给出基础档案。",
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { buildFallbackRewrite, rewriteWithAi } from "@/lib/ai/rewrite";
+import { withTimeout } from "@/lib/async/timeout";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { rewriteContentSchema } from "@/lib/generation/schemas";
@@ -55,11 +56,15 @@ export async function POST(request: Request) {
     let aiError: string | null = null;
 
     try {
-      output = await rewriteWithAi({
-        prompt: promptTemplate.rendered,
-        title: parsed.data.title,
-        content: parsed.data.content,
-      });
+      output = await withTimeout(
+        rewriteWithAi({
+          prompt: promptTemplate.rendered,
+          title: parsed.data.title,
+          content: parsed.data.content,
+        }),
+        Number(process.env.REWRITE_TIMEOUT_MS || 25000),
+        "AI 改写超时，已先返回基础降 AI 味版本。",
+      );
     } catch (error) {
       aiError = error instanceof Error ? error.message : "AI rewrite failed.";
     }

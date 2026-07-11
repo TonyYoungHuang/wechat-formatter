@@ -2,11 +2,33 @@ import { NextResponse } from "next/server";
 
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { resolveFiveEntryGenerationScope, runFiveEntryGeneration } from "@/lib/generation/five-entry-service";
+import { resolveFiveEntryGenerationScope } from "@/lib/generation/five-entry-service";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 import { enqueueFiveEntryGeneration, ensureGenerationWorker, getGenerationQueue } from "@/lib/queues/generation";
 import { assertCanUseGeneration } from "@/lib/usage/service";
+
+function queueErrorMessage(error: unknown) {
+  const detail = error instanceof Error ? error.message : "Queue unavailable.";
+  return `后台生成队列暂时不可用，请稍后重试或联系微信客服。${detail ? ` (${detail})` : ""}`;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,25 +40,6 @@ export async function POST(request: Request) {
     }
 
     const scoped = await resolveFiveEntryGenerationScope(current.workspace.id, parsed.data);
-    let queue = null;
-    let queueError: string | null = null;
-
-    try {
-      queue = getGenerationQueue();
-    } catch (error) {
-      queueError = error instanceof Error ? error.message : "Queue unavailable.";
-    }
-
-    if (!queue) {
-      const result = await runFiveEntryGeneration({
-        workspaceId: current.workspace.id,
-        planCode: current.workspace.planCode,
-        payload: scoped.payload,
-      });
-
-      return NextResponse.json({ ...result, queued: false, fallback: "sync", queueError });
-    }
-
     await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
 
     const job = await prisma.generationJob.create({
@@ -53,22 +56,28 @@ export async function POST(request: Request) {
     });
 
     try {
-      await enqueueFiveEntryGeneration(job.id);
+      const queue = getGenerationQueue();
+      if (!queue) {
+        throw new Error("REDIS_URL is not configured.");
+      }
+
+      await withTimeout(enqueueFiveEntryGeneration(job.id), 3000, "Queue enqueue timed out.");
       ensureGenerationWorker();
     } catch (queueError) {
-      const result = await runFiveEntryGeneration({
-        workspaceId: current.workspace.id,
-        planCode: current.workspace.planCode,
-        payload: parsed.data,
-        existingJobId: job.id,
+      const message = queueErrorMessage(queueError);
+      const failedJob = await prisma.generationJob.update({
+        where: { id: job.id },
+        data: {
+          status: "failed",
+          error: message,
+        },
       });
 
       return NextResponse.json({
-        ...result,
+        job: failedJob,
         queued: false,
-        fallback: "sync",
-        queueError: queueError instanceof Error ? queueError.message : "Queue unavailable.",
-      });
+        queueError: message,
+      }, { status: 202 });
     }
 
     return NextResponse.json({ job, queued: true }, { status: 202 });

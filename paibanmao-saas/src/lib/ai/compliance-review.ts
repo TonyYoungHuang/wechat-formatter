@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 
 const aiReviewIssueSchema = z.object({
@@ -117,13 +116,8 @@ export async function reviewComplianceWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: complianceAiReviewSchema,
         system: [
           "你是排版猫的微信内容发布前主编。",
@@ -133,6 +127,8 @@ export async function reviewComplianceWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.35,
+        maxTokens: 7000,
+        timeoutMs: Number(process.env.COMPLIANCE_AI_REQUEST_TIMEOUT_MS || 16000),
       });
 
       return {

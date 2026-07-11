@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2, Clock3, Copy, FolderOpen, HelpCircle, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
@@ -7,6 +8,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, Clock3, Copy, FolderOpen, HelpCi
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
+import { copyWechatRichHtml } from "@/lib/wechat-layout";
 
 type AccountProfile = {
   id: string;
@@ -33,19 +35,60 @@ type GenerationResult = {
 type QueuedGenerationResult = {
   job: {
     id: string;
+    type?: string;
     status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
     error?: string | null;
+    output?: JobOutput | null;
   };
   project?: GenerationResult["project"] | null;
   queued?: boolean;
   fallback?: "sync";
 };
 
+type JobOutput = {
+  projectId?: string;
+  projectTitle?: string | null;
+  title?: string | null;
+  html?: string | null;
+  text?: string | null;
+  body?: string | null;
+  suggestions?: Array<{
+    title?: string;
+    reason?: string;
+    entries?: string[];
+  }>;
+  prompts?: string[];
+  images?: Array<{
+    prompt?: string;
+    revisedPrompt?: string;
+    url?: string;
+    b64Json?: string;
+    mimeType?: string;
+  }>;
+  hasHtml?: boolean;
+  hasImages?: boolean;
+  imageCount?: number;
+};
+
+type RecentJobPreview = {
+  title: string;
+  html?: string;
+  text: string;
+  sections?: Array<{ title: string; body: string }>;
+  images?: Array<{
+    prompt?: string;
+    revisedPrompt?: string;
+    url?: string;
+    b64Json?: string;
+    mimeType?: string;
+  }>;
+};
+
 type GenerationJob = {
   id: string;
   type: string;
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
-  output?: Record<string, unknown> | null;
+  output?: JobOutput | null;
   createdAt: string;
 };
 
@@ -128,9 +171,95 @@ function getJobProjectId(job: GenerationJob) {
   return typeof projectId === "string" ? projectId : "";
 }
 
+function getWechatArticleVariant(project?: GenerationResult["project"] | null) {
+  return project?.variants.find((variant) => variant.entry === "wechat_article") ?? null;
+}
+
+function htmlToPlainText(html?: string | null) {
+  if (!html) {
+    return "";
+  }
+  if (typeof window === "undefined") {
+    return html.replace(/<[^>]*>/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  return (container.textContent || container.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function getImageSrc(image: NonNullable<RecentJobPreview["images"]>[number]) {
+  if (image.url) {
+    return image.url;
+  }
+  if (image.b64Json) {
+    return `data:${image.mimeType || "image/png"};base64,${image.b64Json}`;
+  }
+  return "";
+}
+
+function buildGenericPreview(job: QueuedGenerationResult["job"]): RecentJobPreview | null {
+  const output = job.output;
+  if (!output) {
+    return null;
+  }
+
+  if (output.html) {
+    const title = output.title || "公众号排版结果";
+    return { title, html: output.html, text: output.text || htmlToPlainText(output.html) };
+  }
+
+  if (output.suggestions?.length) {
+    const sections = output.suggestions.map((item, index) => ({
+      title: item.title || `选题建议 ${index + 1}`,
+      body: [item.reason, item.entries?.length ? `适合入口：${item.entries.join("、")}` : ""].filter(Boolean).join("\n"),
+    }));
+    return {
+      title: "AI 选题建议",
+      sections,
+      text: sections.map((item) => `${item.title}\n${item.body}`.trim()).join("\n\n"),
+    };
+  }
+
+  if (output.prompts?.length) {
+    return {
+      title: output.title || "图片提示词",
+      sections: output.prompts.map((prompt, index) => ({ title: `第 ${index + 1} 条提示词`, body: prompt })),
+      text: output.prompts.join("\n\n"),
+    };
+  }
+
+  if (output.images?.length) {
+    const sections = output.images.map((image, index) => ({
+      title: `第 ${index + 1} 张图`,
+      body: image.revisedPrompt || image.prompt || "图片已生成",
+    }));
+    return {
+      title: "Gemini 生图结果",
+      sections,
+      images: output.images,
+      text: sections.map((item) => `${item.title}\n${item.body}`).join("\n\n"),
+    };
+  }
+
+  if (output.body || output.text || output.title) {
+    const title = output.title || "生成结果";
+    const text = [output.title, output.body || output.text].filter(Boolean).join("\n\n");
+    return { title, text };
+  }
+
+  return null;
+}
+
 function getJobUserMessage(job: GenerationJob) {
   if (job.status === "succeeded") {
-    return "内容已生成，可以继续编辑、复制或发布前检查。";
+    if (job.type === "wechat_layout_generation") {
+      return "排版结果已生成。点右侧“查看排版”可以直接查看和复制。";
+    }
+    if (job.type !== "five_entry_generation") {
+      return "结果已生成。点右侧“查看结果”可以直接打开和复制。";
+    }
+    return "内容已生成。点右侧“查看文章”可在本页打开，点“去编辑复制”可进入排版复制页面。";
   }
   if (job.status === "failed") {
     return "这次生成没有完成，请稍后重试；如果多次失败，可以联系微信客服。";
@@ -178,6 +307,7 @@ export function FiveEntryGenerator() {
   const [queueing, setQueueing] = useState(false);
   const [queuedJobId, setQueuedJobId] = useState("");
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
+  const [recentPreview, setRecentPreview] = useState<RecentJobPreview | null>(null);
   const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const queueButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -210,6 +340,88 @@ export function FiveEntryGenerator() {
       setJobs(data.jobs);
     } catch {
       // 生成器本身仍可使用，历史记录失败不阻断主流程。
+    }
+  }
+
+  async function openJobResult(jobId: string) {
+    try {
+      setMessage("正在打开这次生成的文章...");
+      const data = await readJson<QueuedGenerationResult>(await fetch(`/api/generation-jobs/${jobId}`));
+
+      if (data.project) {
+        setRecentPreview(null);
+        setResult({ project: data.project });
+        setActiveEntry("wechat_article");
+        setMessage("已打开历史生成结果。下方可以查看公众号正文，也可以点“去编辑复制”进入排版复制页面。");
+        window.setTimeout(() => {
+          document.getElementById("five-entry-result-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
+        return;
+      }
+
+      const preview = buildGenericPreview(data.job);
+      if (preview) {
+        setRecentPreview(preview);
+        setMessage(data.job.type === "wechat_layout_generation" ? "已打开公众号排版结果。下方可以预览，也可以复制 HTML 粘贴到微信公众平台。" : "已打开历史生成结果。下方可以查看和复制。");
+        window.setTimeout(() => {
+          document.getElementById("recent-job-preview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
+        return;
+      }
+
+      setMessage("这条记录没有关联到可打开的内容。可以重新生成一次，或联系微信客服帮你排查。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "打开历史文章失败。");
+    }
+  }
+
+  async function copyJobWechatArticle(jobId: string) {
+    try {
+      setMessage("正在读取公众号正文...");
+      const data = await readJson<QueuedGenerationResult>(await fetch(`/api/generation-jobs/${jobId}`));
+      const article = getWechatArticleVariant(data.project);
+
+      if (!article) {
+        setMessage("这条记录里没有找到公众号正文。可以点“查看文章”检查其他入口内容。");
+        return;
+      }
+
+      await copyText(`${article.title}\n\n${article.body}`);
+      setMessage("公众号正文已复制。下一步：打开微信公众平台图文编辑器，在正文区域粘贴；需要排版可点“去编辑复制”。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "复制公众号正文失败。");
+    }
+  }
+
+  async function copyJobLayout(jobId: string, mode: "html" | "text") {
+    try {
+      setMessage(mode === "html" ? "正在读取排版 HTML..." : "正在读取排版纯文本...");
+      const data = await readJson<QueuedGenerationResult>(await fetch(`/api/generation-jobs/${jobId}`));
+      const html = data.job.output?.html || "";
+
+      if (!html) {
+        setMessage("这条记录里没有找到可复制的排版结果。可以重新排版一次，或联系微信客服帮你排查。");
+        return;
+      }
+
+      if (mode === "html") {
+        await copyWechatRichHtml(html, data.job.output?.text || htmlToPlainText(html));
+      } else {
+        await copyText(data.job.output?.text || htmlToPlainText(html));
+      }
+      setMessage(mode === "html" ? "公众号排版 HTML 已复制。下一步：打开微信公众平台图文编辑器，在正文区域粘贴。" : "公众号纯文本已复制。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "复制排版结果失败。");
+    }
+  }
+
+  async function copyRecentPreviewLayout() {
+    if (!recentPreview?.html) return;
+    try {
+      await copyWechatRichHtml(recentPreview.html, recentPreview.text);
+      setMessage("公众号富文本排版已复制。下一步：打开微信公众平台图文编辑器，在正文区域粘贴。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "公众号富文本复制失败，请进入编辑器后重试。");
     }
   }
 
@@ -277,11 +489,11 @@ export function FiveEntryGenerator() {
 
     setLoading(true);
     setResult(null);
-    setMessage("正在生成公众号、小绿书、搜一搜、问一问和朋友圈内容，请先别关闭页面。");
+    setMessage("生成任务正在提交到后台队列。提交成功后可以停留等待，也可以稍后在最近生成记录里查看。");
     await nextPaint();
     try {
-      const data = await readJson<GenerationResult>(
-        await fetchWithTimeout("/api/generate/five-entry", {
+      const data = await readJson<QueuedGenerationResult>(
+        await fetchWithTimeout("/api/generate/five-entry/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -290,11 +502,27 @@ export function FiveEntryGenerator() {
             topic,
             goal,
           }),
-        }, 90000),
+        }, 15000),
       );
-      setResult(data);
-      setMessage("已生成并保存为内容项目。");
+      if (data.project) {
+        setResult({ project: data.project });
+        setQueuedJobId("");
+        setMessage("五入口内容已生成，并保存为内容项目。");
+        void loadJobs();
+        return;
+      }
+
+      if (data.job.status === "failed") {
+        setQueuedJobId("");
+        setMessage(data.job.error || "后台生成队列暂时不可用，请稍后重试或联系微信客服。");
+        void loadJobs();
+        return;
+      }
+
+      setQueuedJobId(data.job.id);
+      setMessage("任务已提交，预计 1-3 分钟完成。完成后这里会自动显示结果，并提供去编辑、发布检查和项目入口。");
       void loadJobs();
+      return;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "生成失败。");
     } finally {
@@ -509,7 +737,7 @@ export function FiveEntryGenerator() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+      <div id="five-entry-result-panel" className="grid gap-4 lg:grid-cols-[220px_1fr]">
         <div className="space-y-2">
           {contentEntries.map((entry) => (
             <button
@@ -628,12 +856,69 @@ export function FiveEntryGenerator() {
         </Card>
       </div>
 
+      {recentPreview ? (
+        <Card id="recent-job-preview">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>历史排版结果</CardTitle>
+              <p className="mt-1 text-sm text-slate-500">这里就是刚才生成的公众号排版内容。可以先预览，再复制到微信公众平台。</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recentPreview.html ? (
+                <Button size="sm" variant="secondary" onClick={() => void copyRecentPreviewLayout()}>
+                  复制公众号排版
+                </Button>
+              ) : null}
+              <Button size="sm" variant="secondary" onClick={() => void copyText(recentPreview.text).then(() => setMessage("历史生成结果已复制。"))}>
+                复制全部文本
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-xl border border-emerald-100 bg-white p-5">
+              <h2 className="mb-4 text-xl font-semibold text-slate-950">{recentPreview.title}</h2>
+              {recentPreview.html ? (
+                <div className="prose prose-slate max-w-none whitespace-normal text-base leading-8" dangerouslySetInnerHTML={{ __html: recentPreview.html }} />
+              ) : null}
+              {recentPreview.sections?.length ? (
+                <div className="space-y-3">
+                  {recentPreview.sections.map((section, index) => (
+                    <div key={`${section.title}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                      <div className="font-semibold text-slate-950">{section.title}</div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">{section.body}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : !recentPreview.html ? (
+                <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{recentPreview.text}</p>
+              ) : null}
+              {recentPreview.images?.length ? (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {recentPreview.images.map((image, index) => {
+                    const src = getImageSrc(image);
+                    return (
+                      <div key={`${image.prompt || "image"}-${index}`} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                        {src ? <Image alt={`生成图片 ${index + 1}`} className="h-auto w-full rounded-md border border-slate-100" height={480} src={src} unoptimized width={360} /> : null}
+                        <p className="mt-2 text-xs leading-5 text-slate-600">{image.revisedPrompt || image.prompt || "图片已生成"}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2">
-            <History className="size-5 text-emerald-600" />
-            最近生成记录
-          </CardTitle>
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <History className="size-5 text-emerald-600" />
+              最近生成记录
+            </CardTitle>
+            <p className="mt-1 text-sm text-slate-500">生成完成后，从这里点“查看文章”打开正文，或点“去编辑复制”进入公众号排版和复制页面。</p>
+          </div>
           <Button size="sm" variant="secondary" onClick={loadJobs}>
             刷新
           </Button>
@@ -641,10 +926,13 @@ export function FiveEntryGenerator() {
         <CardContent className="space-y-3">
           {jobs.slice(0, 8).map((job) => {
             const projectId = getJobProjectId(job);
+            const canOpen = job.status === "succeeded" && job.type === "five_entry_generation";
+            const canOpenLayout = job.status === "succeeded" && job.type === "wechat_layout_generation";
+            const canOpenGeneric = job.status === "succeeded" && !canOpen && !canOpenLayout;
             return (
-              <div key={job.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm lg:grid-cols-[150px_120px_1fr_120px] lg:items-center">
+              <div key={job.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm lg:grid-cols-[160px_100px_1fr_320px] lg:items-center">
                 <div>
-                  <div className="font-medium text-slate-950">{formatJobType(job.type)}</div>
+                  <div className="font-medium text-slate-950">{job.output?.projectTitle || job.output?.title || formatJobType(job.type)}</div>
                   <div className="mt-1 text-xs text-slate-500">{new Date(job.createdAt).toLocaleString()}</div>
                 </div>
                 <span className={`w-fit rounded-full px-2 py-1 text-xs ${job.status === "succeeded" ? "bg-emerald-50 text-emerald-700" : job.status === "failed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>
@@ -653,10 +941,39 @@ export function FiveEntryGenerator() {
                 <div className="min-w-0 text-slate-600">
                   <div className={job.status === "failed" ? "text-red-600" : "text-slate-600"}>{getJobUserMessage(job)}</div>
                 </div>
-                <div className="flex gap-2 lg:justify-end">
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  {canOpen ? (
+                    <Button size="sm" variant="secondary" onClick={() => void openJobResult(job.id)}>
+                      查看文章
+                    </Button>
+                  ) : null}
+                  {canOpenLayout ? (
+                    <Button size="sm" variant="secondary" onClick={() => void openJobResult(job.id)}>
+                      查看排版
+                    </Button>
+                  ) : null}
+                  {canOpenGeneric ? (
+                    <Button size="sm" variant="secondary" onClick={() => void openJobResult(job.id)}>
+                      查看结果
+                    </Button>
+                  ) : null}
+                  {canOpen ? (
+                    <Button size="sm" variant="secondary" onClick={() => void copyJobWechatArticle(job.id)}>
+                      复制公众号正文
+                    </Button>
+                  ) : null}
+                  {canOpenLayout ? (
+                    <Button size="sm" variant="secondary" onClick={() => void copyJobLayout(job.id, "html")}>
+                      复制公众号 HTML
+                    </Button>
+                  ) : null}
                   {projectId ? (
                     <Button asChild size="sm" variant="secondary">
-                      <Link href={`/dashboard/editor?projectId=${projectId}`}>去编辑</Link>
+                      <Link href={`/dashboard/editor?projectId=${projectId}`}>去编辑复制</Link>
+                    </Button>
+                  ) : canOpen ? (
+                    <Button size="sm" variant="secondary" onClick={() => void openJobResult(job.id)}>
+                      打开结果
                     </Button>
                   ) : null}
                 </div>

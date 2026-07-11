@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 
 type AccountProfileLike = {
@@ -81,13 +80,8 @@ export async function generateTopicSuggestionsWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: topicSuggestionsSchema,
         system: [
           "你是排版猫的微信内容选题策划助手。",
@@ -101,14 +95,16 @@ export async function generateTopicSuggestionsWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.7,
+        maxTokens: 2600,
+        timeoutMs: Number(process.env.TOPIC_AI_REQUEST_TIMEOUT_MS || 22000),
       });
 
       return {
         suggestions: result.object.suggestions.slice(0, input.count),
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";

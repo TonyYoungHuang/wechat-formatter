@@ -7,7 +7,7 @@ import { generateFiveEntrySchema } from "@/lib/generation/schemas";
 import { logger } from "@/lib/ops/logger";
 import { createBullMqConnection } from "@/lib/redis/client";
 
-const GENERATION_QUEUE_NAME = "paibanmao:generation";
+const GENERATION_QUEUE_NAME = "paibanmao-generation";
 
 type GenerationQueueData = {
   generationJobId: string;

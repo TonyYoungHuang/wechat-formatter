@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 
 const imagePromptOutputSchema = z.object({
@@ -25,7 +24,6 @@ function sceneLabel(scene: string) {
 
   return labels[scene] || scene;
 }
-
 function expectedPromptCount(scene: string, pageCount: number) {
   return scene === "green_note_pages" ? pageCount : 3;
 }
@@ -64,13 +62,8 @@ export async function generateImagePromptsWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: imagePromptOutputSchema,
         system: [
           "You are Paibanmao's Chinese visual prompt assistant.",
@@ -83,14 +76,16 @@ export async function generateImagePromptsWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.6,
+        maxTokens: 2400,
+        timeoutMs: Number(process.env.IMAGE_PROMPT_AI_REQUEST_TIMEOUT_MS || 20000),
       });
 
       return {
         prompts: result.object.prompts.slice(0, count),
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";

@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 
 const rewriteSchema = z.object({
@@ -70,7 +69,6 @@ export function buildFallbackRewrite(input: {
     tokenOutput: 0,
   };
 }
-
 export async function rewriteWithAi(input: {
   prompt: string;
   title?: string;
@@ -86,13 +84,8 @@ export async function rewriteWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: rewriteSchema,
         system: [
           "You are Paibanmao, a Chinese WeChat editor for small creators.",
@@ -104,6 +97,8 @@ export async function rewriteWithAi(input: {
         ].join("\n"),
         prompt: input.prompt,
         temperature: 0.56,
+        maxTokens: 5000,
+        timeoutMs: Number(process.env.REWRITE_AI_REQUEST_TIMEOUT_MS || 22000),
       });
 
       return {
@@ -111,8 +106,8 @@ export async function rewriteWithAi(input: {
         body: result.object.body,
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";

@@ -13,8 +13,13 @@ const navItems = [
   { href: "/dashboard/editor", label: "公众号编辑", icon: FileText },
   { href: "/dashboard/checks", label: "发布检查", icon: SearchCheck },
   { href: "/dashboard/billing", label: "会员额度", icon: CreditCard },
-  { href: "/dashboard/admin", label: "运营后台", icon: ShieldCheck, adminOnly: true },
+  { href: "/dashboard/admin", label: "进入运营后台", icon: ShieldCheck, adminOnly: true },
   { href: "/dashboard/settings", label: "设置", icon: Settings, adminOnly: true },
+];
+
+const adminModeNavItems = [
+  { href: "/dashboard/admin", label: "运营后台", icon: ShieldCheck },
+  { href: "/dashboard", label: "返回客户工作台", icon: Home },
 ];
 
 const mobileNavHrefs = new Set(["/dashboard", "/dashboard/account-profiles", "/dashboard/generate", "/dashboard/checks", "/dashboard/billing"]);
@@ -29,19 +34,18 @@ function isActive(pathname: string, href: string) {
 
 export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: boolean; mode?: "desktop" | "mobile" }) {
   const pathname = usePathname();
-  const visibleNavItems = navItems.filter((item) => !("adminOnly" in item) || !item.adminOnly || isSiteAdmin);
+  const isAdminMode = isSiteAdmin && pathname.startsWith("/dashboard/admin");
+  const visibleNavItems = isAdminMode ? adminModeNavItems : navItems.filter((item) => !("adminOnly" in item) || !item.adminOnly || isSiteAdmin);
 
   if (mode === "mobile") {
     return (
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-200 bg-white/95 px-2 py-2 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {visibleNavItems
-            .filter((item) => mobileNavHrefs.has(item.href))
+            .filter((item) => isAdminMode || mobileNavHrefs.has(item.href))
             .map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
-              const label = isSiteAdmin && item.href === "/dashboard/billing" ? "套餐激活码" : item.label;
-
               return (
                 <Link
                   key={item.href}
@@ -53,7 +57,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
                   )}
                 >
                   <Icon className="size-4" />
-                  <span className="max-w-full truncate">{label}</span>
+                  <span className="max-w-full truncate">{item.label}</span>
                 </Link>
               );
             })}
@@ -67,8 +71,6 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
       {visibleNavItems.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);
-        const label = isSiteAdmin && item.href === "/dashboard/billing" ? "套餐与激活码" : item.label;
-
         return (
           <Link
             key={item.href}
@@ -80,7 +82,7 @@ export function AppNavigation({ isSiteAdmin, mode = "desktop" }: { isSiteAdmin: 
             )}
           >
             <Icon className="size-4" />
-            {label}
+            {item.label}
           </Link>
         );
       })}

@@ -146,7 +146,7 @@ function getInitialPlan(): PlanCode {
   return plan === "free" || plan === "starter" || plan === "pro" ? plan : "starter";
 }
 
-export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolean }) {
+export function BillingWorkbench({ isSiteAdmin = false, adminMode = false }: { isSiteAdmin?: boolean; adminMode?: boolean }) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [versions, setVersions] = useState<PricingVersion[]>([]);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -159,18 +159,15 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [currentOrder, setCurrentOrder] = useState<PaymentOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const useAdminPricing = isSiteAdmin || adminMode;
 
   const load = useCallback(async function load() {
     setLoading(true);
     try {
-      const [planData, usageData] = await Promise.all([
-        fetch(isSiteAdmin ? "/api/admin/pricing" : "/api/billing/plans").then((response) => readJson<{ plans: Plan[]; versions?: PricingVersion[] }>(response)),
-        fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response)),
-      ]);
-      const [orderData, invoiceData] = await Promise.all([
-        fetch("/api/billing/orders").then((response) => readJson<{ orders: PaymentOrder[] }>(response)),
-        fetch("/api/billing/invoices").then((response) => readJson<{ invoices: InvoiceRequest[] }>(response)),
-      ]);
+      const planData = await fetch(useAdminPricing ? "/api/admin/pricing" : "/api/billing/plans").then((response) => readJson<{ plans: Plan[]; versions?: PricingVersion[] }>(response));
+      const usageData = adminMode ? null : await fetch("/api/usage/summary").then((response) => readJson<UsageSummary>(response));
+      const orderData = adminMode ? { orders: [] } : await fetch("/api/billing/orders").then((response) => readJson<{ orders: PaymentOrder[] }>(response));
+      const invoiceData = adminMode ? { invoices: [] } : await fetch("/api/billing/invoices").then((response) => readJson<{ invoices: InvoiceRequest[] }>(response));
       setPlans(planData.plans);
       setVersions(planData.versions || []);
       setUsage(usageData);
@@ -183,7 +180,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
     } finally {
       setLoading(false);
     }
-  }, [isSiteAdmin]);
+  }, [adminMode, useAdminPricing]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -378,7 +375,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </div>
       ) : null}
 
-      {isSiteAdmin ? (
+      {(isSiteAdmin || adminMode) ? (
         <>
           <div className="grid gap-4 xl:grid-cols-3">
             {plans.map((plan) => (
@@ -465,6 +462,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </>
       ) : null}
 
+      {!adminMode ? (
       <Card>
         <CardHeader>
           <CardTitle>{isSiteAdmin ? "开通会员套餐" : "升级套餐"}</CardTitle>
@@ -501,8 +499,9 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
           ) : null}
         </CardContent>
       </Card>
+      ) : null}
 
-      {checkout ? (
+      {!adminMode && checkout ? (
         <Card>
           <CardHeader>
             <CardTitle>支付参数</CardTitle>
@@ -565,7 +564,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </Card>
       ) : null}
 
-      {isSiteAdmin && recentOrders.length ? (
+      {isSiteAdmin && !adminMode && recentOrders.length ? (
         <Card>
           <CardHeader>
             <CardTitle>最近订单</CardTitle>
@@ -600,7 +599,7 @@ export function BillingWorkbench({ isSiteAdmin = false }: { isSiteAdmin?: boolea
         </Card>
       ) : null}
 
-      {isSiteAdmin ? (
+      {isSiteAdmin && !adminMode ? (
       <Card>
         <CardHeader>
           <CardTitle>发票申请</CardTitle>

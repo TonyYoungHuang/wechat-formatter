@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { reviewComplianceWithAi } from "@/lib/ai/compliance-review";
+import { buildFallbackComplianceAiReview, reviewComplianceWithAi } from "@/lib/ai/compliance-review";
+import { withTimeout } from "@/lib/async/timeout";
 import { getCurrentUser, requireCurrentUser } from "@/lib/auth/session";
 import { checkContentCompliance } from "@/lib/compliance/check";
 import { prisma } from "@/lib/db/prisma";
@@ -43,13 +44,31 @@ export async function POST(request: Request) {
     let aiReview: Awaited<ReturnType<typeof reviewComplianceWithAi>> | null = null;
 
     if (current) {
-      aiReview = await reviewComplianceWithAi({
-        title: parsed.data.title,
-        content: parsed.data.content,
-        entry: parsed.data.entry,
-        ruleSummary: result.summary,
-        ruleIssues: result.issues,
-      });
+      try {
+        aiReview = await withTimeout(
+          reviewComplianceWithAi({
+            title: parsed.data.title,
+            content: parsed.data.content,
+            entry: parsed.data.entry,
+            ruleSummary: result.summary,
+            ruleIssues: result.issues,
+          }),
+          Number(process.env.AI_REVIEW_TIMEOUT_MS || 18000),
+          "AI 审稿响应超时，已先返回基础检查结果。",
+        );
+      } catch (error) {
+        aiReview = {
+          review: buildFallbackComplianceAiReview({
+            title: parsed.data.title,
+            content: parsed.data.content,
+            entry: parsed.data.entry,
+          }),
+          provider: "fallback",
+          model: "local-rules",
+          fallback: true,
+          aiError: error instanceof Error ? error.message : "AI 审稿响应超时，已先返回基础检查结果。",
+        };
+      }
       const aiIssues = aiReview.fallback ? [] : aiIssuesToComplianceIssues(aiReview.review);
       if (aiIssues.length) {
         result.issues.push(...aiIssues);

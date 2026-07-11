@@ -1,7 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { generateWechatLayoutWithAi } from "@/lib/ai/wechat-layout";
+import { buildFallbackWechatLayout, generateWechatLayoutWithAi } from "@/lib/ai/wechat-layout";
+import { withTimeout } from "@/lib/async/timeout";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { wechatLayoutSchema } from "@/lib/generation/schemas";
@@ -23,7 +24,14 @@ export async function POST(request: Request) {
 
     await assertCanUseGeneration(current.workspace.id, current.workspace.planCode);
 
-    const output = await generateWechatLayoutWithAi(parsed.data);
+    const output = await withTimeout(
+      generateWechatLayoutWithAi(parsed.data),
+      Number(process.env.WECHAT_LAYOUT_TIMEOUT_MS || 28000),
+      "AI 排版超时，已先返回基础公众号 HTML 排版。",
+    ).catch((error) => ({
+      ...buildFallbackWechatLayout(parsed.data),
+      aiError: error instanceof Error ? error.message : "AI 排版超时，已先返回基础公众号 HTML 排版。",
+    }));
     const job = await prisma.generationJob.create({
       data: {
         workspaceId: current.workspace.id,

@@ -1,5 +1,6 @@
 allowBuilds:
   '@prisma/engines': set this to true or false
+  esbuild: true
   msgpackr-extract: set this to true or false
   prisma: true
   sharp: set this to true or false

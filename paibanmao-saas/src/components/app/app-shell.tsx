@@ -1,9 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { AccountProfileSwitcher } from "@/components/app/account-profile-switcher";
+import { AppHeaderActions, AppHeaderProfileTools } from "@/components/app/app-header-controls";
 import { AppNavigation } from "@/components/app/app-nav";
-import { LogoutButton } from "@/components/app/logout-button";
 import { BrandMark } from "@/components/brand/brand-logo";
 import { isSiteAdminEmail, type getCurrentUser } from "@/lib/auth/session";
 import { getGenerationUsageSummary } from "@/lib/usage/service";
@@ -39,13 +37,10 @@ export async function AppShell({ children, current }: { children: ReactNode; cur
                 {usage.plan.name} | 今日剩余 {formatRemaining(usage.daily.remaining)} | 本月剩余 {formatRemaining(usage.monthly.remaining)}
               </div>
             </div>
-            <AccountProfileSwitcher />
+            <AppHeaderProfileTools />
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <LogoutButton />
-            <Link href="/dashboard/generate" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
-              新建内容
-            </Link>
+            <AppHeaderActions isSiteAdmin={isSiteAdmin} />
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:pb-6">{children}</main>

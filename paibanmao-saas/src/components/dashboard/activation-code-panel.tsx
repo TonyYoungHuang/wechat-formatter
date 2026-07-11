@@ -39,6 +39,7 @@ type ActivationCodeRecord = {
 
 type ActivationCodePanelProps = {
   isSiteAdmin: boolean;
+  adminMode?: boolean;
 };
 
 const planLabel: Record<PlanCode, string> = {
@@ -61,7 +62,7 @@ function dateText(value?: string | null) {
   return new Date(value).toLocaleDateString();
 }
 
-export function ActivationCodePanel({ isSiteAdmin }: ActivationCodePanelProps) {
+export function ActivationCodePanel({ isSiteAdmin, adminMode = false }: ActivationCodePanelProps) {
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemMessage, setRedeemMessage] = useState("");
   const [redeeming, setRedeeming] = useState(false);
@@ -170,6 +171,7 @@ export function ActivationCodePanel({ isSiteAdmin }: ActivationCodePanelProps) {
 
   return (
     <section id="activation-codes" className="mt-6 scroll-mt-24 space-y-6">
+      {!adminMode ? (
       <Card className="border-emerald-300 bg-emerald-50/60">
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -200,6 +202,7 @@ export function ActivationCodePanel({ isSiteAdmin }: ActivationCodePanelProps) {
           {redeemMessage ? <p className="mt-3 text-sm font-medium text-emerald-800">{redeemMessage}</p> : null}
         </CardContent>
       </Card>
+      ) : null}
 
       {isSiteAdmin ? (
         <Card className="border-teal-300 bg-white">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 
 import { generateImagePromptsWithAi } from "@/lib/ai/image-prompts";
+import { withTimeout } from "@/lib/async/timeout";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { buildImagePrompts } from "@/lib/generation/fallback";
 import { imagePromptSchema } from "@/lib/generation/schemas";
@@ -51,13 +52,17 @@ export async function POST(request: Request) {
     };
 
     try {
-      const aiResult = await generateImagePromptsWithAi({
-        topic: parsed.data.topic,
-        scene: parsed.data.scene,
-        pageCount: parsed.data.pageCount,
-        style: parsed.data.style,
-        prompt: promptTemplate.rendered,
-      });
+      const aiResult = await withTimeout(
+        generateImagePromptsWithAi({
+          topic: parsed.data.topic,
+          scene: parsed.data.scene,
+          pageCount: parsed.data.pageCount,
+          style: parsed.data.style,
+          prompt: promptTemplate.rendered,
+        }),
+        Number(process.env.IMAGE_PROMPT_GENERATION_TIMEOUT_MS || 22000),
+        "AI 图片提示词生成超时，已先返回基础提示词。",
+      );
       tokenInput = aiResult.tokenInput;
       tokenOutput = aiResult.tokenOutput;
       output = {

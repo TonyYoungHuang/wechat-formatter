@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 import { buildKnowledgeTags } from "@/lib/account-knowledge/tagging";
 
@@ -83,13 +82,8 @@ export async function buildKnowledgeTagsWithAi(input: KnowledgeTaggingInput) {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: knowledgeTaggingSchema,
         system: [
           "你是排版猫的账号知识库标签提取器。",
@@ -99,6 +93,8 @@ export async function buildKnowledgeTagsWithAi(input: KnowledgeTaggingInput) {
         ].join("\n"),
         prompt,
         temperature: 0.25,
+        maxTokens: 2200,
+        timeoutMs: Number(process.env.KNOWLEDGE_TAGGING_AI_REQUEST_TIMEOUT_MS || 16000),
       });
 
       const object = result.object;

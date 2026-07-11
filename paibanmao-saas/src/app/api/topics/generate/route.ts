@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 import { appendKnowledgeContext, getAccountKnowledgeContext } from "@/lib/account-knowledge/context";
 import { generateTopicSuggestionsWithAi } from "@/lib/ai/topics";
+import { withTimeout } from "@/lib/async/timeout";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
@@ -59,14 +60,18 @@ export async function POST(request: Request) {
     });
 
     try {
-      const aiResult = await generateTopicSuggestionsWithAi({
-        profile,
-        theme: parsed.data.theme,
-        monetizationGoal: parsed.data.monetizationGoal,
-        avoid: parsed.data.avoid,
-        count: parsed.data.count,
-        prompt: renderedPrompt,
-      });
+      const aiResult = await withTimeout(
+        generateTopicSuggestionsWithAi({
+          profile,
+          theme: parsed.data.theme,
+          monetizationGoal: parsed.data.monetizationGoal,
+          avoid: parsed.data.avoid,
+          count: parsed.data.count,
+          prompt: renderedPrompt,
+        }),
+        Number(process.env.TOPIC_GENERATION_TIMEOUT_MS || 25000),
+        "AI 选题生成超时，已先返回基础选题。",
+      );
       suggestions = aiResult.suggestions;
       source = `${aiResult.provider}:${aiResult.model}`;
       tokenInput = aiResult.tokenInput;

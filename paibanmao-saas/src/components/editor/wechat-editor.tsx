@@ -4,7 +4,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import LinkExtension from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -15,6 +15,7 @@ import {
   FileCode2,
   Heading1,
   Heading2,
+  Heading3,
   Images,
   List,
   ListOrdered,
@@ -30,6 +31,19 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
+import {
+  articleDocumentToEditorHtml,
+  articleDocumentSchema,
+  copyWechatRichHtml,
+  createArticleDocumentFromText,
+  createArticleDocumentFromTiptap,
+  renderWechatDocument,
+  resolveWechatThemeId,
+  wechatThemeOptions,
+  type ArticleDocument,
+  type LayoutAuditReport,
+  type WechatThemeId,
+} from "@/lib/wechat-layout";
 
 type Variant = {
   id?: string;
@@ -84,15 +98,18 @@ type RewriteResult = {
   aiError?: string | null;
 };
 
-type WechatLayoutTemplateId = "clean" | "deep" | "private" | "checklist" | "editorial";
-
 type WechatLayoutResult = {
   output: {
     title: string;
+    document: ArticleDocument;
     html: string;
+    text: string;
     notes: string[];
     provider: string;
     model: string;
+    themeId: WechatThemeId;
+    themeVersion: number;
+    audit: LayoutAuditReport;
   };
   fallback?: boolean;
   aiError?: string | null;
@@ -108,37 +125,7 @@ const starterContent = `
 const editableEntries = contentEntries.filter((entry) => !["wechat_article", "green_note"].includes(entry.id));
 const imageGenerationEnabled = process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "true" || process.env.NEXT_PUBLIC_IMAGE_GENERATION_ENABLED === "1";
 
-const wechatLayoutTemplates: Array<{
-  id: WechatLayoutTemplateId;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: "clean",
-    label: "清爽长文",
-    description: "适合常规公众号文章，标题、正文和小标题层次清楚。",
-  },
-  {
-    id: "deep",
-    label: "深度观点",
-    description: "适合观点文，开头增加导读引用，正文更有专栏感。",
-  },
-  {
-    id: "private",
-    label: "私域转化",
-    description: "适合带咨询、资料包、社群引导的内容，结尾 CTA 更醒目。",
-  },
-  {
-    id: "checklist",
-    label: "教程清单",
-    description: "适合步骤、方法、避坑清单，把连续短句整理成列表。",
-  },
-  {
-    id: "editorial",
-    label: "AI 主编精排",
-    description: "自动识别导语、重点句、引用、清单和结尾行动区。",
-  },
-];
+const wechatLayoutTemplates = wechatThemeOptions;
 
 function escapeHtml(value: string) {
   return value
@@ -147,109 +134,6 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function textToHtml(value: string) {
-  return value
-    .split(/\n{2,}/)
-    .map((block) => {
-      const trimmed = block.trim();
-      if (!trimmed) {
-        return "";
-      }
-      if (trimmed.startsWith("# ")) {
-        return `<h1>${escapeHtml(trimmed.slice(2))}</h1>`;
-      }
-      if (trimmed.startsWith("## ")) {
-        return `<h2>${escapeHtml(trimmed.slice(3))}</h2>`;
-      }
-      return `<p>${escapeHtml(trimmed).replaceAll("\n", "<br />")}</p>`;
-    })
-    .join("\n");
-}
-
-function isLikelySubheading(block: string) {
-  const plainBlock = block.replace(/\s+/g, "");
-  return plainBlock.length <= 24 && !/[。！？!?；;，,、]$/.test(plainBlock);
-}
-
-function textToListHtml(block: string) {
-  const items = block
-    .split(/\n|[；;]/)
-    .map((line) => line.replace(/^[-*•\d.、\s]+/, "").trim())
-    .filter(Boolean);
-
-  if (items.length < 2) {
-    return "";
-  }
-
-  return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
-}
-
-function renderWechatBlock(block: string, index: number, templateId: WechatLayoutTemplateId) {
-  const safeBlock = escapeHtml(block).replaceAll("\n", "<br />");
-
-  if (index === 0) {
-    return `<h1>${safeBlock}</h1>`;
-  }
-
-  if (isLikelySubheading(block)) {
-    return `<h2>${safeBlock}</h2>`;
-  }
-
-  if (templateId === "checklist") {
-    const listHtml = textToListHtml(block);
-    if (listHtml) {
-      return listHtml;
-    }
-  }
-
-  return `<p>${safeBlock}</p>`;
-}
-
-function textToWechatLayout(value: string, templateId: WechatLayoutTemplateId = "clean") {
-  const blocks = value
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  if (!blocks.length) {
-    return starterContent;
-  }
-
-  const [title, intro, ...rest] = blocks;
-  const renderedBody = blocks.map((block, index) => renderWechatBlock(block, index, templateId));
-
-  if (templateId === "deep") {
-    const body = [
-      renderWechatBlock(title, 0, templateId),
-      intro ? `<blockquote>${escapeHtml(intro).replaceAll("\n", "<br />")}</blockquote>` : "",
-      ...rest.map((block, index) => renderWechatBlock(block, index + 2, templateId)),
-    ].filter(Boolean);
-    return body.join("\n");
-  }
-
-  if (templateId === "private") {
-    if (blocks.length <= 1) {
-      return renderedBody.join("\n");
-    }
-
-    const last = blocks.at(-1);
-    const body = renderedBody.slice(0, -1);
-    return [
-      ...body,
-      "<hr />",
-      last ? `<blockquote><strong>最后提醒：</strong><br />${escapeHtml(last).replaceAll("\n", "<br />")}</blockquote>` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  if (templateId === "checklist") {
-    return renderedBody.join("\n");
-  }
-
-  return renderedBody.join("\n");
 }
 
 function toolbarButtonClass(active = false) {
@@ -418,6 +302,18 @@ function getStoredHtml(variant?: Variant) {
   return typeof html === "string" && html.trim() ? html : null;
 }
 
+function getStoredWechatLayout(variant?: Variant) {
+  const raw = variant?.metadata?.wechatLayout;
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const parsed = articleDocumentSchema.safeParse(value.document);
+  if (!parsed.success) return null;
+  return {
+    document: parsed.data as ArticleDocument,
+    themeId: resolveWechatThemeId(typeof value.themeId === "string" ? value.themeId : null),
+  };
+}
+
 function splitPromptDraft(value: string) {
   return value
     .split(/\n{2,}/)
@@ -447,7 +343,11 @@ function getDefaultDrafts(project?: Project | null) {
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || "Request failed.");
+    const message = typeof payload.message === "string" ? payload.message : "";
+    if (response.status === 504) {
+      throw new Error("AI 服务响应超时，请稍后重试。");
+    }
+    throw new Error(message || "请求失败，请稍后重试。");
   }
   return payload;
 }
@@ -466,7 +366,7 @@ export function WechatEditor() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [imageScene, setImageScene] = useState("green_note_pages");
   const [imageStyle, setImageStyle] = useState("轻量微信绿色工作台风格，清爽留白，适合中文图文");
-  const [layoutTemplate, setLayoutTemplate] = useState<WechatLayoutTemplateId>("clean");
+  const [layoutTemplate, setLayoutTemplate] = useState<WechatThemeId>("classic-green");
   const [entryDrafts, setEntryDrafts] = useState<Record<string, EntryDraft>>(() => getDefaultDrafts());
   const [loading, setLoading] = useState(() => Boolean(projectId));
   const [saving, setSaving] = useState(false);
@@ -475,6 +375,9 @@ export function WechatEditor() {
   const [rewriting, setRewriting] = useState(false);
   const [layouting, setLayouting] = useState(false);
   const [showMoreEditorTools, setShowMoreEditorTools] = useState(false);
+  const [quickPasteText, setQuickPasteText] = useState("");
+  const [structuredWechatDocument, setStructuredWechatDocument] = useState<ArticleDocument | null>(null);
+  const applyingDocumentRef = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -489,11 +392,14 @@ export function WechatEditor() {
     editorProps: {
       attributes: {
         class:
-          "min-h-[560px] rounded-lg border border-emerald-100 bg-white px-5 py-4 text-base leading-8 outline-none focus:border-emerald-300 [&_blockquote]:my-5 [&_blockquote]:rounded-r-lg [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-300 [&_blockquote]:bg-emerald-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-emerald-950 [&_h1]:mb-5 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:leading-10 [&_h2]:mb-3 [&_h2]:mt-7 [&_h2]:border-l-4 [&_h2]:border-emerald-400 [&_h2]:pl-3 [&_h2]:text-xl [&_h2]:font-semibold [&_hr]:my-7 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-dashed [&_hr]:border-emerald-200 [&_li]:my-1 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-4 [&_strong]:rounded [&_strong]:bg-emerald-50 [&_strong]:px-1 [&_strong]:font-semibold [&_strong]:text-emerald-900 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6",
+          "min-h-[560px] rounded-lg border border-emerald-100 bg-white px-6 py-6 text-base leading-8 outline-none focus:border-emerald-300 [&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-300 [&_blockquote]:bg-emerald-50 [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:text-emerald-950 [&_h1]:mb-7 [&_h1]:border-b-2 [&_h1]:border-emerald-500 [&_h1]:pb-3 [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:leading-[1.45] [&_h1]:text-slate-950 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:border-l-4 [&_h2]:border-emerald-500 [&_h2]:px-3 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-[1.55] [&_h2]:text-emerald-950 [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:border-b [&_h3]:border-teal-200 [&_h3]:pb-1.5 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:leading-[1.55] [&_h3]:text-teal-900 [&_hr]:my-7 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-dashed [&_hr]:border-emerald-200 [&_li]:my-1.5 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-8 [&_p]:my-4 [&_p]:bg-transparent [&_p]:p-0 [&_strong]:font-semibold [&_strong]:text-emerald-900 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-8",
       },
     },
     onUpdate: ({ editor: current }) => {
       setHtml(current.getHTML());
+      if (!applyingDocumentRef.current) {
+        setStructuredWechatDocument(null);
+      }
     },
   });
 
@@ -507,7 +413,13 @@ export function WechatEditor() {
       .then((data) => {
         const wechat = data.project.variants.find((variant) => variant.entry === "wechat_article");
         const greenNote = data.project.variants.find((variant) => variant.entry === "green_note");
-        const content = getStoredHtml(wechat) || (wechat ? textToHtml(wechat.body) : starterContent);
+        const storedLayout = getStoredWechatLayout(wechat);
+        const legacyHtml = getStoredHtml(wechat);
+        const fallbackDocument = wechat && !legacyHtml
+          ? createArticleDocumentFromText(wechat.body, { title: wechat.title, themeId: "classic-green" })
+          : null;
+        const loadedDocument = storedLayout?.document || fallbackDocument;
+        const content = loadedDocument ? articleDocumentToEditorHtml(loadedDocument) : legacyHtml || starterContent;
         setProject(data.project);
         setEntryDrafts(getDefaultDrafts(data.project));
         setGreenTitle(greenNote?.title || "");
@@ -515,7 +427,11 @@ export function WechatEditor() {
         setGreenPageCount(getGreenNotePageCount(greenNote));
         setImagePromptDraft(getImagePrompts(greenNote).join("\n\n"));
         setGeneratedImages(getGeneratedImages(greenNote));
+        setLayoutTemplate(storedLayout?.themeId || "classic-green");
+        setStructuredWechatDocument(loadedDocument);
+        applyingDocumentRef.current = true;
         editor.commands.setContent(content);
+        applyingDocumentRef.current = false;
         setHtml(content);
         setNotice("已载入内容项目。");
       })
@@ -528,6 +444,25 @@ export function WechatEditor() {
   const currentGenericDraft = entryDrafts[mode] || { title: "", body: "" };
   const imagePrompts = useMemo(() => splitPromptDraft(imagePromptDraft), [imagePromptDraft]);
   const searchKeywords = useMemo(() => getKeywords(project?.variants.find((variant) => variant.entry === "search")), [project]);
+  const currentWechatDocument = useMemo(
+    () => {
+      void html;
+      return structuredWechatDocument || (editor
+        ? createArticleDocumentFromTiptap(editor.getJSON(), {
+            title: wechatVariant?.title || project?.title || undefined,
+          })
+        : createArticleDocumentFromText("公众号文章\n\n请在这里输入公众号正文。", {
+            title: wechatVariant?.title || project?.title || "公众号文章",
+            themeId: layoutTemplate,
+          }));
+    },
+    [editor, html, layoutTemplate, project?.title, structuredWechatDocument, wechatVariant?.title],
+  );
+  const currentWechatRender = useMemo(
+    () => renderWechatDocument(currentWechatDocument, layoutTemplate),
+    [currentWechatDocument, layoutTemplate],
+  );
+  const layoutAuditWarnings = currentWechatRender.audit.issues.filter((issue) => issue.level !== "info");
 
   function updateEntryDraft(entry: ContentEntry, patch: Partial<EntryDraft>) {
     setEntryDrafts((current) => ({
@@ -537,6 +472,16 @@ export function WechatEditor() {
         ...patch,
       },
     }));
+  }
+
+  function applyDocumentToEditor(document: ArticleDocument) {
+    if (!editor) return;
+    const nextHtml = articleDocumentToEditorHtml(document);
+    setStructuredWechatDocument(document);
+    applyingDocumentRef.current = true;
+    editor.commands.setContent(nextHtml);
+    applyingDocumentRef.current = false;
+    setHtml(nextHtml);
   }
 
   function getCurrentPlainText() {
@@ -557,7 +502,7 @@ export function WechatEditor() {
 
   function getCurrentTitle() {
     if (mode === "wechat_article") {
-      return wechatVariant?.title || project?.title || "公众号文章";
+      return currentWechatDocument.title || wechatVariant?.title || project?.title || "公众号文章";
     }
 
     if (mode === "green_note") {
@@ -569,8 +514,12 @@ export function WechatEditor() {
 
   async function copyHtml() {
     if (!editor) return;
-    await navigator.clipboard.writeText(editor.getHTML());
-    setNotice("已复制公众号排版内容。下一步：打开微信公众平台图文编辑器，在正文区域直接粘贴。");
+    try {
+      await copyWechatRichHtml(currentWechatRender.html, currentWechatRender.text);
+      setNotice("已复制与下方预览一致的公众号富文本。下一步：打开微信公众平台图文编辑器，在正文区域直接粘贴。");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "公众号富文本复制失败，请使用下载 HTML 备用。");
+    }
   }
 
   function applyWechatLayout() {
@@ -578,17 +527,41 @@ export function WechatEditor() {
       return;
     }
 
-    const text = editor.getText().trim();
+    const text = editor.getText({ blockSeparator: "\n\n" }).trim();
     if (text.length < 2) {
       setNotice("请先粘贴或生成公众号正文，再使用一键排版。");
       return;
     }
 
-    const nextHtml = textToWechatLayout(text, layoutTemplate);
-    editor.commands.setContent(nextHtml);
-    setHtml(nextHtml);
+    const document = createArticleDocumentFromText(text, {
+      title: getCurrentTitle(),
+      themeId: layoutTemplate,
+      sourceType: "tiptap",
+    });
+    applyDocumentToEditor(document);
     const template = wechatLayoutTemplates.find((item) => item.id === layoutTemplate);
     setNotice(`已套用「${template?.label || "清爽长文"}」排版模板，可继续微调标题、引用和列表，再复制到公众号后台。`);
+  }
+
+  function pasteAndLayout() {
+    if (!editor) {
+      return;
+    }
+
+    const text = quickPasteText.trim();
+    if (text.length < 2) {
+      setNotice("请先粘贴公众号正文，再点击“粘贴并排版”。");
+      return;
+    }
+
+    const document = createArticleDocumentFromText(text, {
+      title: getCurrentTitle(),
+      themeId: layoutTemplate,
+      sourceType: "plain",
+    });
+    applyDocumentToEditor(document);
+    setMode("wechat_article");
+    setNotice("已把正文套用为公众号排版。下一步点击“复制到公众号后台”，再粘贴到微信公众平台正文区。");
   }
 
   async function applyAiWechatLayout() {
@@ -616,8 +589,8 @@ export function WechatEditor() {
           }),
         }),
       );
-      editor.commands.setContent(data.output.html);
-      setHtml(data.output.html);
+      setLayoutTemplate(resolveWechatThemeId(data.output.themeId));
+      applyDocumentToEditor(data.output.document);
       setNotice(
         data.fallback
           ? `已用本地规则完成排版。${data.output.notes.join("；")}`
@@ -645,7 +618,7 @@ export function WechatEditor() {
   function downloadHtml() {
     if (!editor) return;
     const title = getCurrentTitle();
-    downloadTextFile(`${title}.html`, buildDownloadHtml(title, editor.getHTML()), "text/html;charset=utf-8");
+    downloadTextFile(`${title}.html`, buildDownloadHtml(title, currentWechatRender.html), "text/html;charset=utf-8");
     setNotice("HTML 文件已下载。");
   }
 
@@ -767,7 +740,20 @@ export function WechatEditor() {
             entry: variant.entry,
             title: wechatVariant?.title || project.title,
             body: htmlToText(editor.getHTML()),
-            metadata: { ...(variant.metadata || {}), html: editor.getHTML(), editedAt: new Date().toISOString() },
+            metadata: {
+              ...(variant.metadata || {}),
+              html: editor.getHTML(),
+              wechatLayout: {
+                document: currentWechatDocument,
+                themeId: currentWechatRender.themeId,
+                themeVersion: currentWechatRender.themeVersion,
+                renderedHtml: currentWechatRender.html,
+                renderedHash: currentWechatRender.fingerprint,
+                audit: currentWechatRender.audit,
+                updatedAt: new Date().toISOString(),
+              },
+              editedAt: new Date().toISOString(),
+            },
           };
         }
 
@@ -838,9 +824,12 @@ export function WechatEditor() {
           }),
         }),
       );
-      const nextHtml = textToHtml(data.output.body);
-      editor.commands.setContent(nextHtml);
-      setHtml(nextHtml);
+      const rewrittenDocument = createArticleDocumentFromText(data.output.body, {
+        title: data.output.title || getCurrentTitle(),
+        themeId: layoutTemplate,
+        sourceType: "generated",
+      });
+      applyDocumentToEditor(rewrittenDocument);
       setNotice(data.fallback ? "已用本地规则降低 AI 味；配置模型后可获得更自然的改写。" : "已完成自然改写。");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "自然改写失败。");
@@ -917,6 +906,29 @@ export function WechatEditor() {
               </div>
             </div>
 
+            <div className="rounded-lg border border-emerald-200 bg-white p-4 shadow-sm shadow-emerald-900/[0.03]">
+              <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+                <label className="block space-y-2 text-sm">
+                  <span className="font-medium text-slate-900">粘贴公众号正文，直接排版</span>
+                  <textarea
+                    className="min-h-32 w-full rounded-lg border border-slate-200 bg-slate-50 p-3 leading-7 outline-none focus:border-emerald-400"
+                    onChange={(event) => setQuickPasteText(event.target.value)}
+                    placeholder="把公众号正文粘贴到这里。第一段会作为主标题，较短的段落会自动识别成小标题。"
+                    value={quickPasteText}
+                  />
+                </label>
+                <div className="flex flex-col justify-end gap-2">
+                  <Button onClick={pasteAndLayout} disabled={!editor || !quickPasteText.trim()} type="button">
+                    <WandSparkles className="size-4" />
+                    粘贴并排版
+                  </Button>
+                  <p className="text-xs leading-5 text-slate-500">
+                    适合没有先生成五入口的用户：先粘贴正文，再选模板微调，最后复制到微信公众平台。
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-lg border border-emerald-100 bg-white p-3">
               <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -961,11 +973,15 @@ export function WechatEditor() {
               <div className="flex flex-wrap gap-2">
                 <button className={toolbarButtonClass(editor?.isActive("heading", { level: 1 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} type="button">
                   <Heading1 className="size-4" />
-                  一级标题
+                  主标题
                 </button>
                 <button className={toolbarButtonClass(editor?.isActive("heading", { level: 2 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} type="button">
                   <Heading2 className="size-4" />
-                  二级标题
+                  一级小标题
+                </button>
+                <button className={toolbarButtonClass(editor?.isActive("heading", { level: 3 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} type="button">
+                  <Heading3 className="size-4" />
+                  二级小标题
                 </button>
                 <button className={toolbarButtonClass(editor?.isActive("paragraph"))} onClick={() => editor?.chain().focus().setParagraph().run()} type="button">
                   <Pilcrow className="size-4" />
@@ -999,6 +1015,33 @@ export function WechatEditor() {
             </div>
 
             <EditorContent editor={editor} />
+
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">微信粘贴效果预览</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    当前使用「{wechatLayoutTemplates.find((template) => template.id === layoutTemplate)?.label || "排版猫经典绿"}」，这里与“复制到公众号后台”的内容一致。
+                  </p>
+                </div>
+                <span className={`text-sm font-medium ${currentWechatRender.audit.passed ? "text-emerald-700" : "text-amber-700"}`}>
+                  {currentWechatRender.audit.passed ? "排版质检通过" : `${layoutAuditWarnings.length} 项需要留意`}
+                </span>
+              </div>
+              <div className="overflow-x-auto rounded-lg bg-slate-100 px-3 py-5">
+                <div
+                  className="mx-auto min-h-80 w-full max-w-[420px] overflow-hidden bg-white shadow-sm"
+                  dangerouslySetInnerHTML={{ __html: currentWechatRender.html }}
+                />
+              </div>
+              {layoutAuditWarnings.length ? (
+                <div className="mt-3 space-y-1 text-sm leading-6 text-amber-800">
+                  {layoutAuditWarnings.slice(0, 4).map((issue) => (
+                    <p key={`${issue.code}-${issue.message}`}>• {issue.message}</p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : mode === "green_note" ? (
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
@@ -1210,7 +1253,7 @@ export function WechatEditor() {
         {notice ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p> : null}
         <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">
           当前入口：{getEntryLabel(mode)}
-          {mode === "wechat_article" ? ` · HTML 长度：${html.length}` : ` · 正文字数：${getCurrentPlainText().length}`}
+          {mode === "wechat_article" ? ` · 微信 HTML 长度：${currentWechatRender.html.length}` : ` · 正文字数：${getCurrentPlainText().length}`}
         </div>
         {mode === "green_note" ? (
           <div className="rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-500">

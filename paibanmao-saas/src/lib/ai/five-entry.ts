@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
 import { z } from "zod";
 
+import { generateJsonWithChat } from "@/lib/ai/chat-json";
 import { getAiProviderCandidates } from "@/lib/ai/provider";
 import { contentEntries } from "@/lib/content/entries";
 import type { GeneratedVariant } from "@/lib/generation/fallback";
@@ -102,13 +101,8 @@ export async function generateFiveEntryWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({
-        baseURL: config.baseUrl,
-        apiKey: config.apiKey,
-      });
-
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: fiveEntrySchema,
         system: [
           "You are Paibanmao, a Chinese WeChat content SaaS assistant.",
@@ -121,6 +115,7 @@ export async function generateFiveEntryWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.68,
+        maxTokens: 7000,
       });
 
       const normalized = contentEntries.map((entry) => {
@@ -135,8 +130,8 @@ export async function generateFiveEntryWithAi(input: {
         variants: normalized,
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
@@ -179,9 +174,8 @@ export async function generateFiveEntryPlanWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({ baseURL: config.baseUrl, apiKey: config.apiKey });
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: fiveEntryPlanSchema,
         system: [
           "你是排版猫的微信内容策划主编。",
@@ -190,14 +184,15 @@ export async function generateFiveEntryPlanWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.42,
+        maxTokens: 2200,
       });
 
       return {
         plan: result.object,
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       errors.push(`${config.name}/${config.model}: ${error instanceof Error ? error.message : "unknown error"}`);
@@ -239,9 +234,8 @@ export async function polishFiveEntryWithAi(input: {
 
   for (const config of candidates) {
     try {
-      const openai = createOpenAI({ baseURL: config.baseUrl, apiKey: config.apiKey });
-      const result = await generateObject({
-        model: openai(config.model),
+      const result = await generateJsonWithChat({
+        config,
         schema: fiveEntrySchema,
         system: [
           "你是排版猫的微信内容终审主编。",
@@ -250,6 +244,7 @@ export async function polishFiveEntryWithAi(input: {
         ].join("\n"),
         prompt,
         temperature: 0.45,
+        maxTokens: 7000,
       });
       const normalized = contentEntries.map((entry) => {
         const variant = result.object.variants.find((item) => item.entry === entry.id);
@@ -263,8 +258,8 @@ export async function polishFiveEntryWithAi(input: {
         variants: normalized,
         provider: config.name,
         model: config.model,
-        tokenInput: result.usage.inputTokens ?? 0,
-        tokenOutput: result.usage.outputTokens ?? 0,
+        tokenInput: result.tokenInput,
+        tokenOutput: result.tokenOutput,
       };
     } catch (error) {
       errors.push(`${config.name}/${config.model}: ${error instanceof Error ? error.message : "unknown error"}`);

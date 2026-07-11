@@ -96,7 +96,20 @@ export async function GET(request: Request) {
         orderBy: { createdAt: "desc" },
         take: 30,
         include: {
-          workspace: { select: { id: true, name: true, planCode: true, riskStatus: true } },
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              planCode: true,
+              riskStatus: true,
+              members: {
+                take: 3,
+                select: {
+                  user: { select: { email: true, name: true } },
+                },
+              },
+            },
+          },
           callbacks: { orderBy: { createdAt: "desc" }, take: 1 },
         },
       }),

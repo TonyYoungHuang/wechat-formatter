@@ -33,5 +33,23 @@ export const rewriteContentSchema = z.object({
 export const wechatLayoutSchema = z.object({
   title: z.string().trim().max(160).optional(),
   content: z.string().trim().min(20).max(30000),
-  template: z.enum(["clean", "deep", "private", "checklist", "editorial"]).default("editorial"),
+  template: z
+    .enum([
+      "classic-green",
+      "clean-reading",
+      "deep-column",
+      "tutorial-list",
+      "private-conversion",
+      "industry-report",
+      "interview-dialogue",
+      "story-narrative",
+      "product-introduction",
+      "news-information",
+      "clean",
+      "deep",
+      "private",
+      "checklist",
+      "editorial",
+    ])
+    .default("classic-green"),
 });

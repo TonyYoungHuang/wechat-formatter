@@ -70,7 +70,11 @@ const entryLabels: Record<string, string> = {
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || "Request failed.");
+    const message = typeof payload.message === "string" ? payload.message : "";
+    if (response.status === 504) {
+      throw new Error("AI 服务响应超时，请稍后重试；你也可以先按基础检查结果人工复核。");
+    }
+    throw new Error(message || "请求失败，请稍后重试。");
   }
   return payload;
 }

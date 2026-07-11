@@ -617,6 +617,7 @@ export function AccountProfilesWorkbench() {
                       data-testid="knowledge-submit"
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-60"
                       disabled={savingKnowledge || !knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10}
+                      title={!knowledgeForm.title.trim() || knowledgeForm.content.trim().length < 10 ? "请先填写资料标题，并在原文输入里粘贴至少 10 个字。系统只保存标签，不保存原文。" : "提取标签并写入账号知识库"}
                       type="button"
                     >
                       {editingKnowledgeId ? <PencilLine className="size-4" /> : <Plus className="size-4" />}
