@@ -115,6 +115,15 @@ type WechatLayoutResult = {
   aiError?: string | null;
 };
 
+type ComplianceCheckResult = {
+  score?: number;
+  report?: { id: string };
+  aiReviewMeta?: {
+    fallback?: boolean;
+    aiError?: string | null;
+  } | null;
+};
+
 const starterContent = `
 <h1>普通人做公众号副业还有机会吗？</h1>
 <p>这是一篇公众号文章草稿。你可以在这里编辑正文，然后复制公众号 HTML 到微信公众平台。</p>
@@ -374,6 +383,7 @@ export function WechatEditor() {
   const [generatingImages, setGeneratingImages] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [layouting, setLayouting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [showMoreEditorTools, setShowMoreEditorTools] = useState(false);
   const [quickPasteText, setQuickPasteText] = useState("");
   const [structuredWechatDocument, setStructuredWechatDocument] = useState<ArticleDocument | null>(null);
@@ -555,7 +565,6 @@ export function WechatEditor() {
     }
 
     const document = createArticleDocumentFromText(text, {
-      title: getCurrentTitle(),
       themeId: layoutTemplate,
       sourceType: "plain",
     });
@@ -589,13 +598,14 @@ export function WechatEditor() {
           }),
         }),
       );
+      if (data.fallback) {
+        setNotice("AI 精排暂未完成，已保留当前文章和排版结构，请稍后重试。本次不扣生成额度。");
+        return;
+      }
+
       setLayoutTemplate(resolveWechatThemeId(data.output.themeId));
       applyDocumentToEditor(data.output.document);
-      setNotice(
-        data.fallback
-          ? `已用本地规则完成排版。${data.output.notes.join("；")}`
-          : `AI 精排已完成：${data.output.notes.join("；")}`,
-      );
+      setNotice(`AI 精排已完成：${data.output.notes.join("；")}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "AI 精排失败。");
     } finally {
@@ -840,23 +850,34 @@ export function WechatEditor() {
 
   async function runCheck() {
     const content = getCurrentPlainText();
-    const response = await fetch("/api/compliance/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId: project?.id || undefined,
-        entry: mode,
-        title: getCurrentTitle(),
-        content,
-        html: mode === "wechat_article" ? editor?.getHTML() : undefined,
-      }),
-    });
-    const data = (await response.json()) as { score?: number; report?: { id: string }; message?: string };
-    if (!response.ok) {
-      setNotice(data.message || "发布前检查失败。");
+    if (!content.trim()) {
+      setNotice("请先输入需要检查的内容。");
       return;
     }
-    setNotice(`发布前检查完成，当前得分 ${data.score ?? "-"}。${data.report ? "报告已保存。" : ""}`);
+
+    setChecking(true);
+    setNotice("正在检查标题、正文结构、AI 味、风险表达和行动引导...");
+    try {
+      const data = await readJson<ComplianceCheckResult>(
+        await fetch("/api/compliance/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: project?.id || undefined,
+            entry: mode,
+            title: getCurrentTitle(),
+            content,
+            html: mode === "wechat_article" ? editor?.getHTML() : undefined,
+          }),
+        }),
+      );
+      const aiNote = data.aiReviewMeta?.fallback ? " AI 审稿暂未返回，本次已先完成基础检查。" : "";
+      setNotice(`发布前检查完成，当前得分 ${data.score ?? "-"}。${data.report ? "报告已保存。" : ""}${aiNote}`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "发布前检查失败，请稍后重试。");
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
@@ -1219,9 +1240,9 @@ export function WechatEditor() {
           {rewriting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
           降低 AI 味
         </Button>
-        <Button className="w-full" onClick={runCheck} variant="secondary" disabled={!getCurrentPlainText().trim()}>
-          <CheckCircle2 className="size-4" />
-          发布前检查
+        <Button className="w-full" onClick={runCheck} variant="secondary" disabled={checking || !getCurrentPlainText().trim()}>
+          {checking ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+          {checking ? "检查中..." : "发布前检查"}
         </Button>
         <button
           className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"

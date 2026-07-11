@@ -38,6 +38,22 @@ function localizeErrorMessage(message: string) {
     "Please sign in first.": "请先登录。",
     "Request failed.": "请求失败，请稍后重试。",
   };
+  const dailyGenerationMatch = message.match(/^Current plan allows (\d+) generations per day\.$/);
+  if (dailyGenerationMatch) {
+    return `当前套餐每天可使用 ${dailyGenerationMatch[1]} 次文字生成，今日额度已经用完。`;
+  }
+  const monthlyGenerationMatch = message.match(/^Current plan allows (\d+) generations per month\.$/);
+  if (monthlyGenerationMatch) {
+    return `当前套餐每月可使用 ${monthlyGenerationMatch[1]} 次文字生成，本月额度已经用完。`;
+  }
+  const dailyImageMatch = message.match(/^Current plan allows (\d+) AI images per day\.$/);
+  if (dailyImageMatch) {
+    return `当前套餐每天可生成 ${dailyImageMatch[1]} 张图片，今日额度已经用完。`;
+  }
+  const monthlyImageMatch = message.match(/^Current plan allows (\d+) AI images per month\.$/);
+  if (monthlyImageMatch) {
+    return `当前套餐每月可生成 ${monthlyImageMatch[1]} 张图片，本月额度已经用完。`;
+  }
   return labels[message] || message;
 }
 

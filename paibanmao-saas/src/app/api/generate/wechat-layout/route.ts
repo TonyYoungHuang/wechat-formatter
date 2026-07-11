@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       data: {
         workspaceId: current.workspace.id,
         type: "wechat_layout_generation",
-        status: "succeeded",
+        status: output.provider === "fallback" ? "failed" : "succeeded",
         input: toJsonValue(parsed.data),
         output: toJsonValue(output),
         error: output.aiError,
@@ -45,7 +45,9 @@ export async function POST(request: Request) {
       },
     });
 
-    await recordGenerationUsage(current.workspace.id);
+    if (output.provider !== "fallback") {
+      await recordGenerationUsage(current.workspace.id);
+    }
 
     return NextResponse.json({
       job,
