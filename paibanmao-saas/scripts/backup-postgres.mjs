@@ -13,9 +13,12 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
+const pgDumpUrl = new URL(databaseUrl);
+pgDumpUrl.searchParams.delete("schema");
+
 await mkdir(backupDir, { recursive: true });
 
-const child = spawn("pg_dump", ["--dbname", databaseUrl, "--format", "custom", "--no-owner", "--file", outputFile], {
+const child = spawn("pg_dump", ["--dbname", pgDumpUrl.toString(), "--format", "custom", "--no-owner", "--file", outputFile], {
   stdio: ["ignore", "inherit", "pipe"],
   shell: process.platform === "win32",
 });
