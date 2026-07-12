@@ -19,7 +19,7 @@ describe("compact Claude WeChat layout planning", () => {
 
   it("applies only structural decisions and preserves every source word", () => {
     const document = createArticleDocumentFromText(
-      "测试标题\n\n开头说明读者会得到什么。\n\n一个需要强调的判断\n\n欢迎留言告诉我你的问题。",
+      "测试标题\n\n开头说明读者会得到什么。\n\n这是一个需要强调的判断，它会影响后续排版。\n\n欢迎留言告诉我你的问题。",
       { themeId: "clean-reading" },
     );
     const before = document.blocks.map(articleBlockText).join("");
@@ -53,5 +53,23 @@ describe("compact Claude WeChat layout planning", () => {
 
     expect(result.blocks.filter((block) => block.type === "lead")).toHaveLength(1);
     expect(result.blocks[1].type).toBe("paragraph");
+  });
+
+  it("never lets Claude downgrade locally recognized structure", () => {
+    const document = createArticleDocumentFromText(
+      "测试标题\n\n开头导语。\n\n一、已经识别的标题\n\n- 第一项\n- 第二项",
+      { themeId: "classic-green" },
+    );
+
+    const result = applyCompactLayoutPlan(document, {
+      decisions: [
+        { index: 0, type: "paragraph" },
+        { index: 1, type: "paragraph" },
+        { index: 2, type: "paragraph" },
+      ],
+      notes: ["模型错误地返回了全部段落"],
+    });
+
+    expect(result.blocks.map((block) => block.type)).toEqual(["lead", "heading", "list"]);
   });
 });

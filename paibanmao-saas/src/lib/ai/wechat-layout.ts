@@ -103,6 +103,15 @@ function convertTextBlock(block: ArticleBlock, index: number, decision: LayoutPl
   const text = articleBlockText(block).trim();
   if (!text) return block;
 
+  // Claude may repeat every block despite being asked for changes only. Never
+  // let that response downgrade structure already recognized locally.
+  if (decision.type === "paragraph") return block;
+  if (block.type === "heading") {
+    if (decision.type !== "heading2" && decision.type !== "heading3") return block;
+    return { ...block, level: decision.type === "heading2" ? 2 : 3 };
+  }
+  if (block.type !== "paragraph") return block;
+
   switch (decision.type) {
     case "lead":
       return { id: createBlockId(index, "lead"), type: "lead", text };
@@ -110,8 +119,6 @@ function convertTextBlock(block: ArticleBlock, index: number, decision: LayoutPl
     case "heading3":
       if (text.length > 80 || /[。！？!?；;]$/.test(text)) return block;
       return { id: createBlockId(index, "heading"), type: "heading", level: decision.type === "heading2" ? 2 : 3, text };
-    case "paragraph":
-      return { id: createBlockId(index, "paragraph"), type: "paragraph", text };
     case "quote":
       return { id: createBlockId(index, "quote"), type: "quote", text };
     case "callout":
@@ -120,6 +127,28 @@ function convertTextBlock(block: ArticleBlock, index: number, decision: LayoutPl
       if (!/(关注|私信|留言|评论|咨询|扫码|添加微信|回复关键词|加入社群|领取|点击|转发)/.test(text)) return block;
       return { id: createBlockId(index, "cta"), type: "cta", title: "下一步", text };
   }
+}
+
+export function buildLayoutResultNotes(before: ArticleDocument, after: ArticleDocument) {
+  const changes = after.blocks.flatMap((block, index) => {
+    const previous = before.blocks[index];
+    if (!previous || previous.type === block.type) {
+      if (previous?.type === "heading" && block.type === "heading" && previous.level !== block.level) return ["heading"];
+      return [];
+    }
+    return [block.type];
+  });
+  const notes: string[] = [];
+
+  if (changes.some((type) => type === "heading")) notes.push("优化了标题层级");
+  if (changes.some((type) => type === "lead")) notes.push("识别了文章导语");
+  if (changes.some((type) => type === "quote")) notes.push("识别了引用段落");
+  if (changes.some((type) => type === "callout")) notes.push("标记了重点内容");
+  if (changes.some((type) => type === "cta")) notes.push("识别了结尾行动引导");
+  if (!notes.length) notes.push("原有文章结构已经较清晰，无需额外调整");
+  notes.push("原文内容已完整保留");
+
+  return notes;
 }
 
 export function applyCompactLayoutPlan(document: ArticleDocument, plan: LayoutPlan) {
@@ -173,8 +202,9 @@ export async function generateWechatLayoutWithAi(input: WechatLayoutInput, optio
     "下面是本地引擎已切分的段落，格式为 [序号|当前类型] 段落预览：",
     compactBlocks,
     "",
-    "只返回需要调整的段落，不要返回未变化的段落，更不要复述任何原文。",
-    "可选类型：lead、heading2、heading3、paragraph、quote、callout、cta。callout 可附 tone：info、tip、important、warning。",
+    "decisions 只能引用当前类型为 paragraph 的序号；不要返回 lead、heading、list 或其他已识别结构。不确定时返回空数组。",
+    "只返回需要增强的 paragraph，不要返回未变化的段落，更不要复述任何原文。",
+    "可选类型：lead、heading2、heading3、quote、callout、cta。callout 可附 tone：info、tip、important、warning。",
     "全文最多一个 lead；标题要克制，不要把完整句子当标题；普通正文保持 paragraph。",
     "只有原文明确包含行动引导时才用 cta；重点段才用 callout，避免通篇色块。",
     "列表、步骤、对话、数据和图片等本地已识别类型不要调整。",
@@ -196,9 +226,7 @@ export async function generateWechatLayoutWithAi(input: WechatLayoutInput, optio
         autoCache: true,
       });
       const document = applyCompactLayoutPlan(baseDocument, result.object);
-      const notes = result.object.notes.length
-        ? result.object.notes
-        : ["Claude 已完成段落层级判断", "原文由本地结构引擎完整保留"];
+      const notes = buildLayoutResultNotes(baseDocument, document);
 
       return buildOutput(document, selectedTheme.id, {
         notes,
