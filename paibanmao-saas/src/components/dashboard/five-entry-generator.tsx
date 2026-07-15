@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, Clock3, Copy, FolderOpen, HelpCircle, History, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Clock3, Copy, FileText, FolderOpen, HelpCircle, History, Lightbulb, Link2, Loader2, PencilLine, Save, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contentEntries, type ContentEntry } from "@/lib/content/entries";
-import { copyWechatRichHtml } from "@/lib/wechat-layout";
+import { copyPlainText, copyWechatRichHtml } from "@/lib/wechat-layout";
 
 type AccountProfile = {
   id: string;
@@ -30,6 +30,18 @@ type GenerationResult = {
     title: string;
     variants: GeneratedVariant[];
   };
+};
+
+type InputMode = "topic" | "material" | "url";
+type AdaptationMode = "adapt" | "rewrite" | "original";
+
+type ExtractedSource = {
+  url: string;
+  title: string;
+  description: string;
+  text: string;
+  charCount: number;
+  truncated: boolean;
 };
 
 type QueuedGenerationResult = {
@@ -98,6 +110,18 @@ const goals = [
   { value: "conversion", label: "转化" },
   { value: "trust", label: "信任" },
   { value: "interaction", label: "互动" },
+];
+
+const inputModes = [
+  { value: "topic" as const, label: "输入选题", description: "从一句话开始原创", icon: Lightbulb },
+  { value: "material" as const, label: "粘贴文稿", description: "长文、播客或视频转写稿", icon: FileText },
+  { value: "url" as const, label: "读取链接", description: "提取公开网页正文", icon: Link2 },
+];
+
+const adaptationOptions = [
+  { value: "adapt" as const, label: "改编成微信内容", description: "保留精华，重新组织五入口" },
+  { value: "rewrite" as const, label: "深度改写", description: "保留信息，重做标题和结构" },
+  { value: "original" as const, label: "原创发挥", description: "只吸收洞察，从账号角度重写" },
 ];
 
 const statusLabels: Record<GenerationJob["status"], string> = {
@@ -299,6 +323,14 @@ export function FiveEntryGenerator() {
   const [accountProfileId, setAccountProfileId] = useState("");
   const [topicId, setTopicId] = useState("");
   const [topic, setTopic] = useState("");
+  const [inputMode, setInputMode] = useState<InputMode>("topic");
+  const [adaptationMode, setAdaptationMode] = useState<AdaptationMode>("adapt");
+  const [sourceText, setSourceText] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceTitle, setSourceTitle] = useState("");
+  const [sourceInstructions, setSourceInstructions] = useState("");
+  const [sourcePreview, setSourcePreview] = useState<ExtractedSource | null>(null);
+  const [sourceLoading, setSourceLoading] = useState(false);
   const [goal, setGoal] = useState("growth");
   const [activeEntry, setActiveEntry] = useState<ContentEntry>("wechat_article");
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -432,7 +464,68 @@ export function FiveEntryGenerator() {
   const activeImagePrompts = useMemo(() => getStringList(activeVariant?.metadata?.imagePrompts), [activeVariant]);
   const activeKeywords = useMemo(() => getStringList(activeVariant?.metadata?.keywords), [activeVariant]);
   const missingProfile = !profilesLoading && profiles.length === 0;
-  const canSubmit = !missingProfile && !loading && !queueing && !queuedJobId && topic.trim().length >= 2;
+  const hasValidInput =
+    inputMode === "topic"
+      ? topic.trim().length >= 2
+      : inputMode === "material"
+        ? sourceText.trim().length >= 50
+        : /^https?:\/\//i.test(sourceUrl.trim());
+  const canSubmit = !missingProfile && !loading && !queueing && !queuedJobId && !sourceLoading && hasValidInput;
+
+  function generationPayload() {
+    return {
+      accountProfileId: accountProfileId || undefined,
+      topicId: topicId || undefined,
+      topic,
+      goal,
+      inputMode,
+      adaptationMode,
+      sourceText: inputMode === "topic" ? "" : inputMode === "url" && !sourcePreview ? "" : sourceText,
+      sourceUrl: inputMode === "url" ? sourceUrl : "",
+      sourceTitle: inputMode === "topic" ? "" : sourceTitle,
+      sourceInstructions: inputMode === "topic" ? "" : sourceInstructions,
+    };
+  }
+
+  function validateGenerationInput() {
+    if (inputMode === "topic" && topic.trim().length < 2) return "请先输入一个明确的选题，至少 2 个字。";
+    if (inputMode === "material" && sourceText.trim().length < 50) return "请粘贴至少 50 个字的文稿或转写内容。";
+    if (inputMode === "url" && !/^https?:\/\//i.test(sourceUrl.trim())) return "请输入完整的公开网页链接，以 http:// 或 https:// 开头。";
+    return "";
+  }
+
+  async function extractSourceUrl() {
+    if (!/^https?:\/\//i.test(sourceUrl.trim())) {
+      setMessage("请输入完整的公开网页链接，以 http:// 或 https:// 开头。");
+      return;
+    }
+
+    setSourceLoading(true);
+    setSourcePreview(null);
+    setMessage("正在读取网页正文...");
+    try {
+      const data = await readJson<{ source: ExtractedSource }>(
+        await fetchWithTimeout(
+          "/api/sources/extract",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: sourceUrl }),
+          },
+          20000,
+        ),
+      );
+      setSourcePreview(data.source);
+      setSourceText(data.source.text);
+      setSourceTitle(data.source.title);
+      setSourceUrl(data.source.url);
+      setMessage(`已读取《${data.source.title}》，共 ${data.source.charCount.toLocaleString()} 字。可以补充创作要求后生成。`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "读取链接失败，请直接粘贴文稿内容。");
+    } finally {
+      setSourceLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!queuedJobId) {
@@ -478,8 +571,9 @@ export function FiveEntryGenerator() {
     if (loading || queueing || queuedJobId) {
       return;
     }
-    if (topic.trim().length < 2) {
-      setMessage("请先输入一个明确的选题，至少 2 个字。");
+    const validationMessage = validateGenerationInput();
+    if (validationMessage) {
+      setMessage(validationMessage);
       return;
     }
     if (missingProfile) {
@@ -496,12 +590,7 @@ export function FiveEntryGenerator() {
         await fetchWithTimeout("/api/generate/five-entry/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accountProfileId: accountProfileId || undefined,
-            topicId: topicId || undefined,
-            topic,
-            goal,
-          }),
+          body: JSON.stringify(generationPayload()),
         }, 15000),
       );
       if (data.project) {
@@ -534,8 +623,9 @@ export function FiveEntryGenerator() {
     if (loading || queueing || queuedJobId) {
       return;
     }
-    if (topic.trim().length < 2) {
-      setMessage("请先输入一个明确的选题，至少 2 个字。");
+    const validationMessage = validateGenerationInput();
+    if (validationMessage) {
+      setMessage(validationMessage);
       return;
     }
     if (missingProfile) {
@@ -552,12 +642,7 @@ export function FiveEntryGenerator() {
         await fetchWithTimeout("/api/generate/five-entry/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accountProfileId: accountProfileId || undefined,
-            topicId: topicId || undefined,
-            topic,
-            goal,
-          }),
+          body: JSON.stringify(generationPayload()),
         }, 20000),
       );
       if (data.queued === false && data.project) {
@@ -579,8 +664,12 @@ export function FiveEntryGenerator() {
   }
 
   async function copyText(value: string) {
-    await navigator.clipboard.writeText(value);
-    setMessage("已复制到剪贴板。");
+    try {
+      await copyPlainText(value);
+      setMessage("已复制到剪贴板。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "复制失败，请长按内容手动复制。");
+    }
   }
 
   useEffect(() => {
@@ -608,19 +697,19 @@ export function FiveEntryGenerator() {
     };
     // Native listeners are a fallback for the primary action buttons; rebind when the submitted values change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountProfileId, goal, loading, queueing, queuedJobId, topic, topicId]);
+  }, [accountProfileId, adaptationMode, goal, inputMode, loading, queueing, queuedJobId, sourceInstructions, sourcePreview, sourceText, sourceTitle, sourceUrl, topic, topicId]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">五入口生成器</h1>
-        <p className="mt-1 text-sm text-slate-600">选择账号档案，输入一个选题，一次生成公众号、小绿书、搜一搜、问一问和朋友圈内容包。</p>
+        <p className="mt-1 text-sm text-slate-600">可以从一个选题开始，也可以粘贴文稿或读取公开链接，再生成公众号、小绿书、搜一搜、问一问和朋友圈内容包。</p>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
         {[
           ["1", "先建账号档案", "账号档案会告诉 AI：你是谁、写给谁、用什么语气和 CTA。"],
-          ["2", "输入一个选题", "把你想写的主题填进来，再选择这次更偏涨粉、搜索、转化还是信任。"],
+          ["2", "选择创作素材", "输入选题，或粘贴播客、视频转写稿和长文；公开网页也可以直接读取。"],
           ["3", "生成后去编辑", "点生成后分别查看五个入口，公众号内容可以去编辑器一键排版。"],
         ].map(([step, title, description]) => (
           <div className="rounded-lg border border-emerald-100 bg-white p-4" key={step}>
@@ -633,61 +722,184 @@ export function FiveEntryGenerator() {
 
       <Card>
         <CardHeader>
-          <CardTitle>输入选题</CardTitle>
+          <CardTitle>这次从哪里开始写</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-[220px_1fr_180px]">
-          <label className="space-y-1 text-sm">
-            <span className="inline-flex items-center gap-1 text-slate-600">
-              账号档案
-              <HelpTip text="账号档案相当于你的公众号人设和知识库入口。建好后，生成内容会更像你的账号，而不是通用模板。" />
-            </span>
-            <select
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
-              value={accountProfileId}
-              onChange={(event) => setAccountProfileId(event.target.value)}
-              title="选择这次内容使用哪个账号档案。没有档案时需要先创建一个。"
-            >
-              <option value="">{missingProfile ? "还没有账号档案，请先创建" : "自动选择默认档案"}</option>
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="inline-flex items-center gap-1 text-slate-600">
-              选题
-              <HelpTip text="这里填你想写的主题。建议用一句自然的话，比如：普通人做公众号副业还有机会吗？" />
-            </span>
-            <input
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
-              value={topic}
-              onChange={(event) => setTopic(event.target.value)}
-              placeholder="例如：普通人做公众号副业还有机会吗"
-              title="输入一个你想生成内容的主题。"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="inline-flex items-center gap-1 text-slate-600">
-              内容目标
-              <HelpTip text="涨粉会写关注理由；搜索会输出关键词、长尾词、搜索型标题和摘要；转化会写痛点、解决路径和克制 CTA；信任会写边界、适合谁/不适合谁和真实判断；互动会写问题钩子、讨论话术和评论/私信 CTA。" />
-            </span>
-            <select
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
-              value={goal}
-              onChange={(event) => setGoal(event.target.value)}
-              title="选择这次内容更想达成什么目标。不同目标会调用不同后台提示词策略。"
-            >
-              {goals.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-3" role="tablist" aria-label="创作输入方式">
+            {inputModes.map((mode) => {
+              const Icon = mode.icon;
+              const active = inputMode === mode.value;
+              return (
+                <button
+                  aria-selected={active}
+                  className={`flex min-h-20 items-center gap-3 rounded-lg border p-3 text-left transition ${active ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/40"}`}
+                  key={mode.value}
+                  onClick={() => {
+                    setInputMode(mode.value);
+                    setMessage(mode.value === "topic" ? "输入一句明确选题即可开始。" : mode.value === "material" ? "粘贴完整文稿后，选择改编方式。" : "先读取公开链接；如果平台不提供正文，请改为粘贴转写稿。");
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${active ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                    <Icon className="size-5" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">{mode.label}</span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-500">{mode.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <label className="space-y-1 text-sm">
+              <span className="inline-flex items-center gap-1 text-slate-600">
+                账号档案
+                <HelpTip text="账号档案相当于你的公众号人设和知识库入口。建好后，生成内容会更像你的账号，而不是通用模板。" />
+              </span>
+              <select
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                value={accountProfileId}
+                onChange={(event) => setAccountProfileId(event.target.value)}
+                title="选择这次内容使用哪个账号档案。没有档案时需要先创建一个。"
+              >
+                <option value="">{missingProfile ? "还没有账号档案，请先创建" : "自动选择默认档案"}</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="inline-flex items-center gap-1 text-slate-600">
+                内容目标
+                <HelpTip text="涨粉会写关注理由；搜索会输出关键词、长尾词、搜索型标题和摘要；转化会写痛点、解决路径和克制 CTA；信任会写边界、适合谁/不适合谁和真实判断；互动会写问题钩子、讨论话术和评论/私信 CTA。" />
+              </span>
+              <select
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                value={goal}
+                onChange={(event) => setGoal(event.target.value)}
+                title="选择这次内容更想达成什么目标。不同目标会调用不同后台提示词策略。"
+              >
+                {goals.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {inputMode === "topic" ? (
+            <label className="block space-y-1 text-sm">
+              <span className="inline-flex items-center gap-1 text-slate-600">
+                选题
+                <HelpTip text="建议写成一个具体问题或判断，例如：普通人做公众号副业还有机会吗？" />
+              </span>
+              <input
+                className="h-11 w-full rounded-lg border border-slate-200 px-3 outline-none focus:border-emerald-400"
+                value={topic}
+                onChange={(event) => setTopic(event.target.value)}
+                placeholder="例如：普通人做公众号副业还有机会吗"
+                title="输入一个你想生成内容的主题。"
+              />
+            </label>
+          ) : (
+            <div className="space-y-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-4">
+              {inputMode === "url" ? (
+                <div className="space-y-2">
+                  <span className="inline-flex items-center gap-1 text-sm text-slate-600">
+                    公开网页链接
+                    <HelpTip text="支持能够公开访问的图文网页。B 站和播客页面如果没有公开全文，通常只能读到简介，建议直接粘贴转写稿。" />
+                  </span>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-emerald-400"
+                      value={sourceUrl}
+                      onChange={(event) => {
+                        setSourceUrl(event.target.value);
+                        setSourcePreview(null);
+                      }}
+                      placeholder="https://..."
+                      title="粘贴公开网页链接"
+                    />
+                    <Button disabled={sourceLoading} onClick={() => void extractSourceUrl()} type="button" variant="secondary">
+                      {sourceLoading ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+                      {sourceLoading ? "读取中" : "读取正文"}
+                    </Button>
+                  </div>
+                  {sourcePreview ? (
+                    <div className="rounded-lg border border-emerald-200 bg-white p-3 text-sm">
+                      <div className="font-semibold text-slate-950">已读取：{sourcePreview.title}</div>
+                      <p className="mt-1 text-slate-600">正文 {sourcePreview.charCount.toLocaleString()} 字{sourcePreview.truncated ? "，已截取前 50,000 字" : ""}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {inputMode === "material" || (inputMode === "url" && sourcePreview) ? (
+                <label className="block space-y-1 text-sm">
+                  <span className="flex items-center justify-between gap-3 text-slate-600">
+                    <span>{inputMode === "material" ? "文稿或转写内容" : "读取到的正文（可补充或修改）"}</span>
+                    <span>{sourceText.length.toLocaleString()} / 50,000 字</span>
+                  </span>
+                  <textarea
+                    className="min-h-56 w-full resize-y rounded-lg border border-slate-200 bg-white p-3 leading-7 outline-none focus:border-emerald-400"
+                    maxLength={50000}
+                    onChange={(event) => setSourceText(event.target.value)}
+                    placeholder="粘贴播客转写稿、视频文稿、采访记录、文章正文或你的读书笔记。内容越完整，生成越有依据。"
+                    value={sourceText}
+                  />
+                </label>
+              ) : null}
+
+              <div>
+                <div className="mb-2 text-sm text-slate-600">希望怎么使用这份素材</div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {adaptationOptions.map((option) => (
+                    <button
+                      className={`min-h-20 rounded-lg border p-3 text-left transition ${adaptationMode === option.value ? "border-emerald-500 bg-white shadow-sm" : "border-slate-200 bg-white/70 hover:border-emerald-300"}`}
+                      key={option.value}
+                      onClick={() => setAdaptationMode(option.value)}
+                      type="button"
+                    >
+                      <span className="block text-sm font-semibold text-slate-950">{option.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">{option.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-600">创作方向（可选）</span>
+                  <input
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400"
+                    onChange={(event) => setTopic(event.target.value)}
+                    placeholder="例如：重点写给刚开始做副业的人"
+                    value={topic}
+                  />
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-600">补充要求（可选）</span>
+                  <input
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 outline-none focus:border-emerald-400"
+                    maxLength={500}
+                    onChange={(event) => setSourceInstructions(event.target.value)}
+                    placeholder="例如：不要谈变现，保留其中三个案例"
+                    value={sourceInstructions}
+                  />
+                </label>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">系统会提取观点和事实后重新组织，不会逐句替换同义词。生成完成后不把整篇参考素材写入账号知识库。</p>
+            </div>
+          )}
+
           {missingProfile ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 lg:col-span-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex gap-2">
                   <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
@@ -705,9 +917,9 @@ export function FiveEntryGenerator() {
               </div>
             </div>
           ) : null}
-          <div className="flex flex-col gap-3 lg:col-span-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p aria-live="polite" data-testid="five-entry-message" className="text-sm text-slate-500">
-              {message || (missingProfile ? "请先创建账号档案，再生成五入口内容。" : "生成会消耗 1 次额度，结果会自动保存到内容项目。")}
+              {message || (missingProfile ? "请先创建账号档案，再生成五入口内容。" : inputMode === "topic" ? "生成会消耗 1 次额度，结果会自动保存到内容项目。" : "素材会先做观点拆解，再生成五入口；完成后只保留来源摘要，不长期保存参考正文。")}
             </p>
             <div className="flex flex-wrap gap-2">
               <button

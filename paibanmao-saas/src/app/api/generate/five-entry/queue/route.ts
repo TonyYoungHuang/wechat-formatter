@@ -4,6 +4,7 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { resolveFiveEntryGenerationScope } from "@/lib/generation/five-entry-service";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
+import { buildPersistedGenerationPayload } from "@/lib/generation/source-material";
 import { errorResponse, mapApiError } from "@/lib/http/errors";
 import { enqueueFiveEntryGeneration, ensureGenerationWorker, getGenerationQueue } from "@/lib/queues/generation";
 import { assertCanUseGeneration } from "@/lib/usage/service";
@@ -70,6 +71,10 @@ export async function POST(request: Request) {
         data: {
           status: "failed",
           error: message,
+          input: {
+            mode: "queued",
+            payload: buildPersistedGenerationPayload({ payload: scoped.payload, summary: scoped.sourceSummary }),
+          },
         },
       });
 

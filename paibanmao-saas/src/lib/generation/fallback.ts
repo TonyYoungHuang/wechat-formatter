@@ -1,5 +1,5 @@
-import type { ContentEntry } from "@/lib/content/entries";
-import { getContentGoalStrategy } from "@/lib/generation/goals";
+import type { ContentEntry } from "../content/entries";
+import { getContentGoalStrategy } from "./goals";
 
 type AccountProfileLike = {
   name: string;
@@ -18,10 +18,41 @@ export type GeneratedVariant = {
   metadata?: Record<string, unknown>;
 };
 
+function extractFallbackMaterialPoints(sourceText?: string) {
+  if (!sourceText?.trim()) return [];
+
+  const priorityPattern = /建议|关键|真正|核心|第一|第二|第三|步骤|方法|问题|原因|结论|判断|行动|不要|应该|可以/;
+  const candidates = sourceText
+    .replace(/\r/g, "\n")
+    .split(/[。！？!?；;]\s*|\n+/)
+    .map((item, index) => ({
+      index,
+      value: item.replace(/^[-*•\d.、（）()\s]+/, "").replace(/\s+/g, " ").trim(),
+    }))
+    .filter((item) => item.value.length >= 12)
+    .map((item) => ({ ...item, score: priorityPattern.test(item.value) ? 1 : 0 }))
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+
+  const unique: string[] = [];
+  for (const item of candidates) {
+    const point = item.value.length > 96 ? `${item.value.slice(0, 96)}...` : item.value;
+    if (!unique.some((current) => current.slice(0, 28) === point.slice(0, 28))) {
+      unique.push(point);
+    }
+    if (unique.length === 4) break;
+  }
+  return unique;
+}
+
 export function buildFallbackFiveEntry(input: {
   topic: string;
   goal: string;
   accountProfile: AccountProfileLike;
+  sourceText?: string;
+  sourceTitle?: string;
+  inputMode?: "topic" | "material" | "url";
+  adaptationLabel?: string;
+  sourceInstructions?: string;
 }): GeneratedVariant[] {
   const { topic, accountProfile, goal } = input;
   const goalStrategy = getContentGoalStrategy(goal);
@@ -31,6 +62,22 @@ export function buildFallbackFiveEntry(input: {
   const tone = accountProfile.tone || "自然、直接";
   const product = accountProfile.productOrService || "资料包、咨询或轻课程";
   const goalChecklist = goalStrategy.requirements.map((item, index) => `${index + 1}. ${item}`);
+  const materialPoints = extractFallbackMaterialPoints(input.sourceText);
+  const hasSourceMaterial = input.inputMode !== "topic" && materialPoints.length > 0;
+  const sourceName = input.sourceTitle || "这份参考素材";
+  const sourcePoint = materialPoints[0] || topic;
+  const materialSection = hasSourceMaterial
+    ? [
+        "",
+        "## 先把素材里的关键判断拎出来",
+        ...materialPoints.map((point) => `- ${point}`),
+        "",
+        "## 不复述素材，换成账号自己的判断",
+        `对${audience}来说，真正值得继续展开的不是照搬「${sourceName}」，而是把“${sourcePoint}”变成一个能执行、能验证的内容判断。`,
+        input.adaptationLabel ? `本次采用「${input.adaptationLabel}」方式重新组织，不逐句替换同义词。` : "",
+        input.sourceInstructions ? `创作时还要遵守：${input.sourceInstructions}` : "",
+      ].filter(Boolean)
+    : [];
 
   return [
     {
@@ -49,6 +96,7 @@ export function buildFallbackFiveEntry(input: {
         "",
         "## 为什么这个选题值得写",
         `它和「${niche}」相关，也能承接账号「${accountProfile.name}」的长期定位。读者缺的通常不是信息，而是一套能马上执行的小步骤。`,
+        ...materialSection,
         "",
         "## 可以怎么展开",
         "1. 先讲读者当下的具体困境，不要一上来就给宏大结论。",
@@ -70,10 +118,10 @@ export function buildFallbackFiveEntry(input: {
         `适合小绿书的短图文结构: ${topic}`,
         "",
         "第 1 页: 一句话点出痛点。",
-        `第 2 页: 围绕「${goalStrategy.label}」给出一个具体判断。`,
+        `第 2 页: ${hasSourceMaterial ? `把素材判断“${sourcePoint}”改写成读者能马上理解的一句话。` : `围绕「${goalStrategy.label}」给出一个具体判断。`}`,
         "第 3 页: 给一个最小行动清单和自然 CTA。",
         "",
-        `短文案: ${audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口。这个版本重点服务「${goalStrategy.label}」目标: ${goalStrategy.strategy}`,
+        `短文案: ${hasSourceMaterial ? `这份内容从“${sourcePoint}”出发，不复述原文，而是把它改成${audience}可以执行的步骤。` : `${audience}不要一上来就追求爆款，先把一个选题拆成多个微信入口。`}这个版本重点服务「${goalStrategy.label}」目标: ${goalStrategy.strategy}`,
       ].join("\n"),
       metadata: {
         goal: goalStrategy.label,
@@ -101,7 +149,7 @@ export function buildFallbackFiveEntry(input: {
         `普通人做${topic}，先解决这 3 个问题`,
         "",
         "摘要前 100 字建议:",
-        `本文用一篇文章讲清「${topic}」的可执行步骤，适合${audience}参考。`,
+        `本文${hasSourceMaterial ? `从“${sourcePoint}”切入，` : ""}讲清「${topic}」的可执行步骤，适合${audience}参考。`,
       ].join("\n"),
       metadata: { keywords: [topic, `${niche}怎么做`, `${audience}公众号副业`], goal: goalStrategy.label },
     },
@@ -111,7 +159,7 @@ export function buildFallbackFiveEntry(input: {
       body: [
         "问一问回答草稿:",
         `如果你是${audience}，建议先不要把目标定成马上变现。`,
-        "更稳的做法是: 先确定一个垂直问题，再连续输出 7-14 天，观察哪类内容有人收藏、评论和私信。",
+        hasSourceMaterial ? `这份素材里最值得继续讨论的是：“${sourcePoint}”。先把这个判断放回自己的账号和读者场景，再补上亲自验证过的步骤。` : "更稳的做法是: 先确定一个垂直问题，再连续输出 7-14 天，观察哪类内容有人收藏、评论和私信。",
         "",
         `可以从「${topic}」这个方向开始测试。${cta}`,
       ].join("\n"),
@@ -123,7 +171,7 @@ export function buildFallbackFiveEntry(input: {
       body: [
         `今天把「${topic}」拆了一遍。`,
         "",
-        "我越来越觉得，做公众号副业不是每天硬写长文，而是把一个好选题拆成公众号、小绿书、搜一搜、问一问和朋友圈。",
+        hasSourceMaterial ? `这份素材里有个值得讨论的判断：“${sourcePoint}”。我没有照着复述，而是把它放回自己的账号和读者场景重新想了一遍。` : "我越来越觉得，做公众号副业不是每天硬写长文，而是把一个好选题拆成公众号、小绿书、搜一搜、问一问和朋友圈。",
         "",
         "这样一个内容资产能用很多次，也更适合普通人慢慢积累。",
         "",

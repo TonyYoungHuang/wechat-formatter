@@ -9,6 +9,12 @@ import { prisma } from "@/lib/db/prisma";
 import { buildFallbackFiveEntry } from "@/lib/generation/fallback";
 import { getContentGoalStrategy } from "@/lib/generation/goals";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
+import {
+  buildPersistedGenerationPayload,
+  buildSourcePromptContext,
+  resolveSourceMaterial,
+  type ResolvedSourceMaterial,
+} from "@/lib/generation/source-material";
 import { getActivePromptTemplate } from "@/lib/prompts/service";
 import { assertCanUseGeneration } from "@/lib/usage/service";
 
@@ -42,6 +48,7 @@ function buildCompactFiveEntryDraftPrompt(input: {
     sampleText?: string | null;
   };
   knowledgeContext: string;
+  sourceSummary: ResolvedSourceMaterial["summary"];
   plan: NonNullable<Awaited<ReturnType<typeof generateFiveEntryPlanWithAi>>["plan"]>;
 }) {
   const profile = input.accountProfile;
@@ -69,6 +76,17 @@ function buildCompactFiveEntryDraftPrompt(input: {
     "",
     "账号知识库标签:",
     input.knowledgeContext || "无",
+    "",
+    "本次素材使用方式:",
+    input.sourceSummary.inputMode === "topic"
+      ? "无外部素材，从选题原创。"
+      : [
+          `- 模式: ${input.sourceSummary.inputModeLabel}`,
+          `- 方式: ${input.sourceSummary.adaptationLabel}`,
+          `- 策略: ${input.sourceSummary.adaptationStrategy}`,
+          `- 来源: ${input.sourceSummary.sourceTitle || input.sourceSummary.sourceUrl || "用户粘贴素材"}`,
+          `- 用户要求: ${input.sourceSummary.sourceInstructions || "无"}`,
+        ].join("\n"),
     "",
     "已完成的五入口策划:",
     JSON.stringify(input.plan, null, 2),
@@ -118,12 +136,15 @@ export async function resolveFiveEntryGenerationScope(workspaceId: string, paylo
     });
   }
 
+  const sourceMaterial = await resolveSourceMaterial(payload);
+
   return {
     accountProfile,
     payload: {
-      ...payload,
+      ...sourceMaterial.payload,
       accountProfileId: accountProfile.id,
     },
+    sourceSummary: sourceMaterial.summary,
   };
 }
 
@@ -142,6 +163,8 @@ export async function runFiveEntryGeneration(input: {
   const scoped = await resolveFiveEntryGenerationScope(workspaceId, payload);
   const accountProfile = scoped.accountProfile;
   const scopedPayload = scoped.payload;
+  const sourceSummary = scoped.sourceSummary;
+  const sourcePromptContext = buildSourcePromptContext({ payload: scopedPayload, summary: sourceSummary });
   const knowledgeContext = await getAccountKnowledgeContext(accountProfile.id);
   const goalStrategy = getContentGoalStrategy(scopedPayload.goal);
 
@@ -171,6 +194,13 @@ export async function runFiveEntryGeneration(input: {
     forbiddenWords: accountProfile.forbiddenWords.join(", ") || "无",
     sampleText: accountProfile.sampleText || "无",
     knowledgeBase: knowledgeContext,
+    inputMode: sourceSummary.inputModeLabel,
+    adaptationMode: sourceSummary.adaptationLabel,
+    adaptationStrategy: sourceSummary.adaptationStrategy,
+    sourceTitle: sourceSummary.sourceTitle || "无",
+    sourceUrl: sourceSummary.sourceUrl || "无",
+    sourceInstructions: sourceSummary.sourceInstructions || "无",
+    sourceMaterial: sourcePromptContext,
   });
   const renderedPrompt = appendKnowledgeContext(promptTemplate.rendered, knowledgeContext);
 
@@ -184,6 +214,11 @@ export async function runFiveEntryGeneration(input: {
     topic: scopedPayload.topic,
     goal: scopedPayload.goal,
     accountProfile,
+    sourceText: scopedPayload.sourceText,
+    sourceTitle: sourceSummary.sourceTitle,
+    inputMode: sourceSummary.inputMode,
+    adaptationLabel: sourceSummary.adaptationLabel,
+    sourceInstructions: sourceSummary.sourceInstructions,
   });
 
   if (await isAiProviderConfigured()) {
@@ -195,6 +230,7 @@ export async function runFiveEntryGeneration(input: {
           goalStrategy: goalStrategy.strategy,
           accountProfile,
           knowledgeContext,
+          sourceContext: sourcePromptContext,
         }),
         fiveEntryAiTimeoutMs,
         "AI planning timed out.",
@@ -217,6 +253,7 @@ export async function runFiveEntryGeneration(input: {
             goalCta: goalStrategy.cta,
             accountProfile,
             knowledgeContext,
+            sourceSummary,
             plan: multiStagePlan,
           })
         : renderedPrompt;
@@ -244,6 +281,7 @@ export async function runFiveEntryGeneration(input: {
             accountProfile,
             variants,
             plan: multiStagePlan,
+            sourceSummary,
           }),
           fiveEntryPolishTimeoutMs,
           "AI polish timed out.",
@@ -285,6 +323,19 @@ export async function runFiveEntryGeneration(input: {
   });
 
   return prisma.$transaction(async (tx) => {
+    const variantsWithSource = variants.map((variant) => ({
+      ...variant,
+      metadata: {
+        ...(variant.metadata || {}),
+        creation: {
+          inputMode: sourceSummary.inputMode,
+          adaptationMode: sourceSummary.adaptationMode,
+          sourceTitle: sourceSummary.sourceTitle || undefined,
+          sourceUrl: sourceSummary.sourceUrl || undefined,
+          sourceCharCount: sourceSummary.sourceCharCount || undefined,
+        },
+      },
+    }));
     const project = await tx.contentProject.create({
       data: {
         workspaceId,
@@ -292,7 +343,7 @@ export async function runFiveEntryGeneration(input: {
         topicId: scopedPayload.topicId,
         title: scopedPayload.topic,
         variants: {
-          create: variants.map((variant) => ({
+          create: variantsWithSource.map((variant) => ({
             entry: variant.entry,
             title: variant.title,
             body: variant.body,
@@ -304,7 +355,7 @@ export async function runFiveEntryGeneration(input: {
     });
 
     const jobInput = {
-      ...scopedPayload,
+      ...buildPersistedGenerationPayload({ payload: scopedPayload, summary: sourceSummary }),
       source: generationSource,
       promptTemplate: {
         key: promptTemplate.key,
@@ -315,7 +366,7 @@ export async function runFiveEntryGeneration(input: {
       multiStagePlan,
     } as Prisma.InputJsonValue;
     const jobOutput = {
-      variants,
+      variants: variantsWithSource,
       source: generationSource,
       stages: generationStages,
       multiStagePlan,
@@ -364,7 +415,7 @@ export async function runFiveEntryGeneration(input: {
       workspaceId,
       accountProfileId: accountProfile.id,
       projectTitle: scopedPayload.topic,
-      variants,
+      variants: variantsWithSource,
       precomputedTagging: generatedContentTagging,
     });
 

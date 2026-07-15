@@ -28,6 +28,10 @@ function businessErrorStatus(message: string) {
     return 400;
   }
 
+  if (/链接|网页|参考素材|转写稿|内网|公开地址/.test(message)) {
+    return 422;
+  }
+
   return null;
 }
 

@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { runFiveEntryGeneration } from "@/lib/generation/five-entry-service";
 import { generateFiveEntrySchema } from "@/lib/generation/schemas";
+import { redactGenerationPayload } from "@/lib/generation/source-material";
 import { logger } from "@/lib/ops/logger";
 import { createBullMqConnection } from "@/lib/redis/client";
 
@@ -141,11 +142,30 @@ export function ensureGenerationWorker() {
       return;
     }
 
+    const maxAttempts = Number(job.opts.attempts || 1);
+    if (job.attemptsMade < maxAttempts) {
+      return;
+    }
+
+    const dbJob = await prisma.generationJob.findUnique({
+      where: { id: job.data.generationJobId },
+      select: { input: true },
+    });
+    const parsedPayload = dbJob ? generateFiveEntrySchema.safeParse(getPayload(dbJob.input)) : null;
+
     await prisma.generationJob.updateMany({
       where: { id: job.data.generationJobId, status: { in: ["pending", "running"] } },
       data: {
         status: "failed",
         error: error.message,
+        ...(parsedPayload?.success
+          ? {
+              input: {
+                mode: "queued",
+                payload: redactGenerationPayload(parsedPayload.data),
+              },
+            }
+          : {}),
       },
     });
   });

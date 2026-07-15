@@ -1,11 +1,39 @@
 import { z } from "zod";
 
-export const generateFiveEntrySchema = z.object({
-  accountProfileId: z.string().optional(),
-  topicId: z.string().optional(),
-  topic: z.string().trim().min(2).max(160),
-  goal: z.enum(["growth", "search", "conversion", "trust", "interaction"]).default("growth"),
-});
+export const generationInputModeSchema = z.enum(["topic", "material", "url"]);
+export const adaptationModeSchema = z.enum(["adapt", "rewrite", "original"]);
+
+export const generateFiveEntrySchema = z
+  .object({
+    accountProfileId: z.string().optional(),
+    topicId: z.string().optional(),
+    topic: z.string().trim().max(160).default(""),
+    goal: z.enum(["growth", "search", "conversion", "trust", "interaction"]).default("growth"),
+    inputMode: generationInputModeSchema.default("topic"),
+    sourceText: z.string().trim().max(50000).default(""),
+    sourceUrl: z.string().trim().max(2000).default(""),
+    sourceTitle: z.string().trim().max(160).default(""),
+    sourceInstructions: z.string().trim().max(500).default(""),
+    adaptationMode: adaptationModeSchema.default("adapt"),
+  })
+  .superRefine((value, context) => {
+    if (value.inputMode === "topic" && value.topic.length < 2) {
+      context.addIssue({ code: "custom", path: ["topic"], message: "请先输入至少 2 个字的选题。" });
+    }
+
+    if (value.inputMode === "material" && value.sourceText.length < 50) {
+      context.addIssue({ code: "custom", path: ["sourceText"], message: "请粘贴至少 50 个字的参考素材。" });
+    }
+
+    if (value.inputMode === "url") {
+      try {
+        const url = new URL(value.sourceUrl);
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error("unsupported protocol");
+      } catch {
+        context.addIssue({ code: "custom", path: ["sourceUrl"], message: "请输入可以公开访问的 http/https 链接。" });
+      }
+    }
+  });
 
 export const imagePromptSchema = z.object({
   topic: z.string().trim().min(2).max(160),
